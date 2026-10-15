@@ -118,8 +118,22 @@ pause
 
 | 项 | 值 |
 | :--- | :--- |
-| 远端 | `git@github.com:ethan123-zhang/edge-guard-ai.git`（SSH） |
+| 远端 | `https://github.com/ethan123-zhang/edge-guard-ai.git`（**HTTPS**） |
 | 分支 | `main` |
+
+> ⚠️ **踩坑记录（2026-10-15）**：本仓库最初被配置为 **SSH** 远端
+> （`git@github.com:ethan123-zhang/edge-guard-ai.git`），推送**必然失败**：
+> ```
+> git@github.com: Permission denied (publickey).
+> ```
+> **根因**：本机 `~/.ssh/id_rsa`（指纹 `SHA256:1GLDvLVrVDCJEU8rM+DZ38rYBCCghx2amqe0zCWs2G4`）
+> **未添加到 GitHub 账号**，且 ssh-agent 未运行。
+> **解法**：改为 HTTPS 远端（与 `AIQuantEval`、`aiVault` 两个仓库一致），推送即成功。
+> ```bat
+> git remote set-url origin https://github.com/ethan123-zhang/edge-guard-ai.git
+> ```
+> **结论**：**本机所有 GitHub 仓库一律用 HTTPS 远端**，不要用 SSH
+> （本机 `.ssh/config` 里的 Host 项全是局域网板卡，与 GitHub 无关）。
 
 **要点**：
 

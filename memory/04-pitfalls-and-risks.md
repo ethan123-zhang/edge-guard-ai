@@ -62,7 +62,16 @@ last_updated: 2026-10-15
 | E-1 | **RKLLM-Toolkit 只有 Linux wheel** | Windows 装不了，必须用 WSL2 |
 | E-2 | **Jetson Python 3.6** | 别升级；别装 insightface 全家桶 |
 | E-3 | **热点后是 NAT** | 外部连不进来，只能局域网直连 |
-| E-4 | `push_ai.bat` 结尾 `pause` | 自动化环境下会卡住（本项目暂未启用推送） |
+| E-4 | **本机 GitHub 必须用 HTTPS 远端** | SSH 公钥未加到账号，`git@github.com: Permission denied (publickey)`。详见 `00-maintenance-rule.md` 踩坑记录 |
+| E-5 | **沙箱写入限制** | DSH 会话默认 `workspace-write`，**写 `E:\Document\...\aiVault` 会被拒**，需一次性提权；子 agent 提权被拒后**无法重试**，此类跨库写入**应由主会话直接执行** |
+| E-6 | `pushToGithub.bat` / `push_ai.bat` 结尾 `pause` | 自动化/非交互环境下会卡住，改用等效的三条 git 命令 |
+
+## 5. 记忆库自身的坑
+
+| # | 坑 | 说明 |
+| :--- | :--- | :--- |
+| M-1 | **设计先行导致"规划被误写成已完成"** | 本项目文档先于代码，记忆库极易把 `docs/` 里的规划项记成事实 |
+| M-2 | **项目已建 git 却未建 `.gitignore`** | `git add .` 会把模型/数据库/人脸特征/访客截图推上 GitHub，**写代码前必须先补** |
 
 ## 相关记忆
 
