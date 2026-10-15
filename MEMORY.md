@@ -88,8 +88,16 @@ last_updated: 2026-10-15
 
 ## 📤 推送状态
 
-⚠️ **本项目当前不是 git 仓库**，无 `push_ai.bat`，**改动未推送**。
-启用步骤见 `memory/00-maintenance-rule.md` 推送纪律节。
+✅ **本仓库是 git 仓库**：远端 `git@github.com:ethan123-zhang/edge-guard-ai.git`，分支 `main`。
+
+| 库 | 推送命令 |
+| :--- | :--- |
+| **本项目**（进度） | `E:\哨兵管家\pushToGithub.bat` |
+| **aiVault**（知识） | `E:\Document\Ethan'vault\aiVault\push_ai.bat` |
+
+⚠️ **`.gitignore` 尚未创建** —— 写代码或放模型前**必须先补**，
+否则 `git add .` 会把模型文件（`.rkllm`/`.onnx`）、数据库、人脸特征、访客截图推上去。
+详见 `memory/00-maintenance-rule.md` 高危项表。
 
 ---
 

@@ -31,7 +31,11 @@ last_updated: 2026-10-15
 | :--- | :--- |
 | `MEMORY.md` + `memory/` | 本记忆库 |
 | `docs/` | **技术文档正文**（设计真源，先于代码） |
+| `pushToGithub.bat` | 推送脚本（`git add . / commit / push origin main`，**结尾有 `pause`**） |
 | `memory/03-design-decisions.md` | 关键设计决策与理由（指针 + 摘要） |
+
+> **git 仓库**：远端 `git@github.com:ethan123-zhang/edge-guard-ai.git`，分支 `main`。
+> ⚠️ **`.gitignore` 尚未创建**，写代码/放模型前必须先补（见 `00` 的高危项表）。
 
 > `docs/` 是文档正文的**唯一真源**，记忆库不复制其内容，只放指针与摘要。
 

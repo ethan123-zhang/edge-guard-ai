@@ -93,19 +93,62 @@ E:\哨兵管家\
 - 本记忆库是**人工维护的普通 Markdown 文件**，**不是** DSH 内置的自动记忆功能。
 - 因此这些文件**不会被自动加载**，只在人或 agent 主动读取时生效。
 
-## 📤 推送纪律（**本项目当前未启用**）
+## 📤 推送纪律（每次做完都要执行）
 
-> ⚠️ **现状**：`E:\哨兵管家` **不是 git 仓库**（无 `.git`、无 `push_ai.bat`）。
-> `E:\AIQuantEval` 那套 `push_ai.bat` 纪律在本项目**尚不适用**。
+> **硬性规则**：在 `E:\哨兵管家` 中做完任何改动，**必须立即推送**。
+> **不推送 = 没做完**（与 `E:\AIQuantEval` 的 `push_ai.bat` 同理）。
 
-**待办**：若要启用推送纪律，需先完成——
-1. 在 `E:\哨兵管家` 执行 `git init` 并关联远端；
-2. 建 `push_ai.bat`；
-3. 补 `.gitignore`（**务必排除模型文件 `.rkllm`/`.onnx`、`data/sentinel.db`、
-   截图、人脸特征 `.npy`**，这些体积大或含隐私，不应入库）；
-4. 启用后回写本节，把"未启用"改为实际命令。
+**本仓库的推送命令**（注意：文件名是 `pushToGithub.bat`，**不是** `push_ai.bat`）：
 
-**在此之前**：改完记忆库**无需也无法推送**，但要在回复里明确告知未推送。
+```bat
+E:\哨兵管家\pushToGithub.bat
+```
+
+其内容等价于：
+
+```bat
+git add .
+git commit -m "update notes"
+git push origin main
+echo Done!
+pause
+```
+
+**仓库信息**：
+
+| 项 | 值 |
+| :--- | :--- |
+| 远端 | `git@github.com:ethan123-zhang/edge-guard-ai.git`（SSH） |
+| 分支 | `main` |
+
+**要点**：
+
+- **凡是改了本目录下的任何文件**（`docs/`、`memory/`、脚本、代码），收尾时都要推一次。
+- 推送是**收尾动作**，不要攒着、不要留半成品。
+- 改动落在两个库时**要各自推送**：
+  - 知识改动 → `E:\Document\Ethan'vault\aiVault\push_ai.bat`
+  - 进度改动 → `E:\哨兵管家\pushToGithub.bat`
+  - 一次会话若同时动了两边，**两个脚本都要跑**。
+- `pushToGithub.bat` 结尾有 `pause`，**在自动化/非交互环境下会卡住**；
+  此时改用等效的三条 git 命令（`git add . && git commit && git push origin main`）。
+- ⚠️ `git add .` 会连带未跟踪文件。**推送前先 `git status` 看一眼**；
+  若出现大文件（模型 `.rkllm`/`.onnx`/`.rknn`、数据集、图集等），
+  先补 `.gitignore` 再推，别把大文件推上去。
+
+### ⚠️ 本项目 `.gitignore` 必须排除的高危项
+
+以下内容**体积大或含隐私**，一旦推上去很难彻底清除，**写代码前先补 `.gitignore`**：
+
+| 路径 | 原因 |
+| :--- | :--- |
+| `*.rkllm` / `*.onnx` / `*.rknn` | 模型文件，数百 MB~数 GB |
+| `data/sentinel.db` | 含人脸与对话记录，**隐私** |
+| `vision/face_db/*.npy` | 人脸特征向量，**生物特征隐私** |
+| `snapshots/` / `*.jpg` | 访客截图，**隐私** |
+| `models/` | 模型目录 |
+
+> 当前仓库已推送过 `pushToGithub.bat` 与 `MEMORY.md`，**尚无代码与模型**，
+> 正是补 `.gitignore` 的最佳时机。
 
 ## 自我检查（每次写入后）
 
