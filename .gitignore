@@ -1,0 +1,148 @@
+# ============================================================
+# 哨兵管家 .gitignore
+# 原则：模型文件、隐私数据、运行产物一律不入库
+# ============================================================
+
+# ---------- 1. 模型文件（体积大，数百 MB ~ 数 GB）----------
+# 一旦推上去极难彻底清除，必须从一开始就排除
+*.rkllm
+*.rknn
+*.onnx
+*.tflite
+*.pt
+*.pth
+*.caffemodel
+*.weights
+*.engine
+*.plan
+*.trt
+*.gguf
+*.bin
+*.param
+models/
+vision/models/
+dialog/models/
+
+# ---------- 2. 隐私数据（本项目最关键的一条）----------
+# 人脸特征、访客截图、对话记录都属于敏感个人信息，绝不入库
+vision/face_db/
+*.npy
+*.npz
+snapshots/
+captures/
+data/sentinel.db
+data/sentinel.db-journal
+data/sentinel.db-wal
+data/sentinel.db-shm
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+# 音频录制（可能含访客语音）
+*.wav
+*.mp3
+*.pcm
+*.flac
+recordings/
+audio_cache/
+
+# ---------- 3. 运行产物与日志 ----------
+*.log
+logs/
+*.pid
+*.tmp
+*.temp
+*.bak
+*.bak.*
+*~
+
+# ---------- 4. Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 虚拟环境
+venv/
+.venv/
+env/
+ENV/
+.python-version
+
+# 测试与覆盖率
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ---------- 5. 配置中的敏感信息 ----------
+# 保留 config 模板，但排除真实配置（可能含 IP / token / 路径）
+config.local.yaml
+*.local.yaml
+secrets.yaml
+.env
+.env.*
+!.env.example
+
+# ---------- 6. 编辑器与 IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.cursor/
+
+# ---------- 7. 操作系统 ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ---------- 8. 演示与备份（体积大或含隐私）----------
+backups/
+demo_videos/
+*.mp4
+*.avi
+*.mov
+
+# ---------- 9. 临时实验目录 ----------
+temp/
+scratch/
+experiments/output/
+*.log.tmp
+
+# ============================================================
+# 注意：以下内容应当入库，不要加进本文件
+#   - 技术文档 docs/
+#   - 记忆库 MEMORY.md 与 memory/
+#   - 代码 vision/ dialog/ master/ scripts/
+#   - 配置模板 config.yaml（不含密钥时）
+#   - 实测数据 docs/data/*.csv
+# ============================================================
