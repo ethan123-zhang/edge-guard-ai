@@ -51,6 +51,31 @@ last_updated: 2026-10-15
 | 模型转换要求 | **必须在 x86 Linux 上做**（WSL2 / Docker / 另一台 Linux 机），**Windows 和板子上都装不了** |
 | 板端 Runtime | ⚠️ `docs/02` 原记「runtime 1.3.0 / rknpu driver 0.9.8（野火教程环境）」——**这是教程环境，不是本机实测值**。板子到手后**必须以板端实际版本为准**，并让 Toolkit 版本与之**对齐** |
 
+**转换用 Linux 环境（V0，2026-10-15 实测可用）**：
+
+| 项 | 实测值 |
+| :--- | :--- |
+| 方案 | **WSL2**（不是 Docker——Docker Desktop 守护进程起不来，且其发行版本身就是 WSL2 后端） |
+| 发行版 | `Ubuntu-22.04`，**Running**；另有 `docker-desktop`（Stopped） |
+| 架构 / Python | **x86_64** / **Python 3.10.12**、pip 22.0.2 → 对应 **`cp310`** wheel |
+| 资源 | `/` 可用 **943G**；内存 **7.6G**（可用 7.1G）；WSL 用户 `ethan` |
+| 网络 | GitHub ✅ 200、ModelScope ✅ 302 |
+| **调用前提** | ⚠️ **必须 `danger-full-access`**：默认沙箱把进程降到 Low IL，`wsl -l -v` 会被拒（见 `04` E-7） |
+| 工作目录 | `~/rkllm-work/rknn-llm`、`~/sentinel-models`（WSL 内，非 `/mnt/e`） |
+| 未装 | conda、git-lfs（**都不需要**，直接用系统 python3.10 + pip） |
+
+**🔥 转换机器的 GPU（2026-10-15 实测，重要）**：
+
+| 项 | 值 |
+| :--- | :--- |
+| GPU | **NVIDIA GeForce RTX 4060 Laptop，8GB 显存** |
+| 驱动 / CUDA | NVIDIA-SMI 615.65.06，CUDA UMD 13.4；torch 2.6.0+cu124 |
+| `torch.cuda.is_available()` | **True** |
+
+> ⚠️ **这推翻了 `docs/04` 的原假设**：原文档写「用 `device='cpu'`」，并配了 `docs/06` 的
+> CPU 路线（llama.cpp）作降级。**实测本机有可用 N 卡，转换应走 `device='cuda'`，快得多**。
+> 注意官方 `export_rkllm.py` 开头有 `os.environ['CUDA_VISIBLE_DEVICES']='0'`，本机单卡可保留。
+
 > **这条是本项目最重要的环境约束**：模型转换必须提前在 WSL2 里启动，
 > 且要下载数 GB 模型 + 量化，**耗时很长**。
 

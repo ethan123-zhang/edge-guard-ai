@@ -59,13 +59,14 @@ last_updated: 2026-10-15
 
 | # | 坑 | 说明 |
 | :--- | :--- | :--- |
+| E-7 | **DSH 沙箱降权导致 WSL/Docker/git 全线假性故障（2026-10-15 实测，已解决）** | **根因**：DSH 默认沙箱把进程降到 **Low 完整性级别**（`S-1-16-4096`），且管理员组被标为 *Group used for deny only*。Low IL 下**读不到凭据库、开不了服务**，于是表现为：`wsl -l -v` / `wsl --status` 报 `Wsl/E_ACCESSDENIED`、`LxssManager` 停在 Stopped、Docker 守护进程起不来、`git push` 报 `schannel: SEC_E_NO_CREDENTIALS`。**解法**：用 `danger-full-access` 跑（实测完整性级别 Low→Medium，`S-1-16-8192`），三条链路**同时恢复**。**教训**：`wsl --version` 在 Low IL 下**依然正常**，是最容易误导人的烟雾弹——**别只凭它判断 WSL 好坏**，要跑 `wsl -l -v` |
 | E-1 | **RKLLM-Toolkit 只有 Linux wheel** | Windows 装不了，必须用 WSL2 / x86 Linux |
-| E-7 | **本机 WSL 被 Windows 权限挡住（2026-10-15 实测）** | `wsl -l -v` 报 `Wsl/E_ACCESSDENIED`；`LxssManager` 服务为 **Stopped**，非管理员 token 连 `Start-Service` 都被拒。**WSL 本体是好的**（`wsl --version` 正常：WSL 3.0.1.0 / kernel 6.18.40.1-1），坏的只是发行版枚举与提权。**连带影响**：Docker Desktop 配的是 WSL2 后端（`CustomWslDistroDir: D:\DokerTitle\DockerDesktopWSL`），WSL 一卡 **Docker 守护进程起不来**（`D:\Docker\Docker Desktop.exe` 启动后无进程、无日志）→ **两条 Linux 路线同时断**。解法：以**管理员**身份跑一次 WSL（见下） |
 | E-2 | **Jetson Python 3.6** | 别升级；别装 insightface 全家桶 |
 | E-3 | **热点后是 NAT** | 外部连不进来，只能局域网直连 |
 | E-4 | **本机 GitHub 必须用 HTTPS 远端** | SSH 公钥未加到账号，`git@github.com: Permission denied (publickey)`。详见 `00-maintenance-rule.md` 踩坑记录 |
 | E-5 | **沙箱写入限制** | DSH 会话默认 `workspace-write`，**写 `E:\Document\...\aiVault` 会被拒**，需一次性提权；子 agent 提权被拒后**无法重试**，此类跨库写入**应由主会话直接执行** |
 | E-6 | `pushToGithub.bat` / `push_ai.bat` 结尾 `pause` | 自动化/非交互环境下会卡住，改用等效的三条 git 命令 |
+| E-8 | **WSL 里默认不通宿主机代理（2026-10-15 实测）** | **现象**：Windows 上开着梯子，WSL 里 git/pip 却极慢或直连失败。**根因**：WSL2 是独立虚拟机，里面的 **`127.0.0.1` 指 WSL 自己**，不是 Windows。**解法**：用宿主机在 WSL 网络中的网关地址——本机为 **`172.28.240.1:10090`**（`ip route \| grep default` 可查，会随重启变化）。已写入 `~/.bashrc`、`~/.pip/pip.conf`、`git config --global http.proxy`，脚本见 `scripts/wsl_setup_proxy.sh` |
 
 ## 5. 记忆库自身的坑
 
