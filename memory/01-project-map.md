@@ -34,8 +34,10 @@ last_updated: 2026-10-15
 | `pushToGithub.bat` | 推送脚本（`git add . / commit / push origin main`，**结尾有 `pause`**） |
 | `memory/03-design-decisions.md` | 关键设计决策与理由（指针 + 摘要） |
 
-> **git 仓库**：远端 `git@github.com:ethan123-zhang/edge-guard-ai.git`，分支 `main`。
-> ⚠️ **`.gitignore` 尚未创建**，写代码/放模型前必须先补（见 `00` 的高危项表）。
+> **git 仓库**：远端 `https://github.com/ethan123-zhang/edge-guard-ai.git`（**HTTPS**），分支 `main`。
+> ✅ **`.gitignore` 已建**（2026-10-15）：排除模型文件（`.rkllm`/`.onnx`/`.rknn`/`.gguf` 等）、
+> **人脸特征 `.npy`**、**访客截图**、**对话数据库 `sentinel.db`**、录音、日志、虚拟环境。
+> 已逐条验证：7 项高危文件全部被拦、8 项应入库文件（`docs/`、`memory/`、代码、`docs/data/*.csv`）无误伤。
 
 > `docs/` 是文档正文的**唯一真源**，记忆库不复制其内容，只放指针与摘要。
 

@@ -149,20 +149,20 @@ pause
   若出现大文件（模型 `.rkllm`/`.onnx`/`.rknn`、数据集、图集等），
   先补 `.gitignore` 再推，别把大文件推上去。
 
-### ⚠️ 本项目 `.gitignore` 必须排除的高危项
+### ✅ 本项目 `.gitignore` 已生效（2026-10-15 建立）
 
-以下内容**体积大或含隐私**，一旦推上去很难彻底清除，**写代码前先补 `.gitignore`**：
+以下内容**体积大或含隐私**，**均已被 `.gitignore` 排除**，不会随 `git add .` 推上去：
 
 | 路径 | 原因 |
 | :--- | :--- |
-| `*.rkllm` / `*.onnx` / `*.rknn` | 模型文件，数百 MB~数 GB |
-| `data/sentinel.db` | 含人脸与对话记录，**隐私** |
-| `vision/face_db/*.npy` | 人脸特征向量，**生物特征隐私** |
-| `snapshots/` / `*.jpg` | 访客截图，**隐私** |
-| `models/` | 模型目录 |
+| `*.rkllm` / `*.onnx` / `*.rknn` / `*.gguf` 等 + `models/` | 模型文件，数百 MB~数 GB |
+| `data/sentinel.db` + `data/*.db` | 含人脸与对话记录，**隐私** |
+| `vision/face_db/` + `*.npy` | 人脸特征向量，**生物特征隐私** |
+| `snapshots/` / `*.jpg` / `*.wav` | 访客截图与录音，**隐私** |
+| `*.log` / `logs/` / `venv/` / `__pycache__/` | 运行产物 |
 
-> 当前仓库已推送过 `pushToGithub.bat` 与 `MEMORY.md`，**尚无代码与模型**，
-> 正是补 `.gitignore` 的最佳时机。
+> **注意**：`.gitignore` 只对**未跟踪**文件生效。若某个大文件已被 `git add` 过，
+> 需要 `git rm --cached <file>` 才会真正移除跟踪。**新增模型/数据目录时，先确认是否被覆盖**。
 
 ## 自我检查（每次写入后）
 
