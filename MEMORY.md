@@ -61,6 +61,23 @@ last_updated: 2026-10-15
 
 ---
 
+## 📤 推送与 .gitignore 纪律（**每次改动必做**）
+
+| 动作 | 命令 / 要求 |
+| :--- | :--- |
+| **推送** | `git add . && git commit -m "..." && git push origin main` |
+| **推送前自检** | `"D:\Program Files\Git\bin\bash.exe" scripts\check_gitignore.sh` |
+| **新建文件夹** | **必须在 `.gitignore` 中加上该目录**，然后跑自检验证 |
+
+> ⚠️ **铁律**：① 改了有用文件**必须推送**，不推送 = 没做完；
+> ② 新增文件夹**必须确认 `.gitignore` 覆盖**，跑脚本验证，别靠记忆。
+> 详见 `memory/00-maintenance-rule.md`。
+
+⚠️ **`.gitignore` 只对未跟踪文件生效** —— 已 `git add` 过的文件要
+`git rm --cached` 才能停止跟踪。**正确顺序是先写规则、再放文件。**
+
+---
+
 ## 🔗 双库分工（防止知识分叉）
 
 | 库 | 位置 | 存什么 |

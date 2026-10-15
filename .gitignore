@@ -26,10 +26,20 @@ dialog/models/
 # ---------- 2. 隐私数据（本项目最关键的一条）----------
 # 人脸特征、访客截图、对话记录都属于敏感个人信息，绝不入库
 vision/face_db/
+face_db/
+face_gallery/
 *.npy
 *.npz
 snapshots/
 captures/
+# 图片：访客照片可能出现在任意目录，故按类型全局排除。
+# 如需入库架构图/流程图，把文件放到 docs/images/ 并在此行下方加 !docs/images/*.png
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.webp
+!docs/images/**
 data/sentinel.db
 data/sentinel.db-journal
 data/sentinel.db-wal
@@ -43,7 +53,28 @@ data/*.sqlite3
 *.pcm
 *.flac
 recordings/
+recordings_raw/
 audio_cache/
+
+# ---------- 2b. 数据集与标定图（体积大）----------
+# 名字自定义的数据目录覆盖不到，按类型 + 常见命名兜底
+datasets/
+calib_images/
+calibration/
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
+*.bag
+*.rosbag
+*.pcd
+*.ply
+*.csv.gz
+*.h5
+*.hdf5
+*.pkl
+*.pickle
 
 # ---------- 3. 运行产物与日志 ----------
 *.log

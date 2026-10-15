@@ -93,26 +93,43 @@ E:\哨兵管家\
 - 本记忆库是**人工维护的普通 Markdown 文件**，**不是** DSH 内置的自动记忆功能。
 - 因此这些文件**不会被自动加载**，只在人或 agent 主动读取时生效。
 
-## 📤 推送纪律（每次做完都要执行）
+## 📤 推送纪律（**每次改动后必做，无例外**）
 
-> **硬性规则**：在 `E:\哨兵管家` 中做完任何改动，**必须立即推送**。
-> **不推送 = 没做完**（与 `E:\AIQuantEval` 的 `push_ai.bat` 同理）。
+> **人类明确要求（2026-10-15）**：
+> **每次对 `E:\哨兵管家` 中的有用文件做了修改，都必须推送到 GitHub。**
+> **不推送 = 没做完。** 这不是可选项。
 
-**本仓库的推送命令**（注意：文件名是 `pushToGithub.bat`，**不是** `push_ai.bat`）：
-
-```bat
-E:\哨兵管家\pushToGithub.bat
-```
-
-其内容等价于：
+### ✅ 每次会话收尾的固定动作（照做，不要问）
 
 ```bat
+cd /d E:\哨兵管家
 git add .
-git commit -m "update notes"
+git status --short          :: 先看一眼，确认没有不该推的东西
+git commit -m "<简述本次改动>"
 git push origin main
-echo Done!
-pause
 ```
+
+> **沙箱注意**：`pushToGithub.bat` 结尾有 `pause`，在自动化环境下**会卡住**。
+> agent 执行时**不要调用 .bat**，直接跑上面四条 git 命令。
+
+### 📋 推送前自检（每次都要过一遍）
+
+- [ ] `git status --short` 看过了？
+- [ ] **有没有新增的文件夹/文件类型没被 `.gitignore` 覆盖？**（见下节）
+- [ ] 有没有大文件（模型/数据集/视频）混进来？
+- [ ] 有没有隐私文件（人脸特征/截图/数据库/录音）混进来？
+- [ ] `git push` 后核对 `本地 main == origin/main`？
+
+### 判断"有用文件"的口径
+
+| 要推送 ✅ | 不要推送 ❌（应进 `.gitignore`） |
+| :--- | :--- |
+| `docs/` 技术文档 | 模型文件（`.rkllm`/`.onnx`/`.rknn`/`.gguf`） |
+| `memory/` 记忆库、`MEMORY.md` | 数据库 `sentinel.db` |
+| 代码（`vision/`/`dialog/`/`master/`） | 人脸特征 `.npy` |
+| 脚本（`scripts/`）、`.gitignore` | 访客截图、录音 |
+| 实测数据 `docs/data/*.csv` | 日志、虚拟环境、缓存 |
+| 配置模板（不含密钥） | 含密钥的真实配置 |
 
 **仓库信息**：
 
@@ -135,19 +152,92 @@ pause
 > **结论**：**本机所有 GitHub 仓库一律用 HTTPS 远端**，不要用 SSH
 > （本机 `.ssh/config` 里的 Host 项全是局域网板卡，与 GitHub 无关）。
 
-**要点**：
+**双库同时改动时，要各自推送**：
+- 知识改动 → `E:\Document\Ethan'vault\aiVault\push_ai.bat`
+- 进度改动 → `E:\哨兵管家`（上面的四条 git 命令）
 
-- **凡是改了本目录下的任何文件**（`docs/`、`memory/`、脚本、代码），收尾时都要推一次。
-- 推送是**收尾动作**，不要攒着、不要留半成品。
-- 改动落在两个库时**要各自推送**：
-  - 知识改动 → `E:\Document\Ethan'vault\aiVault\push_ai.bat`
-  - 进度改动 → `E:\哨兵管家\pushToGithub.bat`
-  - 一次会话若同时动了两边，**两个脚本都要跑**。
-- `pushToGithub.bat` 结尾有 `pause`，**在自动化/非交互环境下会卡住**；
-  此时改用等效的三条 git 命令（`git add . && git commit && git push origin main`）。
-- ⚠️ `git add .` 会连带未跟踪文件。**推送前先 `git status` 看一眼**；
-  若出现大文件（模型 `.rkllm`/`.onnx`/`.rknn`、数据集、图集等），
-  先补 `.gitignore` 再推，别把大文件推上去。
+---
+
+## 🚫 新增文件夹 ⇒ 必须同步更新 `.gitignore`（**人类明确要求**）
+
+> **人类明确要求（2026-10-15）**：
+> **每次新添了有用的文件夹，都要在 `.gitignore` 中加上地址。**
+
+### 为什么必须做
+
+`git add .` 是**无条件全加**的。新建一个目录时，如果它没被 `.gitignore` 覆盖，
+目录里的**全部内容会被直接推上公开仓库**——包括模型、数据库、访客照片。
+**这类泄漏推上去之后很难彻底清除**（要改写历史）。
+
+### 固定动作（每次新建文件夹后）
+
+1. 判断这个目录是**要入库**还是**要忽略**（口径见上一节的表）；
+2. **要忽略** → 在 `.gitignore` 里**加上该目录路径**（写目录名 + 一个 `**` 兜底）；
+3. **要入库** → 不用改 `.gitignore`，但确认它**没有**被某条宽泛规则误伤；
+4. **实测验证**（不可跳过）：
+   ```bat
+   git check-ignore -v <新目录>/任意文件      :: 有输出 = 被忽略（对）
+   git check-ignore -v <新目录>/任意.py       :: 无输出 = 可入库（对，若这是代码目录）
+   ```
+5. 把改动连同代码一起 commit + push。
+
+### 当前 `.gitignore` 的覆盖方式（**按类型写，不按目录写**）
+
+为了让"以后新添的文件夹"**自动被覆盖**，`.gitignore` 主要按**文件类型/通用目录名**写，
+而不是逐个写死路径。因此以下**新建同名目录会自动生效**，无需改规则：
+
+| 规则 | 覆盖的新目录 |
+| :--- | :--- |
+| `models/`、`vision/models/`、`dialog/models/` | 任何模型目录 |
+| `*.rkllm` `*.onnx` `*.rknn` `*.gguf` `*.pt` `*.bin` 等 | 任何位置的模型文件 |
+| `*.npy` `*.npz`、`vision/face_db/`、`face_db/`、`face_gallery/` | 人脸特征 |
+| `*.jpg` `*.jpeg` `*.png` `*.bmp` `*.webp`、`snapshots/`、`captures/` | **任意位置**的图片（访客照片） |
+| `*.wav` `*.mp3` `*.pcm` `*.flac`、`recordings/`、`recordings_raw/`、`audio_cache/` | 录音 |
+| `data/*.db`、`*.sqlite` | 数据库 |
+| `datasets/`、`calib_images/`、`calibration/`、`*.zip` `*.tar*` `*.7z` `*.rar`、`*.bag` `*.rosbag` `*.pcd` `*.ply`、`*.h5` `*.hdf5`、`*.pkl` `*.pickle` | 数据集与标定图（体积大） |
+| `logs/`、`*.log`、`__pycache__/`、`venv/`、`.venv/` | 运行产物 |
+| `backups/`、`demo_videos/`、`*.mp4` | 备份与演示视频 |
+| `temp/`、`scratch/`、`experiments/output/` | 临时实验 |
+
+> **要入库图片怎么办**：把图片放到 `docs/images/`，`.gitignore` 里有
+> `!docs/images/**` 例外规则。**其他位置的图片一律不入库。**
+>
+> ⚠️ **仍需手工加的例外**：上表覆盖不到的自定义目录名，
+> 且里面装大文件或隐私数据时，必须手工补一条。
+> 例如：`my_photos_2026/`、`face_records/`、`visitor_data/` 这类命名。
+
+### 🔧 自检工具（**每次推送前跑一次**）
+
+已提供脚本，一条命令检出"该忽略却没被忽略"的文件：
+
+```bash
+# 用 Git 自带的 bash 运行（本机 WSL 的 bash 不可用，见下方踩坑）
+"D:\Program Files\Git\bin\bash.exe" "E:\哨兵管家\scripts\check_gitignore.sh"
+```
+
+脚本做四件事：
+1. 检查敏感文件**是否已被 git 跟踪**（已跟踪的忽略规则无效）
+2. 扫描**未被忽略的可疑文件**（下次 `git add .` 会推上去的）
+3. 列出当前所有目录，提示复核覆盖情况
+4. 核对与远端的同步状态（有无未推送提交）
+
+退出码 `0` = 安全可推；`1` = 有问题需先处理。
+
+> ⚠️ **本机 bash 踩坑**：`bash` 命令会走 WSL，而 WSL 报
+> `execvpe(/bin/bash) failed`（且 localhost 转发失败）。
+> **必须用 Git 自带的 `D:\Program Files\Git\bin\bash.exe`**，不要直接用 `bash`。
+
+### ⚠️ `.gitignore` 的生效边界（易错）
+
+**`.gitignore` 只对「未跟踪」文件生效。** 若某文件**已被 `git add` 过**，
+之后再写忽略规则**拦不住**，必须显式移除跟踪：
+
+```bat
+git rm --cached <文件或目录>     :: 从索引移除，保留本地文件
+git commit -m "chore: 停止跟踪 <xxx>"
+```
+
+**所以正确顺序是：先建 `.gitignore` 规则，再放文件。** 反过来就要多一步补救。
 
 ### ✅ 本项目 `.gitignore` 已生效（2026-10-15 建立）
 
@@ -173,4 +263,5 @@ pause
 - [ ] 有没有抄 git/README 已有的易得内容？
 - [ ] 有没有把"规划"写成"已完成"？
 - [ ] 有没有写入任何秘密？
-- [ ] 推送状态是否已在回复中如实说明？
+- [ ] **本次有没有新建文件夹？有 → `.gitignore` 加了吗？验证了吗？**
+- [ ] **本次改动推送了吗？`本地 main == origin/main` 核对了吗？**
