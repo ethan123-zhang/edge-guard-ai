@@ -45,9 +45,11 @@ last_updated: 2026-10-15
 | 项 | 事实 |
 | :--- | :--- |
 | 开发机 | Windows（`E:\` 盘） |
-| RKLLM-Toolkit | **只有 x86_64 Linux wheel**（`rkllm_toolkit-1.3.0-cp310-cp310-linux_x86_64.whl`） |
-| 模型转换要求 | **必须在 x86 Linux 上做**（WSL2 可用），**Windows 和板子上都装不了** |
-| 板端 Runtime | rkllm-runtime 1.3.0 / rknpu driver 0.9.8（野火教程实测环境） |
+| RKLLM-Toolkit | **只有 x86_64 Linux wheel**，Windows 装不了 |
+| **RKLLM 最新版本** | **`release-v1.3.1`**（2026-09-29 发布，[仓库](https://github.com/airockchip/rknn-llm)）。⚠️ `docs/04` 与 `docs/06` 原写 **v1.3.0 已过时** |
+| **Toolkit wheel 实际文件名** | v1.3.1 提供三个：`rkllm_toolkit-1.3.1-cp310-cp310-linux_x86_64.whl` / `cp311` / `cp312`。⚠️ `docs/04` 写的 `rkllm_toolkit-1.3.0-cp310-...whl` **在 v1.3.1 tag 下不存在** |
+| 模型转换要求 | **必须在 x86 Linux 上做**（WSL2 / Docker / 另一台 Linux 机），**Windows 和板子上都装不了** |
+| 板端 Runtime | ⚠️ `docs/02` 原记「runtime 1.3.0 / rknpu driver 0.9.8（野火教程环境）」——**这是教程环境，不是本机实测值**。板子到手后**必须以板端实际版本为准**，并让 Toolkit 版本与之**对齐** |
 
 > **这条是本项目最重要的环境约束**：模型转换必须提前在 WSL2 里启动，
 > 且要下载数 GB 模型 + 量化，**耗时很长**。

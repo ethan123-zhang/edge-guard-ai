@@ -59,7 +59,8 @@ last_updated: 2026-10-15
 
 | # | 坑 | 说明 |
 | :--- | :--- | :--- |
-| E-1 | **RKLLM-Toolkit 只有 Linux wheel** | Windows 装不了，必须用 WSL2 |
+| E-1 | **RKLLM-Toolkit 只有 Linux wheel** | Windows 装不了，必须用 WSL2 / x86 Linux |
+| E-7 | **本机 WSL 被 Windows 权限挡住（2026-10-15 实测）** | `wsl -l -v` 报 `Wsl/E_ACCESSDENIED`；`LxssManager` 服务为 **Stopped**，非管理员 token 连 `Start-Service` 都被拒。**WSL 本体是好的**（`wsl --version` 正常：WSL 3.0.1.0 / kernel 6.18.40.1-1），坏的只是发行版枚举与提权。**连带影响**：Docker Desktop 配的是 WSL2 后端（`CustomWslDistroDir: D:\DokerTitle\DockerDesktopWSL`），WSL 一卡 **Docker 守护进程起不来**（`D:\Docker\Docker Desktop.exe` 启动后无进程、无日志）→ **两条 Linux 路线同时断**。解法：以**管理员**身份跑一次 WSL（见下） |
 | E-2 | **Jetson Python 3.6** | 别升级；别装 insightface 全家桶 |
 | E-3 | **热点后是 NAT** | 外部连不进来，只能局域网直连 |
 | E-4 | **本机 GitHub 必须用 HTTPS 远端** | SSH 公钥未加到账号，`git@github.com: Permission denied (publickey)`。详见 `00-maintenance-rule.md` 踩坑记录 |
