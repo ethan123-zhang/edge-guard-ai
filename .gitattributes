@@ -1,3 +1,13 @@
 # 强制 shell / python 脚本用 LF，避免 Windows 上 CRLF 破坏 Linux 执行
 *.sh   text eol=lf
 *.py   text eol=lf
+
+# 板端 C++ 源码：也要 LF（在 Linux 上编译，CRLF 虽不致命但不干净）
+*.cpp  text eol=lf
+*.h    text eol=lf
+*.hpp  text eol=lf
+
+# 喂给模型的提示词文件：必须 LF！
+# 若被转成 CRLF，提示词里会混入 \r 字符，可能带偏模型输出。
+# 注：llm_demo 补丁已会剥掉 BOM，但不处理 \r，故这里必须守住。
+*.txt  text eol=lf

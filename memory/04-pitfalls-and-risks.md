@@ -74,6 +74,10 @@ last_updated: 2026-10-15
 | E-12 | **板子直连 GitHub 只有 37 KiB/s（2026-10-15 实测）** | 在鲁班猫5 上 `git clone rknn-llm`（773M）**基本下不动**。**解法**：**不要在板子上克隆**——在 PC（WSL，走代理）克隆后，**只打包板端编译所需的最小集合**传给板子。实测 **773M → 2.4MB**（压缩后），缩小 300+ 倍。脚本见 `scripts/wsl_make_board_pkg.sh`，产物 `board-pkg/rkllm-board-v1.3.1.tar.gz` |
 | E-13 | **官方 `build-linux.sh` 在板子上必然失败** | 它写死了**交叉编译器**路径 `~/opts/gcc-arm-10.2-2020.11-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc`——那是给 **x86 PC 交叉编译**用的。**板端本机编译要改用系统 gcc/g++**。已提供 `build-on-board.sh` 替代（不指定工具链，走 `cmake` 默认编译器） |
 | E-14 | **`deploy` 编译依赖 `rkllm-runtime` 目录** | `CMakeLists.txt` 里写死 `${CMAKE_SOURCE_DIR}/../../../rkllm-runtime/${CMAKE_SYSTEM_NAME}/librkllm_api/`。**只拷 `deploy` 会编译失败**，必须连带 `rkllm-runtime/Linux/librkllm_api/{include,aarch64}`。**好消息**：`librkllmrt.so` 已在仓库内（7.7MB），无需单独下载 |
+| E-15 | **官方 demo 里 `rkllm_set_chat_template` 的注释是错的（2026-10-17 实测）** | `llm_demo.cpp` 把该调用注释成了 **4 个**字符串参数（`""`, `"<｜User｜>"`, `"<｜Assistant｜>"`, `"<｜endoftext｜>"`），但 `rkllm.h:463` 的 1.3.1 签名只有 **3 个**（`system_prompt`, `prompt_prefix`, `prompt_postfix`）。**照抄注释直接取消注释会编译不过**。**正解**：传 3 个参数，`prefix`/`postfix` 给空串，角色标记交给模型内置 chat template。**这也解释了"裸跑没人设"**——不是缺 API，是这行被注释了 |
+| E-16 | **Qwen3 的 `enable_thinking` 会偷吃 `max_new_tokens` 预算（2026-10-17 识别）** | `rkllm.h:188` 有 `bool enable_thinking`（Qwen3 专用）。若开启，模型**先吐推理过程**，`max_new_tokens=48` 会被推理吃掉，最终回复看起来"被截断"。**危险在于会误判**：把"thinking 占预算"错判成"48 不够"或"人设失败"。**解法**：显式 `rkllm_input.enable_thinking = false` 并**打印该状态**，把混淆变量钉死。补丁已含此项 |
+| E-17 | **Windows 上编辑的文本文件带 UTF-8 BOM，会污染提示词开头（2026-10-17）** | 提示词文件若含 BOM（`EF BB BF`），模型会先读到 3 个乱码字节，可能直接带偏人设。**解法**：读取时检测并剥掉 BOM（补丁已实现，实测 37→34 字节）。**推广**：任何喂给模型的文本文件都应做此处理 |
+| E-18 | **本机有 g++，补丁验证不必进 WSL（2026-10-17 发现）** | `C:\Program Files\mingw64\bin\g++.exe`（g++ 8.1.0，C++11 够用）。**意义**：WSL 常被沙箱挡住（E-7），而**写桩文件冒充 `librkllmrt.so` 即可在本机完成编译+链接检查**，上板前先排掉语法/类型错误。桩见 `board-pkg/src/compile-check-stubs.cpp`。⚠️ 沙箱禁止子进程管道，**别用重定向 stdin 喂交互程序**（会挂住）——改用「宏改名 main + 自写 driver」绕过交互循环 |
 
 ## 5. 记忆库自身的坑
 

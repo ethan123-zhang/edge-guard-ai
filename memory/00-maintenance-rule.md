@@ -35,12 +35,15 @@ E:\哨兵管家\
 │   ├── 05-演示与答辩.md
 │   └── 06-实施计划.md
 └── memory\
-    ├── 00-maintenance-rule.md     # 本文件
+    ├── 00-maintenance-rule.md     # 本文件（规则源）
     ├── 01-project-map.md
     ├── 02-environment.md
     ├── 03-design-decisions.md
     ├── 04-pitfalls-and-risks.md
-    └── 05-open-questions.md
+    ├── 05-open-questions.md
+    ├── 06-push-and-gitignore.md   # 2026-10-15 从 00 拆出
+    ├── 07-network.md              # 2026-10-17 从 02 拆出
+    └── session-logs\              # 会话流水账（非规则）
 ```
 
 > 本项目**未启用**按类型分目录（`user/feedback/project/reference`），
