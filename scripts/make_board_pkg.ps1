@@ -39,7 +39,8 @@ New-Item -ItemType Directory -Force -Path $promptDir | Out-Null
 Copy-Item (Join-Path $PkgDir 'prompts\system-prompt.txt')          $promptDir -Force
 Copy-Item (Join-Path $PkgDir 'prompts\system-prompt.template.txt') $promptDir -Force
 Copy-Item (Join-Path $PkgDir 'verify-persona.sh')                  $Root -Force
-Write-Host '  OK prompts/ + verify-persona.sh'
+Copy-Item (Join-Path $PkgDir 'setup-sentinel-dir.sh')              $Root -Force
+Write-Host '  OK prompts/ + verify-persona.sh + setup-sentinel-dir.sh'
 
 Write-Host '=== 4. 替换 build-on-board.sh（含补丁自检）===' -ForegroundColor Cyan
 Copy-Item (Join-Path $PkgDir 'build-on-board.sh') (Join-Path $Root 'build-on-board.sh') -Force

@@ -12,11 +12,16 @@
 # ============================================================================
 set -u
 
-MODEL="${1:-$HOME/models/Qwen3-0.6B_W8A8_RK3588.rkllm}"
+MODEL="${1:-$HOME/sentinel/models/Qwen3-0.6B_W8A8_RK3588.rkllm}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 DEMO_DIR="$ROOT/examples/rkllm_api_demo/deploy/install/demo_Linux_aarch64"
 DEMO="$DEMO_DIR/llm_demo"
-PROMPT="$ROOT/prompts/system-prompt.txt"
+# 提示词优先用 ~/sentinel/prompts/（归整后的统一位置），回退到包内
+if [ -f "$HOME/sentinel/prompts/system-prompt.txt" ]; then
+    PROMPT="$HOME/sentinel/prompts/system-prompt.txt"
+else
+    PROMPT="$ROOT/prompts/system-prompt.txt"
+fi
 
 echo "============================================================"
 echo " 哨兵管家 · 板端人设复验"
@@ -33,7 +38,8 @@ fail=0
 if [ ! -f "$MODEL" ]; then
     echo "✗ 模型不存在：$MODEL"
     echo "  先把模型拷到板子（PC 上执行）："
-    echo "  scp Qwen3-0.6B_W8A8_RK3588.rkllm cat@192.168.3.214:~/models/"
+    echo "  scp \"E:\\哨兵管家\\board-pkg\\Qwen3-0.6B_W8A8_RK3588.rkllm\" cat@192.168.3.214:~/sentinel/models/"
+    echo "  或先跑 ./setup-sentinel-dir.sh 建好 ~/sentinel/ 目录结构"
     fail=1
 else
     sz=$(stat -c%s "$MODEL" 2>/dev/null || echo 0)
@@ -101,8 +107,11 @@ cat <<'EOT'
     cd ~/rkllm-board-v1.3.1/examples/rkllm_api_demo/deploy/install/demo_Linux_aarch64
     export LD_LIBRARY_PATH=./lib:$LD_LIBRARY_PATH
     export RKLLM_LOG_LEVEL=1
-    ./llm_demo ~/models/Qwen3-0.6B_W8A8_RK3588.rkllm 48 2048 \
-        ~/rkllm-board-v1.3.1/prompts/system-prompt.txt off
+    ./llm_demo ~/sentinel/models/Qwen3-0.6B_W8A8_RK3588.rkllm 48 2048 \
+        ~/sentinel/prompts/system-prompt.txt off
+
+> 若你还没跑 setup-sentinel-dir.sh，把上面两处 ~/sentinel/ 换回：
+> 模型 ~/models/ 、提示词 ~/rkllm-board-v1.3.1/prompts/
 
 依次输入这 3 句（可直接输入序号 0 / 1 / 2，脚本已内置）：
 

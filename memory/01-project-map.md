@@ -39,6 +39,22 @@ last_updated: 2026-10-15
 | `memory/03-design-decisions.md` | 关键设计决策与理由（指针 + 摘要） |
 
 > **git 仓库**：远端 `https://github.com/ethan123-zhang/edge-guard-ai.git`（**HTTPS**），分支 `main`。
+
+## 板端目录约定（**2026-10-17 起**）
+
+> 板子上 LLM 相关的文件统一收进 **`~/sentinel/`**，由 `setup-sentinel-dir.sh` 建立。
+> 后续 `dialog/` 代码的路径依赖这个结构，**改结构前先看这里**。
+
+```
+~/sentinel/
+├── models/    Qwen3-0.6B_W8A8_RK3588.rkllm     ← 模型（889.8MB）
+├── prompts/   system-prompt.txt                ← §5.1 提示词
+├── rkllm/     demo_Linux_aarch64 → 软链到 ~/rkllm-board-v1.3.1/.../install/
+├── rkllm-src/                                  ← 预留
+└── logs/                                       ← 预留：tok/s 实测记录
+```
+
+> **PC 侧对应**：待传的一切都在 `board-pkg/`（模型 + v2 包 + v1 作打包输入）。
 > ✅ **`.gitignore` 已建**（2026-10-15）：排除模型文件（`.rkllm`/`.onnx`/`.rknn`/`.gguf` 等）、
 > **人脸特征 `.npy`**、**访客截图**、**对话数据库 `sentinel.db`**、录音、日志、虚拟环境。
 > 已逐条验证：7 项高危文件全部被拦、8 项应入库文件（`docs/`、`memory/`、代码、`docs/data/*.csv`）无误伤。

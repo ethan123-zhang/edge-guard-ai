@@ -51,7 +51,8 @@ last_updated: 2026-10-15
 
 | 日期 | 文件 | 主题 |
 | :--- | :--- | :--- |
-| 2026-10-17 | `memory/session-logs/2026-10-17-鲁班猫5提示词补丁.md` | **llm_demo 系统提示词补丁**：发现官方 `rkllm_set_chat_template()` 入口 + thinking 偷 token；补丁本机验证通过；最小包 v2；**待上板实测** |
+| 2026-10-17 | `memory/session-logs/2026-10-17-鲁班猫5提示词补丁.md` | **llm_demo 系统提示词补丁**（**上篇**）：发现官方 `rkllm_set_chat_template()` 入口 + thinking 偷 token；补丁本机验证通过；**待上板实测** |
+| 2026-10-17 | `memory/session-logs/2026-10-17b-打包与目录治理.md` | **下篇**：v1/v2 包治理（**v1 是打包输入，勿删**）、PC 侧归整到 `board-pkg/`、**板端 `~/sentinel/` 目录**、传输方式选型 |
 | 2026-10-16 | `memory/session-logs/2026-10-16-Jetson环境受阻.md` | **V1 受阻暂停**：Jetson 缺 `cv2.dnn`/无 CUDA/OpenCV 3.2.0；**转回鲁班猫5**；7 个问题与发现；下次任务清单 |
 | 2026-10-15 | `memory/session-logs/2026-10-15-模型转换与V2验证.md` | **模型转换链路打通 + V2 死亡点通过**（**上篇**：板端与交付物，P6~P12）；**2026-10-17 拆分** |
 | 2026-10-15 | `memory/session-logs/2026-10-15b-模型转换链路.md` | **下篇**：转换链路与环境坑（P1~P5、P11），含复现转换的最短路径 |
