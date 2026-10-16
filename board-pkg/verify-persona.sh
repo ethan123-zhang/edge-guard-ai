@@ -3,14 +3,18 @@
 # 哨兵管家 —— 板端复验脚本：模型人设与输出长度（docs/03 §5.1）
 # ----------------------------------------------------------------------------
 # 目标：验证接入系统提示词后，模型是否符合 §5.1 的人设要求，且 48 token 够用。
-# 用法：./verify-persona.sh [模型路径]
-# 说明：脚本不会自动对话（对话需要你亲自说人话），它负责：
-#         1. 检查前置件（模型、提示词、可执行文件）
-#         2. 打印将要执行的命令
-#         3. 跑一遍「自动可验」的检查（提示词是否真的注入、长度是否受控）
-#       交互式对话由你按第 4 节手动进行。
+# 用法：./verify-persona.sh [--run] [模型路径]
+#   --run  直接启动对话（脚本会自动设好 LD_LIBRARY_PATH 与 RKLLM_LOG_LEVEL）
+# 说明：不加 --run 时，脚本只做前置检查与打印命令，不自动对话。
 # ============================================================================
 set -u
+
+# 先挑出 --run 标志，剩下的参数才当模型路径（否则 $1=--run 会被当成路径）
+RUN_MODE=0
+if [ "${1:-}" = "--run" ]; then
+    RUN_MODE=1
+    shift
+fi
 
 MODEL="${1:-$HOME/sentinel/models/Qwen3-0.6B_W8A8_RK3588.rkllm}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -66,11 +70,20 @@ if [ ! -x "$DEMO" ]; then
     fail=1
 else
     echo "✓ 可执行文件就绪"
-    # 确认这是打了补丁的版本（支持第 4 个参数）
-    if "$DEMO" 2>&1 | grep -q "system_prompt_file"; then
-        echo "✓ 已启用提示词补丁（用法含 system_prompt_file）"
+    # 确认这是打了补丁的版本（支持第 4 个参数）。
+    # ⚠️ 这里【不能】直接跑 "$DEMO" 看 usage —— 它依赖 ./lib/librkllmrt.so，
+    #    未设 LD_LIBRARY_PATH 时会在【加载阶段】失败，空输出会被误读成
+    #    "官方原版"。这个误判真实发生过一次。
+    #    改用不依赖动态库的 strings 判据。
+    if command -v strings >/dev/null 2>&1; then
+        cnt=$(strings "$DEMO" 2>/dev/null | grep -c "system_prompt_file" || true)
     else
-        echo "✗ 这个 llm_demo 是官方原版，不支持系统提示词！"
+        cnt=$(grep -c "system_prompt_file" "$DEMO" 2>/dev/null || true)
+    fi
+    if [ "${cnt:-0}" -ge 1 ]; then
+        echo "✓ 已启用提示词补丁（二进制内含 system_prompt_file，匹配 $cnt 处）"
+    else
+        echo "✗ 这个 llm_demo 里找不到 system_prompt_file —— 是官方原版"
         echo "  请重新跑 ./build-on-board.sh（它会用本包内改好的源码）"
         fail=1
     fi
@@ -95,6 +108,23 @@ echo "    export LD_LIBRARY_PATH=./lib:\$LD_LIBRARY_PATH"
 echo "    export RKLLM_LOG_LEVEL=1"
 echo "    ./llm_demo $MODEL 48 2048 $PROMPT off"
 echo
+echo "  懒得手敲？本脚本可直接替你启动（已内置库路径）："
+echo "    bash $0 --run"
+echo
+
+# ---------- 3b. --run：直接启动，环境变量由脚本负责 ----------
+if [ "$RUN_MODE" -eq 1 ]; then
+    echo "--- 3b. 按 --run 直接启动（脚本已设好 LD_LIBRARY_PATH）---"
+    echo "     提示：依次输入 0 / 1 / 2 试那三句话；输入 exit 退出。"
+    echo
+    cd "$DEMO_DIR" || exit 1
+    export LD_LIBRARY_PATH="$DEMO_DIR/lib:${LD_LIBRARY_PATH:-}"
+    export RKLLM_LOG_LEVEL=1
+    echo "  LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
+    echo "  RKLLM_LOG_LEVEL = $RKLLM_LOG_LEVEL"
+    echo
+    exec ./llm_demo "$MODEL" 48 2048 "$PROMPT" off
+fi
 
 # ---------- 4. 交互式复验（人工） ----------
 cat <<'EOT'
