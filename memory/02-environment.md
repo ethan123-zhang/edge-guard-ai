@@ -88,6 +88,28 @@ last_updated: 2026-10-15
 | 工作目录 | `~/rkllm-work/rknn-llm`、`~/sentinel-models`（WSL 内，非 `/mnt/e`） |
 | 未装 | conda、git-lfs（**都不需要**，直接用系统 python3.10 + pip） |
 
+**ACL 回滚命令存档（2026-10-15）**：
+
+> `E:\哨兵管家` 目录曾在 2026-10-15 因**缺 WRITE_OWNER 权限**导致连列目录都失败，
+> 用 `diagnose-windows-sandbox-acl` 技能修复（详见 `04` 的 E-7a）。
+> 当时产生的备份目录 `E:\哨兵管家-acl-recovery\`（原始 DACL 快照 + 回滚脚本 + 审计流水）
+> **已于 2026-10-15 清理删除** —— 修复后验证为 `verified` 且长期正常，无回滚价值。
+>
+> **回滚命令模板**（万一将来需要退回某个 DACL，按此调用，**需自行重新生成快照**）：
+>
+> ```powershell
+> # 修复（会在 -Out 目录写出快照 + 独立回滚脚本）
+> pwsh -NoProfile -File diagnose-windows-sandbox-acl.ps1 `
+>   -Path 'E:\哨兵管家' -AllowRoot 'E:\哨兵管家' -Out '<恢复记录目录>'
+>
+> # 回滚（-Restore 只针对单个 -Path，需 WRITE_DAC；保留 owner 与 SACL）
+> pwsh -NoProfile -File '<快照>.json.ps1' `
+>   -Path 'E:\哨兵管家' -AllowRoot 'E:\哨兵管家' -Restore '<快照>.json'
+> ```
+>
+> ⚠️ **不要依赖已删除的旧快照**：它记录的是**修复前**的空 DACL（`D:`），
+> 退回它等于**把目录权限清空**，会让问题重现。要回滚请用**当次修复**产生的快照。
+
 **🔥 转换机器的 GPU（2026-10-15 实测，重要）**：
 
 | 项 | 值 |

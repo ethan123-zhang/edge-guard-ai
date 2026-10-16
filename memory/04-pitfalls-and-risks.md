@@ -60,6 +60,7 @@ last_updated: 2026-10-15
 | # | 坑 | 说明 |
 | :--- | :--- | :--- |
 | E-7 | **DSH 沙箱降权导致 WSL/Docker/git 全线假性故障（2026-10-15 实测，已解决）** | **根因**：DSH 默认沙箱把进程降到 **Low 完整性级别**（`S-1-16-4096`），且管理员组被标为 *Group used for deny only*。Low IL 下**读不到凭据库、开不了服务**，于是表现为：`wsl -l -v` / `wsl --status` 报 `Wsl/E_ACCESSDENIED`、`LxssManager` 停在 Stopped、Docker 守护进程起不来、`git push` 报 `schannel: SEC_E_NO_CREDENTIALS`。**解法**：用 `danger-full-access` 跑（实测完整性级别 Low→Medium，`S-1-16-8192`），三条链路**同时恢复**。**教训**：`wsl --version` 在 Low IL 下**依然正常**，是最容易误导人的烟雾弹——**别只凭它判断 WSL 好坏**，要跑 `wsl -l -v` |
+| E-7a | **`E:\哨兵管家` 目录级 ACL 缺失导致连列目录都失败（2026-10-15 实测，已修复并清理）** | **现象**：`Get-ChildItem E:\哨兵管家` 失败，报 `SetNamedSecurityInfoW failed (Win32 5): grantWrite`。**根因**：当前登录账号在仓库目录上**缺 WRITE_OWNER 权限**，DSH 无法设置工作区授权（**注意这是 E-7 之外的另一个坑**：E-7 是进程被降权，本项是目录本身缺权限）。**解法**：跑 `diagnose-windows-sandbox-acl` 技能，给该目录补完全控制。**实测**：`writeOwner` false → true，列目录恢复正常；修复动作仅 `backup → grant_dacl → verification(verified)` 一步，**只动了 `E:\哨兵管家` 一个对象**。**备份已清理**（2026-10-15 的 `E:\哨兵管家-acl-recovery\` 已删除）——回滚命令模板见 `02-environment.md` §2 的"ACL 回滚命令存档"。**若要重做**：直接重跑该技能，**不要依赖旧快照**（旧快照记的是"修复前"的 `D:` 空 DACL，已无回滚价值） |
 | E-1 | **RKLLM-Toolkit 只有 Linux wheel** | Windows 装不了，必须用 WSL2 / x86 Linux |
 | E-2 | **Jetson Python 3.6** | 别升级；别装 insightface 全家桶 |
 | E-3 | **热点后是 NAT** | 外部连不进来，只能局域网直连 |
