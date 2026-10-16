@@ -70,6 +70,9 @@ last_updated: 2026-10-15
 | E-9 | **沙箱内 Git 自带 bash 跑不了（2026-10-15 实测）** | 跑 `scripts/check_gitignore.sh` 报 `fatal error - couldn't create signal pipe, Win32 error 5`。**根因**：受限沙箱下**无法创建命名管道**。**解法**：改用 PowerShell 做等效检查——`git status --short` + `git ls-files \| Select-String '\.(rkllm\|onnx\|npy\|db\|jpg\|wav)$'`（结果应为空）。**这是预期边界，不要反复重试** |
 | E-10 | **git 提交需写 `.git/`，默认沙箱会被拒** | 报 `Unable to create 'E:/哨兵管家/.git/index.lock': Permission denied`。**解法**：提交/推送用 `danger-full-access` 跑（与 E-7 同源） |
 | E-11 | **大仓库从 GitHub 克隆易 TLS 中断** | `error: RPC failed; curl 56 GnuTLS recv error (-9)` + `early EOF`。**解法**：走代理 + `http.postBuffer 524288000` + `http.version HTTP/1.1` + **失败重试**（实测第 2 次成功，仓库 773M）。脚本见 `scripts/wsl_clone_rkllm.sh` |
+| E-12 | **板子直连 GitHub 只有 37 KiB/s（2026-10-15 实测）** | 在鲁班猫5 上 `git clone rknn-llm`（773M）**基本下不动**。**解法**：**不要在板子上克隆**——在 PC（WSL，走代理）克隆后，**只打包板端编译所需的最小集合**传给板子。实测 **773M → 2.4MB**（压缩后），缩小 300+ 倍。脚本见 `scripts/wsl_make_board_pkg.sh`，产物 `board-pkg/rkllm-board-v1.3.1.tar.gz` |
+| E-13 | **官方 `build-linux.sh` 在板子上必然失败** | 它写死了**交叉编译器**路径 `~/opts/gcc-arm-10.2-2020.11-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc`——那是给 **x86 PC 交叉编译**用的。**板端本机编译要改用系统 gcc/g++**。已提供 `build-on-board.sh` 替代（不指定工具链，走 `cmake` 默认编译器） |
+| E-14 | **`deploy` 编译依赖 `rkllm-runtime` 目录** | `CMakeLists.txt` 里写死 `${CMAKE_SOURCE_DIR}/../../../rkllm-runtime/${CMAKE_SYSTEM_NAME}/librkllm_api/`。**只拷 `deploy` 会编译失败**，必须连带 `rkllm-runtime/Linux/librkllm_api/{include,aarch64}`。**好消息**：`librkllmrt.so` 已在仓库内（7.7MB），无需单独下载 |
 
 ## 5. 记忆库自身的坑
 
