@@ -37,12 +37,13 @@ last_updated: 2026-10-15
 
 | # | 主题 | 文件 | 一句话 |
 | :--- | :--- | :--- | :--- |
-| 00 | 记忆维护纪律 | `memory/00-maintenance-rule.md` | **规则源**：双库分工、推送纪律、自检清单 |
+| 00 | 记忆维护纪律 | `memory/00-maintenance-rule.md` | **规则源**：双库分工、写入纪律、自检清单 |
 | 01 | 项目地图 | `memory/01-project-map.md` | 仓库定位、当前阶段、目录、硬件状态 |
-| 02 | 环境与硬件事实 | `memory/02-environment.md` | 两块板子的约束、开发环境、网络方案 |
+| 02 | 环境与硬件事实 | `memory/02-environment.md` | 两块板子的约束、开发环境、网络方案、**转换机 GPU** |
 | 03 | 关键设计决策 | `memory/03-design-decisions.md` | D1~D15 决策与理由（**指针式**） |
 | 04 | 已知坑与风险 | `memory/04-pitfalls-and-risks.md` | P0/P1/P2 坑、流程风险、已识别的设计缺陷 |
-| 05 | 待验证与开放问题 | `memory/05-open-questions.md` | **未验证项看板**：V1~V8、开放问题、待采集数据 |
+| 05 | 待验证与开放问题 | `memory/05-open-questions.md` | **未验证项看板**：V0~V8、开放问题、待采集数据 |
+| 06 | 推送与 .gitignore 纪律 | `memory/06-push-and-gitignore.md` | 推送命令、忽略规则、自检（**2026-10-15 从 00 拆出**） |
 
 ---
 
