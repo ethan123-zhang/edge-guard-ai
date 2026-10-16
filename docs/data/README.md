@@ -15,7 +15,7 @@
 | 目标平台 | RK3588 |
 | `num_npu_core` | 3（全启用） |
 | `max_context` | 2048 |
-| `max_new_tokens` | 128（本轮实际生成 24） |
+| `max_new_tokens` | 本轮测试用 128（实际生成 24）。**设计值已统一为 48**，见 `docs/03` §5.3/§6 |
 | Runtime | rkllm-runtime **1.3.1** |
 | NPU 驱动 | **0.9.8** |
 | Toolkit | **1.3.1** |

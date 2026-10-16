@@ -16,14 +16,14 @@ last_updated: 2026-10-15
 
 ## 当前阶段（**重要**）
 
-> **设计阶段，尚无任何代码。** 已有全套技术文档，未写一行实现代码。
+> **设计完成 → 两个死亡点已完成一半（V2 ✅ / V1 ❌）。** 已有全套技术文档，**仍未写实现代码**。
 
 | 项 | 状态 |
 | :--- | :--- |
 | 技术文档 | ✅ 完成（7 份，约 2300 行） |
 | 硬件 | ⚠️ 部分到齐（见下） |
-| 代码 | ❌ **未开始** |
-| 环境验证 | ❌ **未开始**（两个"死亡点"均未验证） |
+| 代码 | ❌ **未开始**（`vision/`/`dialog/`/`master/` 均未创建） |
+| 环境验证 | 🟡 **已开始**（2026-10-15）：**V2 ✅ 通过**（板端 RKLLM 可对话）；**V1 ❌ 未开始**（Jetson 人脸识别） |
 
 ## 目录
 
@@ -31,6 +31,10 @@ last_updated: 2026-10-15
 | :--- | :--- |
 | `MEMORY.md` + `memory/` | 本记忆库 |
 | `docs/` | **技术文档正文**（设计真源，先于代码） |
+| `docs/data/` | **实测数据**（`latency.csv` + 分析 README） |
+| `board-pkg/` | **板端最小编译包**（`rkllm-board-v1.3.1.tar.gz`，2.4MB） |
+| `models-rkllm/` | **`.rkllm` 模型产物**（已 gitignore，仅 `data_quant.json` 入库） |
+| `scripts/` | WSL 转换链路脚本 + `.gitignore` 自检脚本 |
 | `pushToGithub.bat` | 推送脚本（`git add . / commit / push origin main`，**结尾有 `pause`**） |
 | `memory/03-design-decisions.md` | 关键设计决策与理由（指针 + 摘要） |
 

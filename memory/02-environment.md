@@ -26,14 +26,17 @@ last_updated: 2026-10-15
 | :--- | :--- | :--- |
 | 架构 | `aarch64` | ✅ 符合预期 |
 | **NPU 驱动** | **RKNPU driver v0.9.8** | ✅ 与 `docs/04` 原记一致（这次是**本机实测**，不再是抄教程） |
-| **`librkllmrt.so`** | **❌ 未找到** | ⚠️ **板端还没装 rkllm runtime**，必须自己编译（`docs/04` 步骤④⑤） |
+| **`librkllmrt.so`** | **✅ 已自建并跑通** | 出厂时**未预装**；2026-10-15 用 `board-pkg/` 的最小包在板端**本机编译**成功（`build-on-board.sh`），产物在 `~/rkllm-board-v1.3.1/examples/rkllm_api_demo/deploy/install/demo_Linux_aarch64/` |
+| **rkllm runtime 版本** | **1.3.1** | ✅ 与 Toolkit 1.3.1、驱动 0.9.8、平台 RK3588 **四者全对齐** |
 | 板子 IP | **192.168.3.214** | ⚠️ **与 `docs` 规划的 `192.168.43.10` 不一致**（见下） |
 | 登录方式 | **VSCode Remote-SSH** | 用户名 `cat`，已连上（说明 SSH 可用、网络通） |
 | 环境 | 有 `(base)` 前缀 | 装了 conda/miniconda |
 
-> ⚠️ **板端 runtime 需要自己编译**：`librkllmrt.so` 不存在，所以
-> `docs/04` 的"步骤④⑤：板端部署"**不能跳过**——必须先
-> `git clone --branch release-v1.3.1` 并跑 `build-linux.sh`。
+> ✅ **板端 runtime 已解决，不必再克隆 773M 仓库**：出厂无 `librkllmrt.so`，
+> 但**不需要**在板子上 `git clone`（实测只有 37 KiB/s，下不动）。
+> 用 PC 打好的最小包（`board-pkg/rkllm-board-v1.3.1.tar.gz`，**2.4MB**）传过去，
+> 跑 `./build-on-board.sh` 即可（**不要用官方 `build-linux.sh`**，它写死交叉编译器路径）。
+> 步骤与故障表见 `docs/板端验证清单-明天用.md`；坑见 `04` 的 E-12/E-13/E-14。
 >
 > ⚠️ **IP 与规划不符**：文档规划的是手机热点网段 `192.168.43.x`，
 > 但实测板子在 **`192.168.3.214`**（家用/实验室网段）。
@@ -127,16 +130,22 @@ last_updated: 2026-10-15
 
 **端口约定**：`8765` = 视觉→对话；`8766` = 对话↔主人端。
 
-## 4. 已验证的环境（**目前为空**）
+## 4. 已验证的环境（**2026-10-15 起有记录**）
 
-> ⚠️ 尚无任何环境验证记录。以下均为**待填**：
+> 验证结果只写**结论**；原始数字在 `docs/data/latency.csv`，分析见 `docs/data/README.md`。
 
-- [ ] Jetson：OpenCV 自带版本是否含 `FaceDetectorYN` / `FaceRecognizerSF`
+- [x] **RK3588：`rkllm init success` 跑通** ✅（2026-10-15）
+- [x] **RK3588：实测 tokens/s** ✅ —— Generate **31.65 tok/s**、Prefill **198.46 tok/s**、
+      首字 ≈**117ms**、峰值内存 **977.87MB**（**答辩核心数字**）
+- [x] **RK3588：runtime 版本对齐** ✅ —— Toolkit 1.3.1 ↔ Runtime 1.3.1 ↔ 驱动 0.9.8 ↔ RK3588
+- [ ] Jetson：OpenCV 自带版本是否含 `FaceDetectorYN` / `FaceRecognizerSF`（**= V3，下一步**）
 - [ ] Jetson：摄像头单帧检测+识别耗时（**基线数字，答辩要用**）
-- [ ] RK3588：`rkllm init success` 是否跑通
-- [ ] RK3588：实测 tokens/s
-- [ ] 麦克风：`arecord -l` 是否能识别新买的阵列麦
+- [ ] 麦克风：`arecord -l` 是否能识别新买的阵列麦（**未购，阻塞项**）
 - [ ] 两台设备：手机热点下能否互通
+- [ ] RK3588：连续对话 5 分钟后的 tok/s（验散热，风扇已加）
+
+> ⚠️ **仍未验证`端到端`延迟**：ASR/TTS 尚未接入，31.65 tok/s 只是**纯 LLM 环节**的数字。
+> 不要把它当成端到端指标对外说。
 
 ## 相关记忆
 
