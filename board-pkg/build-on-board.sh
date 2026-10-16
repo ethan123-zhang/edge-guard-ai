@@ -74,14 +74,31 @@ ls -la "$ROOT/examples/rkllm_api_demo/deploy/install/demo_Linux_aarch64/" 2>/dev
 ls -la "$ROOT"/examples/rkllm_api_demo/deploy/install/*/ 2>/dev/null
 
 echo
-echo "=== 编译后自检：用法是否含新参数 ==="
+echo "=== 编译后自检：补丁是否编进二进制 ==="
+# 注意：这里【不能】直接跑 ./llm_demo，因为它依赖 ./lib/librkllmrt.so，
+# 未设 LD_LIBRARY_PATH 时会以「cannot open shared object file」失败，
+# 那样就分不清是「补丁没进去」还是「只是没设库路径」——曾被误判过一次。
+# 所以先用 strings 查字符串（不依赖动态库），这是最可靠的判据。
 if [ -x "$DEMO" ]; then
-    "$DEMO" 2>&1 | head -3
-    if "$DEMO" 2>&1 | grep -q "system_prompt_file"; then
-        echo "✓ 补丁已生效，可以跑复验："
-        echo "  $ROOT/verify-persona.sh"
+    if command -v strings >/dev/null 2>&1; then
+        cnt=$(strings "$DEMO" 2>/dev/null | grep -c "system_prompt_file" || true)
+        echo "  二进制内 'system_prompt_file' 出现次数: $cnt"
     else
-        echo "✗ 用法里没有 system_prompt_file，补丁没进去，请排查"
+        # 没有 strings 就退回 grep 二进制
+        cnt=$(grep -c "system_prompt_file" "$DEMO" 2>/dev/null || true)
+        echo "  二进制内 'system_prompt_file' 匹配行数: $cnt"
+    fi
+
+    if [ "${cnt:-0}" -ge 1 ]; then
+        echo "  ✓ 补丁已编入二进制"
+        echo
+        echo "  下面附带打印真实用法（已自动设好 LD_LIBRARY_PATH）："
+        ( cd "$(dirname "$DEMO")" && LD_LIBRARY_PATH=./lib "$DEMO" 2>&1 | head -4 ) || true
+        echo
+        echo "  ✓ 可以跑复验：$ROOT/verify-persona.sh"
+    else
+        echo "  ✗ 二进制里找不到 system_prompt_file —— 编译进去的是官方原版！"
+        echo "    请确认: $SRC 含该字符串（本脚本开头已查过，正常应通过）"
         exit 1
     fi
 fi

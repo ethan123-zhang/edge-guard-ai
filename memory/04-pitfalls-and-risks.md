@@ -79,6 +79,7 @@ last_updated: 2026-10-15
 | E-17 | **Windows 上编辑的文本文件带 UTF-8 BOM，会污染提示词开头（2026-10-17）** | 提示词文件若含 BOM（`EF BB BF`），模型会先读到 3 个乱码字节，可能直接带偏人设。**解法**：读取时检测并剥掉 BOM（补丁已实现，实测 37→34 字节）。**推广**：任何喂给模型的文本文件都应做此处理 |
 | E-18 | **本机有 g++，补丁验证不必进 WSL（2026-10-17 发现）** | `C:\Program Files\mingw64\bin\g++.exe`（g++ 8.1.0，C++11 够用）。**意义**：WSL 常被沙箱挡住（E-7），而**写桩文件冒充 `librkllmrt.so` 即可在本机完成编译+链接检查**，上板前先排掉语法/类型错误。桩见 `board-pkg/src/compile-check-stubs.cpp`。⚠️ 沙箱禁止子进程管道，**别用重定向 stdin 喂交互程序**（会挂住）——改用「宏改名 main + 自写 driver」绕过交互循环 |
 | E-19 | **Windows 打的 tar 包丢失 Unix 执行位，板端 `./x.sh` 报「权限不够」（2026-10-17 实测）** | **现象**：板端 `./build-on-board.sh` → `bash: ./build-on-board.sh: 权限不够`。**根因**：包是 Windows 上用 **bsdtar** 打的，而 **Windows tar 无法写入 Unix 权限位**（实测 `--mode` 直接报 not supported），包内 `.sh` 全是 `-rw-rw-rw-`。**对照**：v1 包在 **WSL(Linux) 里打的**，保留 `-rwxr-xr-x`，**所以 v1 没这个问题** —— 这解释了"为什么以前没遇到"。**解法（三选一）**：① 板端 `bash fix-perms.sh`（**包内已附**）② 板端 `chmod +x *.sh` ③ 直接用 `bash xxx.sh` 调用，不依赖执行位。**检查方法**：`tar -tvzf 包名 \| grep '\.sh'`，看是 `rwx` 还是 `rw-`。**通用教训**：**跨平台打包时，文件权限/owner 是容易丢的元数据，打完包要 `tar -tvzf` 验一遍** |
+| E-20 | **`Cannot open shared object file` ≠ 二进制有问题（2026-10-17 实测，曾误判）** | **现象**：跑 `./llm_demo` 报 `error while loading shared libraries: librkllmrt.so: cannot open shared object file`。**根因**：**只是没设 `LD_LIBRARY_PATH`**，二进制本身好的。**⚠️ 我犯的错**：`build-on-board.sh` 里把"跑 `./llm_demo` 看 usage"当补丁自检，**没设库路径** → 加载失败 → 空输出 → **误报"补丁没进去"**（实际编进去了）。**正解**：判据要用**不依赖动态库**的方式 —— `strings <binary> \| grep -c system_prompt_file`（≥1 = 补丁在）。**通用教训**：**别把"运行失败"和"内容不对"混成一个判据**；诊断脚本自身也要保证前置条件成立 |
 
 ## 5. 记忆库自身的坑
 
