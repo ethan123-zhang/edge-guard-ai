@@ -32,8 +32,8 @@ last_updated: 2026-10-15
 | `MEMORY.md` + `memory/` | 本记忆库 |
 | `docs/` | **技术文档正文**（设计真源，先于代码） |
 | `docs/data/` | **实测数据**（`latency.csv` + 分析 README） |
-| `board-pkg/` | **板端最小编译包**：传板用 **`rkllm-board-v1.3.1-v2.tar.gz`**（2.33MB，含提示词补丁）；`rkllm-board-v1.3.1.tar.gz`（v1，官方原版）**是重打包脚本的输入，勿删** |
-| `models-rkllm/` | **`.rkllm` 模型产物**（已 gitignore，仅 `data_quant.json` 入库） |
+| `board-pkg/` | **待传板子的一切**（2026-10-17 归整）：`rkllm-board-v1.3.1-v2.tar.gz`（传板用）、v1（**打包输入，勿删**）、**`Qwen3-0.6B_W8A8_RK3588.rkllm`（889.8MB，已 gitignore）**、`prompts/`、`src/` |
+| `models-rkllm/` | **转换元数据**（`data_quant.json`，**入库**）。模型本体已于 2026-10-17 移到 `board-pkg/` |
 | `scripts/` | WSL 转换链路脚本 + `.gitignore` 自检脚本 |
 | `pushToGithub.bat` | 推送脚本（`git add . / commit / push origin main`，**结尾有 `pause`**） |
 | `memory/03-design-decisions.md` | 关键设计决策与理由（指针 + 摘要） |

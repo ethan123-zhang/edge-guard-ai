@@ -174,9 +174,13 @@ git commit -m "chore: 停止跟踪 <xxx>"
 | `snapshots/` / `*.jpg` / `*.wav` | 访客截图与录音，**隐私** |
 | `*.log` / `logs/` / `venv/` / `__pycache__/` | 运行产物 |
 
-> **实测验证记录（2026-10-15）**：889.8MB 的 `Qwen3-0.6B_W8A8_RK3588.rkllm`
-> 放在 `models-rkllm/` 下，`git check-ignore -v` 命中 `.gitignore:8:*.rkllm`，
-> `git add --dry-run models-rkllm/` 只列出 1.4KB 的 `data_quant.json`。**规则确认有效。**
+> **实测验证记录（2026-10-15，2026-10-17 复验）**：889.8MB 的 `Qwen3-0.6B_W8A8_RK3588.rkllm`
+> `git check-ignore -v` 命中 `.gitignore:8:*.rkllm`。**规则按文件类型全局生效，
+> 所以 2026-10-17 把模型从 `models-rkllm/` 移到 `board-pkg/` 后依然被排除，无需改规则。**
+> `git status --untracked-files=all` 里看不到任何 `rkllm` 字样（已复验）。
+>
+> 📌 **移动/新增模型目录后的检查动作**：跑
+> `git status --porcelain -uall | Select-String rkllm`，**结果应为空**。
 
 > **注意**：`.gitignore` 只对**未跟踪**文件生效。若某个大文件已被 `git add` 过，
 > 需要 `git rm --cached <file>` 才会真正移除跟踪。**新增模型/数据目录时，先确认是否被覆盖**。
