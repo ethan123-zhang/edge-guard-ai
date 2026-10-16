@@ -14,11 +14,45 @@ last_updated: 2026-10-15
 
 | 设备 | 型号 | 已知约束 |
 | :--- | :--- | :--- |
-| 视觉节点 | **Jetson Nano B01**（4GB） | 128 核 Maxwell，JetPack 最高 **4.6**（Ubuntu 18.04 / CUDA 10.2），**已停更**；系统 Python 为 **3.6** |
+| 视觉节点 | **Jetson Nano B01 sub**（4GB，**亚博智能经销**） | 128 核 Maxwell，JetPack 最高 **4.6**（Ubuntu 18.04 / CUDA 10.2），**已停更**；系统 Python 为 **3.6**。**实测细节见下** |
 | 对话节点 | **鲁班猫5 v1（RK3588）** | 6 TOPS NPU + 8 核 CPU（4×A76 + 4×A55），出厂 Ubuntu。**实测见下方** |
 | 摄像头 | 亚博智能 1080p USB | 已验证可用 |
 | 音箱 | 最基础款 | 够用 |
 | 转换机 | **本机笔记本** | **RTX 4060 Laptop 8GB**，用于 RKLLM 模型转换（详见第 2 节） |
+
+### Jetson Nano B01 sub 板端实测（**2026-10-16，实测值取代文档假设**）
+
+> ⚠️ **这块板子跑的是亚博智能的「出厂镜像_ROS+AI视觉」**，环境**被预装内容改过**。
+> 下面的值**只代表这个亚博镜像，不代表干净的 JetPack**。烧官方镜像后必须重测。
+
+| 项 | 实测值 | 说明 |
+| :--- | :--- | :--- |
+| 硬件身份 | **`jetson-nano-devkit`** | `COMPATIBLE_SPEC 3448-300-0002--1--jetson-nano-devkit-`，即**官方 Dev Kit 规格**（NVIDIA 烧入模块，亚博改不了） |
+| 规格 | `jetson-nano-qspi-sd` | **SD 卡版**（模块无 eMMC，QSPI+SD 启动）；`B.0` = **B01 载板** |
+| 系统 | Ubuntu **18.04.6**，内核 `4.9.299-tegra` | 内核构建于 **2022-11-22** → 对应较新的 L4T 32.7.x |
+| CPU | **4 核** | |
+| CUDA | **10.2**（`/usr/local/cuda-10.2`，`nvcc V10.2.300`） | ✅ 完整可用 |
+| Python | **3.6.9**（`/usr/bin/python3` → `python3.6`） | 别升级 |
+| **OpenCV** | **3.2.0**，来自 Ubuntu 源 `python3-opencv` | ⚠️ 见下 |
+| **`cv2.dnn`** | **❌ 整个模块不存在** | `module 'cv2' has no attribute 'dnn'` |
+| **`cv2.cuda`** | **❌ 不存在** | 该 OpenCV 未编 CUDA |
+| `FaceDetectorYN`/`SFace` | **❌ 不存在** | 需 OpenCV ≥ 4.5.4 |
+| ROS | **Melodic 已装**（`/opt/ros` 仅 **174M**，**未运行**） | 亚博镜像预装；**本项目零使用** |
+| 磁盘 | **55G，已用 47G，仅剩 6.6G（88%）** | ⚠️ **不足以编译 OpenCV** |
+| 内存 | 3.9G（可用 ~1.4G），Swap 5.9G | 编译时会紧张 |
+| 散热 | 起始 **29.5°C** | 正常 |
+
+> 🔴 **这块板子的 Python 视觉推理能力基本为零**（2026-10-16 实测）：
+> OpenCV 3.2.0 **没有 `cv2.dnn`、没有 `cv2.cuda`、没有 YuNet/SFace**。
+> **三条路全堵**：D2 方案（YuNet）不行、换别的 DNN 模型也不行、GPU 加速也不行。
+> **结论：必须在装 OpenCV 4.5+（CUDA 版）之后才能做视觉**，`docs/01` D2 的前提要建立在"先装 OpenCV"之上。
+
+> ⚠️ **两套 OpenCV 并存**：Ubuntu 源 `libopencv-*3.2` + `python3-opencv` 3.2.0（Python 实际用这套），
+> 以及亚博自编译的 `libopencv`/`libopencv-dev`/`libopencv-python` **4.1.1**（版本号带 git hash）。
+> **将来编译 OpenCV 时，这套 4.1.1 的头文件/库会混进来造成链接冲突**，烧干净镜像可消除。
+
+> ⚠️ **官方 JetPack SD 镜像不预装 OpenCV** —— `docs/04` 原隐含假设"JetPack 自带 CUDA 版 OpenCV"是**错的**。
+> 干净系统上要自己装。且 **`pip install opencv-python` 不是可行路径**（详见 `04` §2.2 的警告）。
 
 ### 鲁班猫5 板端实测（**2026-10-15，实测值取代教程值**）
 
