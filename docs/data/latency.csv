@@ -1,0 +1,10 @@
+date,item,value,unit,condition,note
+2026-10-15,rkllm_convert_load,17.9,s,PC RTX4060 device=cuda,Qwen3-0.6B 加载
+2026-10-15,rkllm_convert_build,9.9,s,PC RTX4060 W8A8/normal,量化构建
+2026-10-15,rkllm_convert_export,5.8,s,PC RTX4060,导出 rkllm
+2026-10-15,rkllm_convert_total,33.6,s,PC RTX4060,总计（文档原假设"耗时很长"，实测秒级）
+2026-10-15,rkllm_init_ok,,,RK3588 板端,rkllm init success
+2026-10-15,rkllm_generate_tps,TODO,tok/s,RK3588 板端,**待补：跑 llm_demo 读日志**
+2026-10-15,rkllm_prefill_tps,TODO,tok/s,RK3588 板端,**待补**
+2026-10-15,rkllm_first_token,TODO,ms,RK3588 板端,**待补**
+2026-10-15,rkllm_mem_used,TODO,MB,RK3588 板端,**待补：free -h 前后对比**
