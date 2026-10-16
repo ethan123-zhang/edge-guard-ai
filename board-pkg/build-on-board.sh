@@ -5,10 +5,29 @@
 #        那是给 x86 PC 交叉编译用的。在板子上编译要改用系统 gcc/g++。
 # 说明2：本包内的 src/llm_demo.cpp 已被替换为「支持系统提示词」的补丁版，
 #        编译前会自检，避免官方原版被误编译进去、导致复验结论无效。
+# 说明3：本包在 Windows 上打包，**Unix 执行位丢失**（Windows tar 的已知限制）。
+#        若 `./build-on-board.sh` 报「权限不够」，二选一：
+#          bash fix-perms.sh        ← 一次性补全
+#          bash build-on-board.sh   ← 直接用 bash 调用（不改权限）
 set -e
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SRC="$ROOT/examples/rkllm_api_demo/deploy/src/llm_demo.cpp"
+
+echo "=== 检查执行位（Windows 打的包会缺 +x）==="
+OTHER_MISSING=""
+for s in "$ROOT"/setup-sentinel-dir.sh "$ROOT"/verify-persona.sh "$ROOT"/fix-perms.sh; do
+    if [ -f "$s" ] && [ ! -x "$s" ]; then
+        OTHER_MISSING="$OTHER_MISSING $(basename "$s")"
+    fi
+done
+if [ -n "$OTHER_MISSING" ]; then
+    echo "  ⚠ 这些脚本缺执行位:$OTHER_MISSING"
+    echo "    建议先跑: bash fix-perms.sh"
+    echo "    （本脚本能继续跑，但后面几个会被同样问题挡住）"
+else
+    echo "  ✓ 执行位正常"
+fi
 
 echo "=== 检查源码是否为补丁版 ==="
 if [ ! -f "$SRC" ]; then

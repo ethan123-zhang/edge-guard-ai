@@ -61,6 +61,25 @@ Write-Host ''
 Write-Host '=== 结果 ===' -ForegroundColor Green
 Get-Item $NewTar | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,2)} } | Format-Table -AutoSize
 
+# ============================================================================
+#  已知限制（2026-10-17 踩到）：
+#  Windows 自带的 bsdtar **无法写入 Unix 权限位**，所以本脚本打出的包里，
+#  所有 .sh 都是 -rw-rw-rw-（**没有执行位**），板端 `./xxx.sh` 会报「权限不够」。
+#  而 v1 包是在 WSL(Linux) 里打的，保留 -rwxr-xr-x，所以 v1 没这个问题。
+#
+#  应对：包内附带 `fix-perms.sh`，解压后先跑 `bash fix-perms.sh` 即可补上执行位。
+#  （也可以在板端直接 `chmod +x *.sh`，效果相同。）
+# ============================================================================
+Write-Host ''
+Write-Host '=== 权限位说明（重要）===' -ForegroundColor Yellow
+Write-Host '  Windows tar 无法写 Unix 执行位，包内 .sh 都是 rw-rw-rw-。'
+Write-Host '  板端解压后请先跑:  bash fix-perms.sh'
+Write-Host '  或直接:            chmod +x *.sh'
+Write-Host ''
+Write-Host '--- 包内 .sh 的权限位（预期都是 rw-，需板端补 +x）---'
+tar -tvzf $NewTar | Select-String '\.sh' | ForEach-Object { Write-Host "    $_" }
+
+Write-Host ''
 Write-Host '=== 包内结构 ===' -ForegroundColor Cyan
 tar -tzf $NewTar
 
@@ -76,4 +95,8 @@ tar -xzf $NewTar -C $env:TEMP -O "$Name/prompts/system-prompt.txt" > $tmpPrompt
 Get-Content $tmpPrompt -TotalCount 1
 
 Write-Host ''
-Write-Host "下一步：把 $NewTar 传到板子（VSCode 拖拽或 scp），解压后跑 ./build-on-board.sh 再跑 ./verify-persona.sh" -ForegroundColor Yellow
+Write-Host "下一步：传包到板子，解压后依次跑：" -ForegroundColor Yellow
+Write-Host "  bash fix-perms.sh        # 补执行位（Windows 打的包必须做这步）"
+Write-Host "  ./build-on-board.sh"
+Write-Host "  ./setup-sentinel-dir.sh"
+Write-Host "  ./verify-persona.sh"
