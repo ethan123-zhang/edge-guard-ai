@@ -32,7 +32,7 @@ last_updated: 2026-10-15
 | `MEMORY.md` + `memory/` | 本记忆库 |
 | `docs/` | **技术文档正文**（设计真源，先于代码） |
 | `docs/data/` | **实测数据**（`latency.csv` + 分析 README） |
-| `board-pkg/` | **板端最小编译包**（`rkllm-board-v1.3.1.tar.gz`，2.4MB） |
+| `board-pkg/` | **板端最小编译包**：传板用 **`rkllm-board-v1.3.1-v2.tar.gz`**（2.33MB，含提示词补丁）；`rkllm-board-v1.3.1.tar.gz`（v1，官方原版）**是重打包脚本的输入，勿删** |
 | `models-rkllm/` | **`.rkllm` 模型产物**（已 gitignore，仅 `data_quant.json` 入库） |
 | `scripts/` | WSL 转换链路脚本 + `.gitignore` 自检脚本 |
 | `pushToGithub.bat` | 推送脚本（`git add . / commit / push origin main`，**结尾有 `pause`**） |
