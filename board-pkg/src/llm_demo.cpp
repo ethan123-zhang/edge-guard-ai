@@ -144,6 +144,7 @@ int main(int argc, char **argv)
     std::string sys_prompt;
     bool has_sys_prompt = false;
     bool keep_history = false;   // 单轮模式（与官方默认一致）
+    bool sys_injected = false;   // 系统提示词是否已作为首条消息投递
 
     if (argc >= 5) {
         if (!load_system_prompt(argv[4], sys_prompt)) {
@@ -197,25 +198,35 @@ int main(int argc, char **argv)
     }
 
     // ---- 注入系统提示词（官方通道）----
+    // ========================================================================
+    // 【2026-10-17 重要修正】
+    // 原先用 rkllm_set_chat_template(handle, sys_prompt, "", "") 注入，
+    // 实机实测【严重出错】：模型不再按对话格式回答，而是把提示词当"续写文本"，
+    // 输出一堆格式垃圾（【你的回复】/答案：/| 任务 | 表格）。
+    // 对照实验证明：不带提示词时输出完全正常 —— 说明是【模板被破坏】，
+    // 因为我给 prefix/postfix 传了空串，Qwen3 原生对话模板被冲掉了。
+    //
+    // 新方案：**完全不碰 chat template**，把系统提示词当作【第一条 user 消息】
+    // 在第一次真实用户输入之前送入一次。这样：
+    //   · 模型原生对话格式保持不变（不会退化成长文本续写）
+    //   · 提示词内容照样进入上下文
+    //   · 前提：keep_history 必须为 on，否则人设会在下一轮丢失
+    // ========================================================================
     printf("\n================ 复验配置 ================\n");
     printf("max_new_tokens : %d\n", param.max_new_tokens);
     printf("max_context_len: %d\n", param.max_context_len);
     printf("keep_history   : %s\n", keep_history ? "on" : "off (单轮)");
-    printf("enable_thinking: false (强制关闭，避免挤占 token 预算)\n");
+    printf("enable_thinking: false (强制关闭，避免挤占 token 预算)");
     if (has_sys_prompt) {
+        printf("\n");
         print_prompt_summary(sys_prompt);
-        // 注意：1.3.1 的签名是 3 个字符串参数（system/prefix/postfix）。
-        // 官方 demo 里那行注释写成了 4 个参数，照抄会编译不过。
-        // prefix/postfix 传空串，交给模型内置 chat template 处理角色标记。
-        int tret = rkllm_set_chat_template(llmHandle, sys_prompt.c_str(), "", "");
-        if (tret != 0) {
-            printf("✗ rkllm_set_chat_template 返回 %d —— 提示词未生效！\n", tret);
-            printf("  本次对话结果不能用于人设结论。\n");
-        } else {
-            printf("✓ 系统提示词已注入 (rkllm_set_chat_template 返回 0)\n");
+        printf("注入方式       : 作为首条 user 消息送入（不修改 chat template）\n");
+        if (!keep_history) {
+            printf("⚠ 注意：提示词作为首条消息注入，但 keep_history=off。\n");
+            printf("   单轮丢弃历史 → 第二轮起人设会丢失。测人设请用 history on。\n");
         }
     } else {
-        printf("system prompt: (未提供 —— 裸跑模式，与官方 demo 一致)\n");
+        printf("\nsystem prompt: (未提供 —— 裸跑模式，与官方 demo 一致)\n");
         printf("  注意：裸跑会退回默认助手人格，不能用来判断 §5.1 人设。\n");
     }
     printf("==========================================\n\n");
@@ -284,7 +295,36 @@ int main(int argc, char **argv)
     while (true)
     {
         std::string input_str;
-        printf("\n");
+
+        // ---- 首轮：先把系统提示词作为一条 user 消息送进去 ----
+        // 只做一次（sys_injected 标志），且发生在任何真实用户输入之前。
+        // 这样既让提示词进入上下文，又完全不动 chat template。
+        if (has_sys_prompt && !sys_injected) {
+            sys_injected = true;
+            rkllm_input.input_type = RKLLM_INPUT_PROMPT;
+            rkllm_input.role = "user";
+            rkllm_input.prompt_input = (char *)sys_prompt.c_str();
+            rkllm_input.enable_thinking = false;
+            printf("[正在投递系统提示词…]");
+            fflush(stdout);
+            // 提示词是【指令】不是【问题】，但作为 user 消息送入时模型必然要生成回复。
+            // 把本次生成的 token 上限压到 1，把无用的回复压到最短，
+            // 减少时间浪费与对后续上下文的污染。
+            rkllm_infer_params.max_new_tokens = 1;
+            rkllm_run(llmHandle, &rkllm_input, &rkllm_infer_params, NULL);
+            // 恢复正式对话的 max_new_tokens（header: <=0 表示用 init 值）
+            rkllm_infer_params.max_new_tokens = 0;
+            printf("\n[提示词已入上下文，开始正式对话]\n");
+
+            // 若 keep_history=off，这一条会在下一次 run 时被丢弃，
+            // 人设随之失效 —— 已在启动横幅里警告过。
+            if (!keep_history) {
+                printf("[警告] keep_history=off，本次提问将丢弃刚投递的提示词。\n");
+                printf("[警告] 测人设请改用 history on。\n");
+            }
+            printf("\n");
+        }
+
         printf("user: ");
         std::getline(std::cin, input_str);
         if (input_str == "exit")

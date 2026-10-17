@@ -17,8 +17,10 @@ if [ "${1:-}" = "--run" ]; then
     shift
 fi
 
-# 再挑 history（on/off），默认 off
-HISTORY_MODE="off"
+# 再挑 history（on/off）。
+# 【默认 on】—— 因为 2026-10-17 起提示词是作为「首条 user 消息」注入的，
+# 若 keep_history=off，那条消息会在下一轮被丢弃，人设随之失效。
+HISTORY_MODE="on"
 case "${1:-}" in
     on|off)
         HISTORY_MODE="$1"
