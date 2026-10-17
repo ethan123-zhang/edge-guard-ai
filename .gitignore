@@ -137,6 +137,7 @@ secrets.yaml
 !.env.example
 
 # ---------- 6. 编辑器与 IDE ----------
+.obsidian/
 .vscode/
 .idea/
 *.swp
