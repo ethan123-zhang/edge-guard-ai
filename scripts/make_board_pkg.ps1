@@ -40,7 +40,10 @@ Copy-Item (Join-Path $PkgDir 'prompts\system-prompt.txt')          $promptDir -F
 Copy-Item (Join-Path $PkgDir 'prompts\system-prompt.template.txt') $promptDir -Force
 Copy-Item (Join-Path $PkgDir 'verify-persona.sh')                  $Root -Force
 Copy-Item (Join-Path $PkgDir 'setup-sentinel-dir.sh')              $Root -Force
-Write-Host '  OK prompts/ + verify-persona.sh + setup-sentinel-dir.sh'
+# fix-perms.sh 不在 v1 基础包里（是后加的），必须显式拷入：
+# 漏掉会让"包内含 fix-perms.sh"的文档说明失效（2026-10-17 重打包时踩到）。
+Copy-Item (Join-Path $PkgDir 'fix-perms.sh')                       $Root -Force
+Write-Host '  OK prompts/ + verify-persona.sh + setup-sentinel-dir.sh + fix-perms.sh'
 
 Write-Host '=== 4. 替换 build-on-board.sh（含补丁自检）===' -ForegroundColor Cyan
 Copy-Item (Join-Path $PkgDir 'build-on-board.sh') (Join-Path $Root 'build-on-board.sh') -Force

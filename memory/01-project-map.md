@@ -16,14 +16,14 @@ last_updated: 2026-10-15
 
 ## 当前阶段（**重要**）
 
-> **设计完成 → 两个死亡点已完成一半（V2 ✅ / V1 ❌）。** 已有全套技术文档，**仍未写实现代码**。
+> **设计完成 → V2 ✅、人设注入 ✅、PC 架构验证 ✅；V1 ❌。** 代码已起步：`dialog/` 有规则引擎/话术/数据层（46 测试），**状态机与主程序未写**。
 
 | 项 | 状态 |
 | :--- | :--- |
 | 技术文档 | ✅ 完成（7 份，约 2300 行） |
-| 硬件 | ⚠️ 部分到齐（见下） |
-| 代码 | ❌ **未开始**（`vision/`/`dialog/`/`master/` 均未创建） |
-| 环境验证 | 🟡 **已开始**（2026-10-15）：**V2 ✅ 通过**（板端 RKLLM 可对话）；**V1 ❌ 未开始**（Jetson 人脸识别） |
+| 硬件 | ⚠️ 部分到齐（见下）；**板子今天不在手边，明天传包** |
+| 代码 | 🟡 **部分开始**：`dialog/` 的 `privilege.py`/`phrases.py`/`db.py` + 46 测试；`state_machine.py`/`main.py` 未写；`vision/`/`master/` 未创建 |
+| 环境验证 | 🟡 **V2 ✅**（板端 RKLLM 可对话）；**PC 端 0.6B/1.7B 已测**（结论：带历史多轮会复读，需规则 + 无状态）；**V1 ❌**（Jetson 人脸识别，受阻于 OpenCV） |
 
 ## 目录
 
@@ -32,7 +32,7 @@ last_updated: 2026-10-15
 | `MEMORY.md` + `memory/` | 本记忆库 |
 | `docs/` | **技术文档正文**（设计真源，先于代码） |
 | `docs/data/` | **实测数据**（`latency.csv` + 分析 README） |
-| `board-pkg/` | **待传板子的一切**（2026-10-17 归整）：`rkllm-board-v1.3.1-v2.tar.gz`（传板用）、v1（**打包输入，勿删**）、**`Qwen3-0.6B_W8A8_RK3588.rkllm`（889.8MB，已 gitignore）**、`prompts/`、`src/` |
+| `board-pkg/` | **待传板子的一切**（2026-10-17 归整）：`rkllm-board-v1.3.1-v2.tar.gz`（传板用）、v1（**打包输入，勿删**）、**`Qwen3-0.6B_W8A8_RK3588.rkllm`（889.8MB，已 gitignore）**、`prompts/`（v4 长版 / short 903B / v5 255B，后两者为实验候选）、`src/` |
 | `models-rkllm/` | **转换元数据**（`data_quant.json`，**入库**）。模型本体已于 2026-10-17 移到 `board-pkg/` |
 | `scripts/` | WSL 转换链路脚本 + `.gitignore` 自检脚本 |
 | `pushToGithub.bat` | 推送脚本（`git add . / commit / push origin main`，**结尾有 `pause`**） |
