@@ -3,18 +3,28 @@
 # 哨兵管家 —— 板端复验脚本：模型人设与输出长度（docs/03 §5.1）
 # ----------------------------------------------------------------------------
 # 目标：验证接入系统提示词后，模型是否符合 §5.1 的人设要求，且 48 token 够用。
-# 用法：./verify-persona.sh [--run] [模型路径]
-#   --run  直接启动对话（脚本会自动设好 LD_LIBRARY_PATH 与 RKLLM_LOG_LEVEL）
+# 用法：./verify-persona.sh [--run] [on|off] [模型路径]
+#   --run      直接启动对话（脚本自动设好 LD_LIBRARY_PATH 与 RKLLM_LOG_LEVEL）
+#   on / off   多轮 / 单轮（默认 off）。测"记不记得上一句"就用 on
 # 说明：不加 --run 时，脚本只做前置检查与打印命令，不自动对话。
 # ============================================================================
 set -u
 
-# 先挑出 --run 标志，剩下的参数才当模型路径（否则 $1=--run 会被当成路径）
+# 先挑出 --run 标志，剩下的参数才当 history / 模型路径
 RUN_MODE=0
 if [ "${1:-}" = "--run" ]; then
     RUN_MODE=1
     shift
 fi
+
+# 再挑 history（on/off），默认 off
+HISTORY_MODE="off"
+case "${1:-}" in
+    on|off)
+        HISTORY_MODE="$1"
+        shift
+        ;;
+esac
 
 MODEL="${1:-$HOME/sentinel/models/Qwen3-0.6B_W8A8_RK3588.rkllm}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -115,6 +125,7 @@ echo
 # ---------- 3b. --run：直接启动，环境变量由脚本负责 ----------
 if [ "$RUN_MODE" -eq 1 ]; then
     echo "--- 3b. 按 --run 直接启动（脚本已设好 LD_LIBRARY_PATH）---"
+    echo "     keep_history = $HISTORY_MODE  ($([ "$HISTORY_MODE" = on ] && echo '多轮：记得上文' || echo '单轮：每轮独立'))"
     echo "     提示：依次输入 0 / 1 / 2 试那三句话；输入 exit 退出。"
     echo
     cd "$DEMO_DIR" || exit 1
@@ -123,7 +134,7 @@ if [ "$RUN_MODE" -eq 1 ]; then
     echo "  LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
     echo "  RKLLM_LOG_LEVEL = $RKLLM_LOG_LEVEL"
     echo
-    exec ./llm_demo "$MODEL" 48 2048 "$PROMPT" off
+    exec ./llm_demo "$MODEL" 48 2048 "$PROMPT" "$HISTORY_MODE"
 fi
 
 # ---------- 4. 交互式复验（人工） ----------
