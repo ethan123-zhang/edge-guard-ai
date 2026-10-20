@@ -83,6 +83,11 @@ firmware/
 *.img.xz
 *.part
 
+# ---------- 2d. 便携小工具（exe 不入库）----------
+# 例如 tools/putty.exe、tools/plink.exe（串口/SSH 终端），按需重新下载即可
+tools/
+*.exe
+
 # ---------- 3. 运行产物与日志 ----------
 *.log
 logs/
