@@ -76,6 +76,13 @@ calibration/
 *.pkl
 *.pickle
 
+# ---------- 2c. 系统镜像 / 板端固件（数 GB，绝不入库）----------
+# Jetson 官方 SD 卡镜像等：只入库脚本与校验值，镜像本体和 .part 一律排除
+firmware/
+*.img
+*.img.xz
+*.part
+
 # ---------- 3. 运行产物与日志 ----------
 *.log
 logs/
