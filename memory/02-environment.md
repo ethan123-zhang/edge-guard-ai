@@ -36,6 +36,24 @@ last_updated: 2026-10-17
 > ⚠️ **这块板子跑的是亚博智能的「出厂镜像_ROS+AI视觉」**，环境**被预装内容改过**。
 > 下面的值**只代表这个亚博镜像，不代表干净的 JetPack**。烧官方镜像后必须重测。
 
+### 🚨 首启与串口：这块板的"命门"（**2026-10-21 两个晚上换来的**）
+
+> **官方镜像没错、卡没坏、板子也没坏** —— 卡住的是"**显示通道**"。
+
+| 事实 | 值 / 做法 |
+| :--- | :--- |
+| **HDMI 显示通路** | ❌ **不可依赖**：`tegra-i2c no acknowledge from address 0x54`（**读不到显示器 EDID**）+ `dpd enable lookup fail:-19`（显示电源域 ENODEV）。HDMI 上能出启动日志，但图形/向导起不来 |
+| **可靠通道** | ✅ **micro-USB 串口**：板端设备名 **`ttyGS0`**，Windows 侧是 `USB Serial Device (COMx)` |
+| 串口参数 | **115200 / 8 / 无校验 / 1 停止位 / 流控 None**（PuTTY 默认 XON/XOFF，会被"挂起"成黑屏） |
+| 串口工具 | `tools\putty.exe`（便携版，Authenticode 签名 Simon Tatham）；**别用 `plink -serial`**，Windows 控制台里会乱码 + 原样打出 `[10;12H` |
+| **首启顺序（铁律）** | **先连串口、窗口打开，再上电**。`nv-oem-config` 在**开机那一刻**就决定走显示还是走串口；它选了串口就一直等，`no limit` 不超时，事后插显示器不会自救 |
+| **别做的事** | ❌ 向导进行中断电（用户没建成 → 只能重烧）❌ 用 WSL 离线改卡（`wsl --mount` 不认 USB 可移动介质，`HCS/ERROR_INVALID_DRIVE`）❌ 猜账号（`yahboom` 是亚博镜像的账号，官方镜像没有） |
+| 板端账号 | 向导**新建**；登录名不要用 `yahboom` | 
+
+> **当前状态（2026-10-22 晚）**：已**重新烧录**一次（Rufus DD，`firmware/sd-blob-b01.img`）。
+> ⚠️ **首次启动配置尚未确认** —— 下次开工第一件事就是"串口连好 → 上电 → 走完向导 → 回填本文件的基线表"。
+> 详细过程见 `session-logs/2026-10-22-Jetson首启卡死与串口救回.md`。
+
 | 项 | 实测值 | 说明 |
 | :--- | :--- | :--- |
 | 硬件身份 | **`jetson-nano-devkit`** | `COMPATIBLE_SPEC 3448-300-0002--1--jetson-nano-devkit-`，即**官方 Dev Kit 规格**（NVIDIA 烧入模块，亚博改不了） |
