@@ -27,8 +27,8 @@ last_updated: 2026-10-22
 | **Jetson 首启（10-21/22）** | ✅ **已解决（10-22 晚，离线改卡）**：真因是 JP46 把 **`default.target` 指向 `nv-oem-config.target`**，而 `nv-oem-config-debconf@` 是**模板单元**，tty1 与 ttyGS0 **各跑一个向导** → 抢 `debconf` 锁 → 后到者退出、先到者在看不见的 tty1 上 `no limit` 干等。**所以重烧/换镜像全无效**。用 `scripts/jetson-offline-unlock.ps1`（读卡器→usbipd→WSL2→改 ext4）建账号 + 屏蔽向导 + 放开串口 getty，一次解决。详见 `docs/04` §2.0 |
 | **Jetson 现状（10-22 晚）** | 🟡 **能用，但有两个坑**：① **内核/模块错配**（跑 eMMC 的 `4.9.299`，模块树只有 `4.9.253`）→ **WiFi（RTL8822CE）起不来**、nvzram/nvpmodel 失败，见 `docs/04` §2.0「内核/模块版本错配」 ② **没有出口**：PC ↔ 板子直连通（`192.168.137.50`），但 ICS 的 NAT 不转发、策略代理对 apt/github 全 403 → **必须要路由器或修 ICS**。已做完：30G/17G 可用、4G swap、校时、SSH（host key 已固定）、docker 已 mask |
 | **Jetson 基线（10-22 实测）** | 板型 = **Jetson Nano B01（官方版，不是 SUB；10-23 用户确认）** · 内核 `4.9.299-tegra`（错配）· Ubuntu 18.04.5 / L4T R32.6.1 · **OpenCV 4.1.1**（`dnn=True`、`YuNet=False`、`cuda_devs=0`）· CUDA 10.2 · 内存 3963MB+4G swap · **`mmcblk0` = 14.7G eMMC（引导+内核在这里），`mmcblk1` = TF 卡（根分区）** |
-| **下一步** | ① 🔴 **先给板子开出口**：网线插路由器 LAN 口（最省事）或管理员 `Restart-Service SharedAccess` ② 🔴 `apt` 装依赖 → **编 OpenCV 4.5.4（先不带 CUDA，40–60 分钟出 `cv2.FaceDetectorYN`）**，回答 V1 ③ 🔴 跑 `jetson_baseline_probe.py` 拿基线数字 ④ 🟠 再决定要不要编 CUDA 版（`CUDA_ARCH_BIN=5.3`，4–6 小时）⑤ 🟠 WiFi 按 `docs/04` §2.0 三条出路单独排期 ⑥ 🔴 上板验证 8 条输入 + 3 轮延迟 ⑦ 买麦克风 |
-| **交接入口** | **下次开工先读** `memory/session-logs/2026-10-22b-离线修卡与内核错配.md` **§6**（现状与下一步）+ **§7**（型号口径纠正：**B01 官方版，不是 SUB**）；流程细节看 `docs/04` §2.0 |
+| **下一步** | ① 🔴 **给板子开出口**（唯一硬阻塞）：网线插路由器 LAN 口，或在 PC 上 `ncpa.cpl` → WLAN 属性 → 共享 → 选以太网 ② 🔴 **把 TF 卡换成"模块版本 = `4.9.299-tegra`"的系统镜像**（亚博出厂镜像；**烧前先验模块版本，不是 4.9.299 就别烧**）→ WiFi 回来 ③ 🔴 传 `scripts/jetson-build-opencv.sh` 上板后台跑，**编 OpenCV 4.5.4（CPU 版，40–60 分钟）** ④ 🟠 跑 `jetson_baseline_probe.py` 拿单帧基线、回填 `02`/`05`（V15 部分已答）⑤ 🟠 再决定 CUDA 版（4–6 小时）⑥ 🔴 主线：写 `dialog/state_machine.py` + `main.py`、`llm_demo --serve`、上板 8 条输入 + 3 轮延迟 ⑦ 买麦克风 |
+| **交接入口** | **下次开工先读** `memory/session-logs/2026-10-23-板型纠正与镜像选择.md` **§4「接下来该做的（按顺序，别跳）」**；坑位索引见 `04-pitfalls-and-risks.md` 的 **E-33~E-38**；流程细节 `docs/04` §2.0 |
 
 ---
 
@@ -58,7 +58,8 @@ last_updated: 2026-10-22
 
 | 日期 | 文件 | 主题 |
 | :--- | :--- | :--- |
-| 2026-10-22 | `memory/session-logs/2026-10-22b-离线修卡与内核错配.md` | **今晚**：debconf 锁真因（`default.target→nv-oem-config.target` + 模板单元双跑）、离线修卡脚本、串口接管、扩分区、**内核/模块错配导致 WiFi 起不来**、卡在没有出口 |
+| 2026-10-23 | `memory/session-logs/2026-10-23-板型纠正与镜像选择.md` | **收尾/交接**：型号纠正（**B01 官方版，不是 SUB**）、镜像选择的决策依据（**eMMC 内核与 TF 模块必须同源**）、11 个问题清单、经验 8 条、**下一步五步走** |
+| 2026-10-22 | `memory/session-logs/2026-10-22b-离线修卡与内核错配.md` | **那晚**：debconf 锁真因（`default.target→nv-oem-config.target` + 模板单元双跑）、离线修卡脚本、串口接管、扩分区、**内核/模块错配导致 WiFi 起不来**、卡在没有出口 |
 | 2026-10-21 | `memory/session-logs/2026-10-22-Jetson首启卡死与串口救回.md` | **首启卡死定位**：OEM 向导回退到 micro-USB 串口（EDID 坏）；`plink` 乱码→`putty` GUI；向导拔电→账号没建成；`wsl --mount` 不认可移动盘；**已重烧，首启待做**；含「下次开工第一件事」 |
 | 2026-10-20 | `memory/session-logs/2026-10-20-Jetson B01 官方镜像.md` | **型号纠正 + 官方 JP46 镜像下载校验**；A02/B01 镜像不可混用；下载踩坑（schannel 不通→Python）；烧写步骤见 `docs/04` §2.0 |
 | 2026-10-17 | `memory/session-logs/2026-10-17d-PC模型测试与无状态架构.md` | **夜篇**：PC 实测 0.6B/1.7B，确认多轮复读是结构问题；定「规则 + 状态机 + 每轮无状态」；**含明天上板步骤** |
