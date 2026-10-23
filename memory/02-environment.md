@@ -14,13 +14,26 @@ last_updated: 2026-10-17
 
 | 设备 | 型号 | 已知约束 |
 | :--- | :--- | :--- |
-| 视觉节点 | **Jetson Nano B01 sub**（4GB，**亚博智能经销**） | 128 核 Maxwell，JetPack 最高 **4.6**（Ubuntu 18.04 / CUDA 10.2），**已停更**；系统 Python 为 **3.6**。**实测细节见下** |
+| 视觉节点 | **Jetson Nano B01**（4GB，**亚博智能经销**，官方 Dev Kit 规格） | 128 核 Maxwell，JetPack 最高 **4.6**（Ubuntu 18.04 / CUDA 10.2），**已停更**；系统 Python 为 **3.6**。**模块自带 eMMC + 载板有 TF 卡槽 —— 口径见下节** |
 | 对话节点 | **鲁班猫5 v1（RK3588）** | 6 TOPS NPU + 8 核 CPU（4×A76 + 4×A55），出厂 Ubuntu。**实测见下方** |
 | 摄像头 | 亚博智能 1080p USB | 已验证可用 |
 | 音箱 | 最基础款 | 够用 |
 | 转换机 | **本机笔记本** | **RTX 4060 Laptop 8GB**，用于 RKLLM 模型转换（详见第 2 节） |
 
-### Jetson Nano B01 sub 板端实测（**2026-10-16，实测值取代文档假设**）
+### Jetson Nano B01 板端实测（**2026-10-16 起；2026-10-23 纠正型号口径**）
+
+> ✅ **型号口径（2026-10-23 用户确认 —— 推翻此前所有 "B01 sub" 的写法）**
+>
+> 这块板**就是 Jetson Nano B01**（模块 `p3448-0002`），**不是亚博的 SUB 版**。
+>
+> 1. **"既有 eMMC 又有 TF 卡"是 B01 的正常形态**，**不能**当成 SUB 版的标志。
+>    板端实测：`mmcblk0` = **14.7 GiB eMMC**（带 `mmcblk0boot0/boot1/rpmb`，一整套 L4T 分区）；`mmcblk1` = **TF 卡**（系统根分区在 `mmcblk1p1`）。
+>    （2026-10-22 曾据"有 eMMC"误判成 SUB 版，教训：**型号以用户/官方规格为准，不从分区推断**。）
+> 2. **启动链**：eMMC 的 `/boot/extlinux/extlinux.conf` 写着 `APPEND … root=/dev/mmcblk1p1` ——
+>    **引导器 + 内核在 eMMC，根分区在 TF 卡**。这是现状，也是这块板的结构。
+> 3. **亚博 SUB 版是另一条产品线**（U 盘镜像 + EMMC 引导 + `flash.sh -r jetson-nano-devkit-emmc`），
+>    **与本板无关，别照 SUB 的教程操作**。
+> 4. 亚博出厂镜像的默认账号是 **`jetson` / `yahboom`**（他们文档原文），与本项目自建的 `jetson` 账号无关。
 
 > 🟢 **2026-10-20 重大进展：官方镜像已确认可用、已下载**
 > - 型号口径已纠正为 **Jetson Nano B01**；**官方技术员确认**：这块 B01 板**可以直接用 NVIDIA 官方
@@ -50,14 +63,16 @@ last_updated: 2026-10-17
 | **别做的事** | ❌ 向导进行中断电（用户没建成 → 只能重烧）❌ 用 WSL 离线改卡（`wsl --mount` 不认 USB 可移动介质，`HCS/ERROR_INVALID_DRIVE`）❌ 猜账号（`yahboom` 是亚博镜像的账号，官方镜像没有） |
 | 板端账号 | 向导**新建**；登录名不要用 `yahboom` | 
 
-> **当前状态（2026-10-22 晚）**：已**重新烧录**一次（Rufus DD，`firmware/sd-blob-b01.img`）。
-> ⚠️ **首次启动配置尚未确认** —— 下次开工第一件事就是"串口连好 → 上电 → 走完向导 → 回填本文件的基线表"。
-> 详细过程见 `session-logs/2026-10-22-Jetson首启卡死与串口救回.md`。
+> **当前状态（2026-10-22 晚已闭环，10-23 复核）**：官方 JP46 重烧后首启**向导起不来**（`debconf` 锁），
+> 用**离线改卡**（读卡器 → usbipd → WSL2 → 改 ext4）解决：建账号 `jetson`、屏蔽 `nv-oem-config.*`、
+> 放开串口 getty、扩分区到 30G。**开机直接到 `login:`，能进系统**。
+> 流程见 `docs/04` §2.0「首启刮不起向导 / 报 debconf 锁」；复盘见 `session-logs/2026-10-22b-离线修卡与内核错配.md`。
+> ⚠️ 遗留：**内核 4.9.299（eMMC 里的厂商内核）与 TF 卡上的官方模块 4.9.253 错配** → WiFi 等模块类驱动全部不可用。
 
 | 项 | 实测值 | 说明 |
 | :--- | :--- | :--- |
 | 硬件身份 | **`jetson-nano-devkit`** | `COMPATIBLE_SPEC 3448-300-0002--1--jetson-nano-devkit-`，即**官方 Dev Kit 规格**（NVIDIA 烧入模块，亚博改不了） |
-| 规格 | `jetson-nano-qspi-sd` | **SD 卡版**（模块无 eMMC，QSPI+SD 启动）；`B.0` = **B01 载板** |
+| 规格 | `jetson-nano-qspi-sd` | dtb 的 `compatible` 串，描述 **QSPI 引导 + SD 启动**方式；**不代表没有 eMMC** —— 实测板上有 **14.7 GiB eMMC（`mmcblk0`）**，TF 卡是 `mmcblk1` |
 | 系统 | Ubuntu **18.04.6**，内核 `4.9.299-tegra` | 内核构建于 **2022-11-22** → 对应较新的 L4T 32.7.x |
 | CPU | **4 核** | |
 | CUDA | **10.2**（`/usr/local/cuda-10.2`，`nvcc V10.2.300`） | ✅ 完整可用 |
