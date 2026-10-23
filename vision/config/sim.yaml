@@ -1,0 +1,19 @@
+# PC 仿真档：摄像头 + 本机回环的假对话节点
+# 用法：python scripts/vision_sim.py --profile sim
+
+camera:
+  source: 0
+  backend: dshow         # Windows 上 dshow 比 msmf 更稳，抓不到再换 auto
+  width: 1280
+  height: 720
+  mirror: true
+
+server:
+  enabled: true
+  ws_url: ws://127.0.0.1:8765
+  heartbeat_sec: 5.0
+  reconnect_sec: 3.0
+
+runtime:
+  max_fps: 15            # 仿真时别把笔记本 CPU 吃满
+  headless: false

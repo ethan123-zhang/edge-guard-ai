@@ -1,0 +1,56 @@
+# 视觉节点公共配置（docs/02 §7.1）
+# 只写"值得被人看见"的阈值；其余键在 vision/config.py 的 DEFAULTS 里有默认值。
+# 现场要调的东西：score_threshold / match_threshold / min_face_px / roi。
+
+profile: sim
+
+camera:
+  source: 0
+  backend: auto          # Windows 仿真用 dshow；板端 auto → v4l2
+  width: 1280
+  height: 720
+  mirror: false
+  warmup_frames: 3
+
+roi:
+  # 门口场景：只处理画面中间那条竖带，避免走廊里路过的人触发
+  enabled: false
+  x: 0.30
+  y: 0.15
+  w: 0.40
+  h: 0.70
+
+detection:
+  backend: auto          # 有 YuNet 模型就用 yunet，否则自动退 haar
+  model: models/face_detection_yunet_2023mar.onnx
+  score_threshold: 0.6
+  nms_threshold: 0.3
+  min_face_px: 80
+  haar_min_neighbors: 5
+
+recognition:
+  backend: auto          # 有 SFace 模型就用 sface，否则自动退 none（全部当陌生人）
+  model: models/face_recognition_sface_2021dec.onnx
+  match_threshold: 0.363
+  gallery_dir: face_db
+  confirm_frames: 3
+  cooldown_sec: 10.0
+  track_ttl_sec: 2.0
+
+server:
+  enabled: true
+  heartbeat_sec: 5.0
+  reconnect_sec: 3.0
+  # ws_url 由 profile 决定（sim 指本机回环，board 指鲁班猫5 的地址）
+
+output:
+  snapshot_dir: snapshots
+  save_snapshots: true
+  snapshot_quality: 90
+  print_events: true
+
+runtime:
+  max_fps: 0
+  duration_sec: 0
+  headless: false
+  log_level: info

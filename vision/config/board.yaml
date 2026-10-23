@@ -1,0 +1,28 @@
+# Jetson Nano B01 档：等 TF 卡到了，把这份拷上去，改 ws_url 就能跑
+# 用法：python3 scripts/vision_sim.py --profile board --no-window
+#
+# 和 sim 的差别只有三处：
+#   1. 摄像头后端 auto（Linux → V4L2）
+#   2. 关掉镜像、关窗口（板子上没有可靠 HDMI，见 memory/02）
+#   3. ws_url 指向鲁班猫5 的实际 IP（以现场 nmcli 查到的为准，别抄规划值）
+
+camera:
+  source: 0
+  backend: auto
+  width: 1280
+  height: 720
+  mirror: false
+  warmup_frames: 5
+
+server:
+  enabled: true
+  ws_url: ws://192.168.3.214:8765
+  heartbeat_sec: 5.0
+  reconnect_sec: 3.0
+
+output:
+  save_snapshots: true
+
+runtime:
+  max_fps: 0             # 板端要真实耗时基线，不人为限帧
+  headless: true

@@ -14,7 +14,7 @@ last_updated: 2026-10-15
 | # | 待验证 | 怎么验证 | 状态 |
 | :--- | :--- | :--- | :--- |
 | **V0** | **本机能否提供 x86 Linux 转换环境**（WSL2 或 Docker） | 管理员终端跑 `wsl -l -v`；能列出发行版即通 | ✅ **已通**（2026-10-15）：**WSL2 + Ubuntu-22.04，x86_64，Python 3.10.12，943G 可用，7.6G 内存**；GitHub 与 ModelScope 均可达。⚠️ 但**必须用 `danger-full-access`**，见 `04` 的 E-7（Low IL 降权） |
-| **V1** | Jetson 能否跑通人脸检测+识别 | OpenCV DNN 加载 YuNet+SFace，对静态图输出人脸数 | 🟡 **已解冻，卡在"首启没配完"**（2026-10-22）：官方技术员确认 B01 可直接烧 **JP46 官方镜像**，镜像已下载校验（`firmware/`）。**但首启向导要走串口**（HDMI EDID 坏，见 E-29），2026-10-21 在向导里拔电导致账号没建成，10-22 已重烧。**下一步是"串口连好再上电 → 走完向导"**。注意：JP46 自带 OpenCV **4.1.1** → 有 `dnn`、**无** YuNet/SFace（需 ≥4.5.4），见 **V15 / V16** |
+| **V1** | Jetson 能否跑通人脸检测+识别 | OpenCV DNN 加载 YuNet+SFace，对静态图输出人脸数 | 🟡 **PC 侧已验到"代码+API 都通"，缺的是板端数字**（2026-10-23）：`vision/` 在 PC 上把「检测→识别→稳定→`face_event`→WS→SQLite」跑通了（63 测试 + 实跑 3 条事件入库，见 `docs/07`）。但**本机没有 YuNet/SFace 模型**（网络 403，E-51），当前跑的是 **Haar + 无识别** 降级档 → **板端 YuNet/SFace 的可用性与耗时仍未验证**。上板第一步：`python3 scripts/vision_selftest.py`（见 `docs/07` §6）。注意 JP46 自带 OpenCV **4.1.1** → 有 `dnn`、**无** YuNet/SFace（需 ≥4.5.4），见 **V15** |
 | **V2** | 鲁班猫5 能否跑通 RKLLM 对话 | 转换 Qwen3-0.6B 为 W8A8，板端 `llm_demo` 能问答 | ✅ **已通过**（2026-10-15）**终端可与模型对话**。启动日志：`rkllm-runtime version: 1.3.1, rknpu driver version: 0.9.8, platform: RK3588` —— **四个版本全部对齐**。性能数字待补（见 `docs/data/latency.csv`） |
 
 > ⚠️ **V0 是此次新识别的前置依赖**：原计划里"挂上模型转换"被当作直接可做的任务，
@@ -57,6 +57,8 @@ last_updated: 2026-10-15
 | V14 | **"规则优先 + 每轮无状态调用 LLM"能否让回答全部干净** | PC 原型：`privilege.detect` 先行；LLM 每轮 fresh context，只做 ASK/ACK 固定话术 | ✅ **PC 8/8 通过**（2026-10-17，0.6B）：开门/身份/隐私走规则固定话术；`?`/`你好` 走 ASK；`快递`/`约吃饭` 走 ACK。见 `docs/data/pc-model-tests.md`。**待上板验证延迟与集成（N-1/N-2）** |
 | V15 | **烧 JP46 官方镜像后，Jetson 上 OpenCV 到底是什么版本、能不能直接跑人脸** | 烧完跑 `python3 -c "import cv2; print(cv2.__version__, hasattr(cv2,'dnn'), hasattr(cv2,'FaceDetectorYN'))"`；再试 `cv2.FaceDetectorYN` 与 `cv2.cuda.getCudaEnabledDeviceCount()` | ❌ **未验证**（2026-10-20 提出）：预期 **4.1.1**（有 `dnn`、无 YuNet、可能无 CUDA）。若确如此，D2 要么改成"用 4.1.1 的 dnn 跑别的检测模型"，要么在 32G 卡上自编 CUDA 版 OpenCV 4.5+（**这次有空间了**） |
 | V16 | **重烧后的首启向导能否在串口里一次走完（不断电、APP 分区扩到 28G）** | 串口连好再上电，按 `docs/04` §2.0 的顺序走；走完 `df -h /` 看是否 ≈28G，`login:` 能进 | ❌ **待验证**（2026-10-22 重烧后）：上次失败纯属**通道选错 + 中途拔电**（E-29/E-30），与镜像无关；这次只要"先串口后上电"就应该一次过 |
+| V17 | **PC 仿真的 `vision/` 代码能否原样跑在 Jetson（Python 3.6 / OpenCV 4.5.4）** | ① `vision/tests/test_py36_compat.py` 已按 3.6 语法静态校验 ② 上板后 `python3 -m vision.run_tests`（该目录也要拷过去）③ `vision_selftest.py` 看 YuNet/SFace 是否加载 | 🟡 **静态已过**（2026-10-23）：`ast.parse(feature_version=(3,6))` 全绿、无 dataclasses/未来注解。**动态仍未验证**（等 TF 卡） |
+| V18 | **PC 上的单帧耗时能不能外推到 Jetson** | 同一段 `vision_selftest.py --benchmark` 在两边各跑 30 帧，比 p50/p95 | ❌ **不能外推**：PC 上 Haar p50 **10.6 ms**（x86）与 Jetson CPU 性能差一个量级；**必须上板实测**，别拿 PC 数字写答辩 |
 
 ### 2.1 实测暴露的两个问题（**2026-10-15**）
 

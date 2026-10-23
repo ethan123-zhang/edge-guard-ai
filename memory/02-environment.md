@@ -157,7 +157,22 @@ last_updated: 2026-10-17
 | 板端 Runtime | ⚠️ `docs/02` 原记「runtime 1.3.0 / rknpu driver 0.9.8（野火教程环境）」——**这是教程环境，不是本机实测值**。板子到手后**必须以板端实际版本为准**，并让 Toolkit 版本与之**对齐** |
 | **本机 C++ 编译器（2026-10-17 实测）** | ✅ **`C:\Program Files\mingw64\bin\g++.exe`，g++ 8.1.0**（支持 C++11）。**用途**：给板端写的 C++ 补丁（如 `llm_demo.cpp`）**可在本机先做编译+链接检查，不必进 WSL**（WSL 常被沙箱挡住，E-7）。做法：写桩文件冒充 `librkllmrt.so`，见 `board-pkg/src/compile-check-stubs.cpp` |
 
-**转换用 Linux 环境（V0，2026-10-15 实测可用）**：
+### PC 视觉仿真环境（**2026-10-23 实测**）
+
+> 等 TF 卡期间在笔记本上代跑 Jetson 的视觉节点（`vision/`）。下面这些是**本机事实**，
+> 不是板端事实 —— 板端数字必须上板另测（`scripts/vision_selftest.py`）。
+
+| 项 | 实测值 | 影响 |
+| :--- | :--- | :--- |
+| Python / OpenCV | **3.10.1** / **opencv-python 4.13.0.92** | `dnn` ✅、`FaceDetectorYN` ✅、`FaceRecognizerSF` ✅ |
+| 其他库 | PyYAML 6.0.3、numpy 2.2.6、websocket-client 1.9.2 | WS 客户端**不用**它（板端装了也白装），自己实现 |
+| 摄像头 | `idx0` 640×480 **黑场**；`idx1` 1280×720 显示 **intel 标志**（虚拟摄像头） | **拿不到真人画面**；仿真用图片目录回放（`--source`） |
+| 视觉模型 | **YuNet / SFace 都没有** | 只能跑 Haar + 无识别降级档，见 E-51 |
+| 出网 | **github / pypi / huggingface / jsdelivr 全部 403**（沙箱策略代理） | 模型只能由用户浏览器下载 |
+| WSL / Docker | `wsl -l -v` 仍被沙箱挡（`Wsl/E_ACCESSDENIED`）；Docker 守护进程未启动 | 本轮**没做** arm64 保真环境（用户选的是 A 方案） |
+| 中文路径 | `cv2.imread/imwrite` 在 `E:\哨兵管家\...` 下**静默失败**（返回 None/False） | 已封装 `vision/imageio.py`，见 E-48 |
+
+
 
 | 项 | 实测值 |
 | :--- | :--- |
