@@ -19,16 +19,16 @@ last_updated: 2026-10-22
 | **代码** | 🟡 `dialog/` 已有 `privilege.py` / `phrases.py` / `db.py` + 46 测试；`state_machine.py` / `main.py` 未写；`vision/` / `master/` 未开始 |
 | **模型转换** | ✅ **已完成**：`Qwen3-0.6B_W8A8_RK3588.rkllm`（889.8MB）**仅用 33.6 秒**（RTX 4060 加速） |
 | **两个死亡点** | ✅ **V2 已通过**（板端可对话）；✅ **人设注入已板端验证**（2026-10-17 18:21，**仅单轮**；多轮会复读，见 V12/V13）；🟡 **V1 受阻暂停**（Jetson 环境不支持） |
-| **阻塞项** | ① 麦克风未购（原有不可用） ② ~~V1 解冻需先问亚博~~ → ✅ **已解决（10-20）**：官方技术员确认 B01 可直接烧官方 JetPack 4.6 镜像，镜像已下载校验 ③ 🟡 **板子已能用（10-22 晚离线修卡打通），但缺出口**：`eth0`/WiFi 都不通 → `apt`、OpenCV 源码全做不了 |
+| **阻塞项** | ① 麦克风未购（原有不可用） ② ~~V1 解冻需先问亚博~~ → ✅ **已解决（10-20）** ③ 🔴 **TF 卡物理损坏（`mmcblk1` 持续 `Data CRC error` / `-84`），必须换卡**，见 E-46 ④ ✅ 内核/模块错配**已解决（10-23）**，WiFi 驱动可用，只差连上热点验证出口 |
 | **当前主线** | 🟢 **鲁班猫5（RK3588）+ 0.6B**，架构改为「规则前置 + 每轮无状态」；V1 暂时搁置 |
 | **新发现（重要）** | ❌ **带历史的多轮 REPL 会让 0.6B/1.7B 复读**；换模型/改提示词都无效（V12/V13）。✅ **规则 + 无状态调用**在 PC 上 **0.6B 8/8 干净**（V14）。详见 `docs/data/pc-model-tests.md` |
-| **Jetson 镜像（10-20）** | ✅ **`jetson-nano-jp46-sd-card-image.zip`（JetPack 4.6 / L4T R32.6.1，6.09 GiB）已下载 + 校验**，在 `firmware/`（不入库）。zip 内是 **`sd-blob-b01.img`**。烧写步骤见 `docs/04` **§2.0**。⚠️ 烧完 **OpenCV 预计仍是 4.1.1（无 YuNet）**，见 V15 —— 烧系统 ≠ V1 通 |
+| **Jetson 镜像（10-20 / 10-23 定版）** | **eMMC = L4T 32.7.3 / JetPack 4.6.3（内核 `4.9.299-tegra`，2022-11-22 编译）** —— 串口挂 eMMC 后 `strings boot/Image` 实测。⚠️ **官方没有 32.7.3 的 SD 镜像**（32.7.1/32.7.3 都是 4.9.253，32.7.3 只发 BSP）。手上 `jetson-nano-jp46-sd-card-image.zip`（R32.6.1，`sd-blob-b01.img` 12.76G）配 eMMC 会**必然错配**，要补模块包。亚博出厂镜像 `JetsonNano_ros_yolo26.zip`（29.3G）/`jetson_nano_b01_TF_20250324.zip`（29.9G）解压 **58G img** → 需 128G 卡 |
 | **性能警告** | ⚠️ 旧方案 824 token 提示词常驻 → generate **31.65 → ~18.6 tok/s（↓43%）**。新方案窄提示约 80–100 token，但**每轮要重 prefill**，需实测（E-25/E-28） |
 | **Jetson 首启（10-21/22）** | ✅ **已解决（10-22 晚，离线改卡）**：真因是 JP46 把 **`default.target` 指向 `nv-oem-config.target`**，而 `nv-oem-config-debconf@` 是**模板单元**，tty1 与 ttyGS0 **各跑一个向导** → 抢 `debconf` 锁 → 后到者退出、先到者在看不见的 tty1 上 `no limit` 干等。**所以重烧/换镜像全无效**。用 `scripts/jetson-offline-unlock.ps1`（读卡器→usbipd→WSL2→改 ext4）建账号 + 屏蔽向导 + 放开串口 getty，一次解决。详见 `docs/04` §2.0 |
-| **Jetson 现状（10-22 晚）** | 🟡 **能用，但有两个坑**：① **内核/模块错配**（跑 eMMC 的 `4.9.299`，模块树只有 `4.9.253`）→ **WiFi（RTL8822CE）起不来**、nvzram/nvpmodel 失败，见 `docs/04` §2.0「内核/模块版本错配」 ② **没有出口**：PC ↔ 板子直连通（`192.168.137.50`），但 ICS 的 NAT 不转发、策略代理对 apt/github 全 403 → **必须要路由器或修 ICS**。已做完：30G/17G 可用、4G swap、校时、SSH（host key 已固定）、docker 已 mask |
-| **Jetson 基线（10-22 实测）** | 板型 = **Jetson Nano B01（官方版，不是 SUB；10-23 用户确认）** · 内核 `4.9.299-tegra`（错配）· Ubuntu 18.04.5 / L4T R32.6.1 · **OpenCV 4.1.1**（`dnn=True`、`YuNet=False`、`cuda_devs=0`）· CUDA 10.2 · 内存 3963MB+4G swap · **`mmcblk0` = 14.7G eMMC（引导+内核在这里），`mmcblk1` = TF 卡（根分区）** |
-| **下一步** | ① 🔴 **给板子开出口**（唯一硬阻塞）：网线插路由器 LAN 口，或在 PC 上 `ncpa.cpl` → WLAN 属性 → 共享 → 选以太网 ② 🔴 **把 TF 卡换成"模块版本 = `4.9.299-tegra`"的系统镜像**（亚博出厂镜像；**烧前先验模块版本，不是 4.9.299 就别烧**）→ WiFi 回来 ③ 🔴 传 `scripts/jetson-build-opencv.sh` 上板后台跑，**编 OpenCV 4.5.4（CPU 版，40–60 分钟）** ④ 🟠 跑 `jetson_baseline_probe.py` 拿单帧基线、回填 `02`/`05`（V15 部分已答）⑤ 🟠 再决定 CUDA 版（4–6 小时）⑥ 🔴 主线：写 `dialog/state_machine.py` + `main.py`、`llm_demo --serve`、上板 8 条输入 + 3 轮延迟 ⑦ 买麦克风 |
-| **交接入口** | **下次开工先读** `memory/session-logs/2026-10-23-板型纠正与镜像选择.md` **§4「接下来该做的（按顺序，别跳）」**；坑位索引见 `04-pitfalls-and-risks.md` 的 **E-33~E-38**；流程细节 `docs/04` §2.0 |
+| **Jetson 现状（10-23 收尾）** | ✅ **内核/模块错配已解决**：往 TF 根分区装了 `lib/modules/4.9.299-tegra`（675 文件/75.2 MB，来自 32.7.3 BSP）→ `modprobe rtl8822ce` 无报错、`wlan0` 出现。🔴 **但 TF 卡物理损坏**（`error -84` + `Data CRC`，报错扇区从 21.6M 退到 4.3M）→ **必须换卡**。另：micro-USB gadget 热重启后半死（能枚举但 `Write` 报"信号灯超时"），当前只能靠 HDMI+键盘。 |
+| **Jetson 基线（10-23 实测）** | 板型 = **Jetson Nano B01（官方版，不是 SUB）** · **eMMC = L4T 32.7.3 / JP4.6.3，内核 `4.9.299-tegra`；eMMC 无系统（只有 `boot/ media/ root/ var/ + README.txt` 空壳）** · TF 根分区 = L4T R32.6.1 / Ubuntu 18.04.5 / 模块 `4.9.253`（已补 `4.9.299`）· **`mmcblk0`=14.7G eMMC（引导），`mmcblk1`=TF（根）** · **`boot/extlinux/extlinux.conf` 的 `FDT` = `kernel_...-b00-user-custom.dtb`（237290）—— 这份 dtb 决定 SD 认不认，换成官方 b00(237113) 就没有 `mmcblk1`**（E-40）· OpenCV 4.1.1（`dnn=True`/`YuNet=False`）· CUDA 10.2 · 内存 3963MB |
+| **下一步** | ① 🔴 **换 TF 卡**（32GB 起走 B 方案；想要亚博 ROS/YOLO 现成环境则 **128GB**） ② 烧 `firmware/sd-blob-b01.img`（Etcher 开 verify），首启**不插 micro-USB**、向导选**最大分区**（E-34） ③ 网线直连 PC（`192.168.137.1`）→ PC 跑 `python -m http.server 8000 --directory firmware` → 板上 `wget -O /dev/shm/m.tgz http://192.168.137.1:8000/jetson-4.9.299-modules.tar.gz` → `tar -xzf … -C /` → `chown -R root:root /lib/modules/4.9.299-tegra` ④ 连 WiFi（新镜像 `nmcli`；**当前这套 NM 没跑**，只能 `wpa_supplicant`）⑤ 编 OpenCV 4.5.4 → 回答 V1 ⑥ 主线：`dialog/state_machine.py` + `main.py` ⑦ 买麦克风 |
+| **交接入口** | **下次开工先读** `memory/session-logs/2026-10-23b-eMMC版本实测与内核模块同步.md` **§8「接下来该做的」**；坑位索引 `04-pitfalls-and-risks.md` 的 **E-39~E-47**；流程细节 `docs/04` §2.0 |
 
 ---
 
@@ -58,6 +58,7 @@ last_updated: 2026-10-22
 
 | 日期 | 文件 | 主题 |
 | :--- | :--- | :--- |
+| 2026-10-23 | `memory/session-logs/2026-10-23b-eMMC版本实测与内核模块同步.md` | **实测定版**：eMMC = L4T 32.7.3 / JP4.6.3（从 `boot/Image` 字符串读，rootfs 是空壳）；官方无配套 SD 镜像；**降内核失败的真因是 dtb**（237290 才认 SD）；最终用 32.7.3 模块树解决错配、`wlan0` 复活；TF 卡物理损坏；经验 8 条 + 下一步 |
 | 2026-10-23 | `memory/session-logs/2026-10-23-板型纠正与镜像选择.md` | **收尾/交接**：型号纠正（**B01 官方版，不是 SUB**）、镜像选择的决策依据（**eMMC 内核与 TF 模块必须同源**）、11 个问题清单、经验 8 条、**下一步五步走** |
 | 2026-10-22 | `memory/session-logs/2026-10-22b-离线修卡与内核错配.md` | **那晚**：debconf 锁真因（`default.target→nv-oem-config.target` + 模板单元双跑）、离线修卡脚本、串口接管、扩分区、**内核/模块错配导致 WiFi 起不来**、卡在没有出口 |
 | 2026-10-21 | `memory/session-logs/2026-10-22-Jetson首启卡死与串口救回.md` | **首启卡死定位**：OEM 向导回退到 micro-USB 串口（EDID 坏）；`plink` 乱码→`putty` GUI；向导拔电→账号没建成；`wsl --mount` 不认可移动盘；**已重烧，首启待做**；含「下次开工第一件事」 |
