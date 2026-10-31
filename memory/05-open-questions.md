@@ -1,7 +1,7 @@
 ---
 type: project
 topic: 待验证与开放问题
-last_updated: 2026-10-15
+last_updated: 2026-10-31
 ---
 
 # 待验证与开放问题
@@ -14,7 +14,7 @@ last_updated: 2026-10-15
 | # | 待验证 | 怎么验证 | 状态 |
 | :--- | :--- | :--- | :--- |
 | **V0** | **本机能否提供 x86 Linux 转换环境**（WSL2 或 Docker） | 管理员终端跑 `wsl -l -v`；能列出发行版即通 | ✅ **已通**（2026-10-15）：**WSL2 + Ubuntu-22.04，x86_64，Python 3.10.12，943G 可用，7.6G 内存**；GitHub 与 ModelScope 均可达。⚠️ 但**必须用 `danger-full-access`**，见 `04` 的 E-7（Low IL 降权） |
-| **V1** | Jetson 能否跑通人脸检测+识别 | OpenCV DNN 加载 YuNet+SFace，对静态图输出人脸数 | 🟡 **PC 侧已验到"代码+API 都通"，缺的是板端数字**（2026-10-23）：`vision/` 在 PC 上把「检测→识别→稳定→`face_event`→WS→SQLite」跑通了（63 测试 + 实跑 3 条事件入库，见 `docs/07`）。但**本机没有 YuNet/SFace 模型**（网络 403，E-51），当前跑的是 **Haar + 无识别** 降级档 → **板端 YuNet/SFace 的可用性与耗时仍未验证**。上板第一步：`python3 scripts/vision_selftest.py`（见 `docs/07` §6）。注意 JP46 自带 OpenCV **4.1.1** → 有 `dnn`、**无** YuNet/SFace（需 ≥4.5.4），见 **V15** |
+| **V1** | Jetson完整检测+身份识别 | 分别验收采集、检测、特征、注册匹配与事件 | 🟡 Haar真人检测与本地事件已通过；YuNet/SFace API及模型缺失，完整身份识别仍未通过。见最新事件诊断报告 |
 | **V2** | 鲁班猫5 能否跑通 RKLLM 对话 | 转换 Qwen3-0.6B 为 W8A8，板端 `llm_demo` 能问答 | ✅ **已通过**（2026-10-15）**终端可与模型对话**。启动日志：`rkllm-runtime version: 1.3.1, rknpu driver version: 0.9.8, platform: RK3588` —— **四个版本全部对齐**。性能数字待补（见 `docs/data/latency.csv`） |
 
 > ⚠️ **V0 是此次新识别的前置依赖**：原计划里"挂上模型转换"被当作直接可做的任务，
@@ -28,7 +28,7 @@ last_updated: 2026-10-15
 | :--- | :--- |
 | **W1-1 挂上模型下载与转换** | ✅ **已完成**（2026-10-15），产出 `.rkllm` |
 | **W1-3 RK3588：RKLLM 对话跑通** | ✅ **已完成**（2026-10-15），终端可对话 |
-| **M1 死亡点验证** | 🟡 **一半**：V2 ✅ 通过；V1 🟡 受阻于 OpenCV 版本（V3 推翻，需装 CUDA 版 OpenCV 4.5+） |
+| **M1 死亡点验证** | 🟡 采集、Haar检测及本地事件已验；完整身份识别与可靠去重未通过；V2保留历史结论，本轮未复验 |
 
 **关键数字与教训**：
 
@@ -43,7 +43,7 @@ last_updated: 2026-10-15
 
 | # | 假设 | 风险 | 状态 |
 | :--- | :--- | :--- | :--- |
-| V3 | Jetson 自带 OpenCV ≥ 4.5.4（含 `FaceDetectorYN`） | 若不含需装 pip 版，可能覆盖系统库 | ❌ **已推翻**（2026-10-15）：自带 **OpenCV 3.2.0** + Python 3.6.9 → `YuNet False / SFace False`。**D2 决策在本机不成立，必须换 OpenCV 4.5+（且不能用 pip 版，见 `04` §2.2）** |
+| V3 | 当前OpenCV完整人脸API | 实测版本与能力 | ❌ 当前4.1.1有dnn、无YuNet/SFace；原3.2.0是旧镜像。兼容方案另立任务，不直接沿用旧版本门槛 |
 | V4 | Qwen3-0.6B 在 RK3588 上首字响应 1~2 秒 | 若超 3 秒，对话体感崩，需换更小模型或缩短 prompt | ✅ **已验证成立**（2026-10-15）：首字 = prefill 85.66ms + 1 token 31.60ms ≈ **117ms**（纯 LLM），远优于 1~2 秒 |
 | V5 | 0.6B 模型能稳定输出符合 JSON schema 的槽位 | 小模型抽取不稳，故已设计规则优先兜底 | ❌ 未验证 |
 | V6 | 新买的阵列麦能 Linux 免驱识别 | 若不能，需换货或走 I2S（有兼容风险） | ❌ 未购 |
@@ -55,9 +55,10 @@ last_updated: 2026-10-15
 | V12 | **删掉提示词里的"示例对话"后，0.6B 能否不再照抄、按规则回应** | 用 `board-pkg/prompts/system-prompt-short.txt`（903 B，无示例）复跑同 4 句，对比原 3022 B 提示词 | ❌ **PC 测试否定**（2026-10-17）：短提示词不再抄示例，但**多轮仍复读**；`我是物业` → 回声；`我是他妈` 仍会采信身份。见 V13 |
 | V13 | **换 1.7B / 调解码参数能否修好"多轮复读"** | PC（WSL+4060）跑 Qwen3-1.7B，v5 提示词，单轮/多轮、greedy/sample 对比 | ❌ **多轮仍崩**（2026-10-17）：1.7B 单轮 5/6 合格，但**多轮第 1 轮后永久复读**"这个我不方便说"；`rep_penalty=1.3` 可破循环但答案变成"您好，请进"等错误内容。**结论：带历史的 REPL 结构不适合 0.6B/1.7B** |
 | V14 | **"规则优先 + 每轮无状态调用 LLM"能否让回答全部干净** | PC 原型：`privilege.detect` 先行；LLM 每轮 fresh context，只做 ASK/ACK 固定话术 | ✅ **PC 8/8 通过**（2026-10-17，0.6B）：开门/身份/隐私走规则固定话术；`?`/`你好` 走 ASK；`快递`/`约吃饭` 走 ACK。见 `docs/data/pc-model-tests.md`。**待上板验证延迟与集成（N-1/N-2）** |
-| V15 | **烧 JP46 官方镜像后，Jetson 上 OpenCV 到底是什么版本、能不能直接跑人脸** | 烧完跑 `python3 -c "import cv2; print(cv2.__version__, hasattr(cv2,'dnn'), hasattr(cv2,'FaceDetectorYN'))"`；再试 `cv2.FaceDetectorYN` 与 `cv2.cuda.getCudaEnabledDeviceCount()` | ❌ **未验证**（2026-10-20 提出）：预期 **4.1.1**（有 `dnn`、无 YuNet、可能无 CUDA）。若确如此，D2 要么改成"用 4.1.1 的 dnn 跑别的检测模型"，要么在 32G 卡上自编 CUDA 版 OpenCV 4.5+（**这次有空间了**） |
-| V16 | **重烧后的首启向导能否在串口里一次走完（不断电、APP 分区扩到 28G）** | 串口连好再上电，按 `docs/04` §2.0 的顺序走；走完 `df -h /` 看是否 ≈28G，`login:` 能进 | ❌ **待验证**（2026-10-22 重烧后）：上次失败纯属**通道选错 + 中途拔电**（E-29/E-30），与镜像无关；这次只要"先串口后上电"就应该一次过 |
-| V17 | **PC 仿真的 `vision/` 代码能否原样跑在 Jetson（Python 3.6 / OpenCV 4.5.4）** | ① `vision/tests/test_py36_compat.py` 已按 3.6 语法静态校验 ② 上板后 `python3 -m vision.run_tests`（该目录也要拷过去）③ `vision_selftest.py` 看 YuNet/SFace 是否加载 | 🟡 **静态已过**（2026-10-23）：`ast.parse(feature_version=(3,6))` 全绿、无 dataclasses/未来注解。**动态仍未验证**（等 TF 卡） |
+| V15 | 当前Jetson视觉运行时基线 | 读取版本、API与设备计数 | ✅ 已测：Python3.6.9/OpenCV4.1.1，dnn=True，YuNet/SFace=False，CUDA设备0；环境事实见02 |
+| V16 | 历史重刷首启向导 | 原卡/镜像首启过程 | 历史项；当前U盘且SSH正常，本轮未复验OEM向导，不再是当前阻塞 |
+| V17 | 现有视觉代码板端兼容 | 原生Python3.6及实际摄像头 | ✅ 降级路径动态通过；63项测试通过，诊断脚本编译并实跑。完整YuNet/SFace未验收 |
+| V18 | 一人一次到访可靠性 | 嵌套框/相邻双人/遮挡重入 | 🔴 待解决：同帧生产2事件、探针1事件；额外112px框形成独立轨道。不是同轨重发，不直接宣布确定误检 |
 | V18 | **PC 上的单帧耗时能不能外推到 Jetson** | 同一段 `vision_selftest.py --benchmark` 在两边各跑 30 帧，比 p50/p95 | ❌ **不能外推**：PC 上 Haar p50 **10.6 ms**（x86）与 Jetson CPU 性能差一个量级；**必须上板实测**，别拿 PC 数字写答辩 |
 
 ### 2.1 实测暴露的两个问题（**2026-10-15**）
@@ -126,7 +127,7 @@ robot: 您好，我是您的助手。请问您是想了解王先生的家吗？�
 
 | 数据 | 采集方式 | 目标文件 | 状态 |
 | :--- | :--- | :--- | :--- |
-| 人脸检测+识别单帧耗时 | 打时间戳取平均 | `docs/data/latency.csv` | ❌ 待测（V1 未做） |
+| 人脸检测+识别单帧耗时 | 分阶段计时并注明后端 | docs/data/jetson-2026-10-31-acceptance.json | 🟡 Haar检测基线已采；完整身份识别耗时未测，不使用检测耗时代替 |
 | 识别成功率（正脸/侧脸/逆光） | 自拍 20 张测 | `docs/data/accuracy.csv` | ❌ 待测 |
 | **LLM tokens/s / 首字延迟** | RKLLM 日志 | `docs/data/latency.csv` | ✅ **已采集**（2026-10-15）：Generate **31.65 tok/s**、Prefill 198.46、峰值内存 977.87MB |
 | 各节点功耗 | 功率计（没有就写理论值+说明） | `docs/data/power.csv` | ❌ 待测 |

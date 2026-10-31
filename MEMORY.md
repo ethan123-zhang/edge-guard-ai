@@ -1,159 +1,75 @@
 ---
 type: index
-topic: 哨兵管家 记忆库索引
-last_updated: 2026-10-22
+topic: 哨兵管家记忆库索引
+last_updated: 2026-10-31
 ---
 
-# MEMORY.md — 哨兵管家 项目记忆索引
+# 哨兵管家：当前状态与记忆入口
 
-> **唯一入口。** 本文件只做索引，不堆正文；正文在 `memory/` 子文件。
-> 读写前先读 `memory/00-maintenance-rule.md`（规则源）。
+先读memory/00-maintenance-rule.md。本页只保留状态摘要与指针；项目进度在本库，通用知识正文在aiVault。
 
----
+## 当前状态（2026-10-31已验证）
 
-## 📍 当前状态板
+| 项 | 当前结论 |
+| --- | --- |
+| 当前范围 | Jetson单板；暂不联调鲁班猫5 |
+| 存储与登录 | 用户已改用U盘，实测根分区/dev/sda1 ext4；SSH登录通过。旧TF卡损坏为历史问题，不再是当前阻塞 |
+| 环境 | Ubuntu18.04.6 / 内核4.9.299-tegra / Python3.6.9 / OpenCV4.1.1；详见memory/02 |
+| 视觉能力 | 两档摄像头采集通过，Haar样例与真人检测通过；原主循环生成1条合规本地事件 |
+| 可靠性 | 同帧正脸40/40帧检出；生产设置2事件、探针1事件，额外小框形成第二轨道，需处理可靠去重/疑似嵌套误检 |
+| 完整识别V1 | 未通过：缺YuNet/SFace API与目标模型，未注册熟人；Haar+none不能替代身份识别 |
+| 测试 | 修复测试自身的ast兼容问题后，Jetson原生Python3.6下63项全部通过；诊断脚本已编译并实跑 |
+| 其他板卡 | 鲁班猫5等保留历史进度，本轮未重新核验；不得把旧LLM/语音记录当本轮联调结论 |
+| 下一步 | 优先约束额外检测框/轨道，验收单人、相邻双人、遮挡重入；随后独立规划模型与OpenCV兼容方案 |
+| 当前续接 | PROGRESS.md → 最新会话交接 → docs/Jetson事件链路诊断-2026-10-31.md |
 
-| 项 | 状态 |
-| :--- | :--- |
-| **阶段** | **视觉节点 PC 仿真已跑通（10-23）**：`vision/` 9 模块 + **63 测试全绿**，`face_event` 已经 WebSocket 写进 SQLite；`dialog/state_machine.py` 仍未写 |
-| **代码** | ✅ **`vision/` 可用**：config/camera/detector/recognizer/gallery/tracker/events/ws_protocol/ws_client/service + 63 测试（含 Python 3.6 语法闸门）；🟡 `dialog/` 3 模块 + 46 测试，`state_machine.py` / `main.py` 未写；`master/` 未开始 |
-| **模型转换** | ✅ **已完成**：`Qwen3-0.6B_W8A8_RK3588.rkllm`（889.8MB）**仅用 33.6 秒**（RTX 4060 加速） |
-| **两个死亡点** | ✅ **V2 已通过**（板端可对话）；✅ **人设注入已板端验证**（2026-10-17 18:21，**仅单轮**；多轮会复读，见 V12/V13）；🟡 **V1 受阻暂停**（Jetson 环境不支持） |
-| **阻塞项** | ① 麦克风未购（原有不可用） ② ~~V1 解冻需先问亚博~~ → ✅ **已解决（10-20）** ③ 🔴 **TF 卡物理损坏（`mmcblk1` 持续 `Data CRC error` / `-84`），必须换卡**，见 E-46 ④ ✅ 内核/模块错配**已解决（10-23）**，WiFi 驱动可用 ⑤ 🟡 **视觉模型未下载**（YuNet 230KB + SFace 37MB）：本机网络策略对 github/pypi/hf **全 403**，只能由用户浏览器下 → 现在跑的是 **Haar + 无识别** 降级档，见 E-51 |
-| **当前主线** | 🟢 **鲁班猫5（RK3588）+ 0.6B**，架构改为「规则前置 + 每轮无状态」；V1 暂时搁置 |
-| **新发现（重要）** | ❌ **带历史的多轮 REPL 会让 0.6B/1.7B 复读**；换模型/改提示词都无效（V12/V13）。✅ **规则 + 无状态调用**在 PC 上 **0.6B 8/8 干净**（V14）。详见 `docs/data/pc-model-tests.md` |
-| **Jetson 镜像（10-20 / 10-23 定版）** | **eMMC = L4T 32.7.3 / JetPack 4.6.3（内核 `4.9.299-tegra`，2022-11-22 编译）** —— 串口挂 eMMC 后 `strings boot/Image` 实测。⚠️ **官方没有 32.7.3 的 SD 镜像**（32.7.1/32.7.3 都是 4.9.253，32.7.3 只发 BSP）。手上 `jetson-nano-jp46-sd-card-image.zip`（R32.6.1，`sd-blob-b01.img` 12.76G）配 eMMC 会**必然错配**，要补模块包。亚博出厂镜像 `JetsonNano_ros_yolo26.zip`（29.3G）/`jetson_nano_b01_TF_20250324.zip`（29.9G）解压 **58G img** → 需 128G 卡 |
-| **性能警告** | ⚠️ 旧方案 824 token 提示词常驻 → generate **31.65 → ~18.6 tok/s（↓43%）**。新方案窄提示约 80–100 token，但**每轮要重 prefill**，需实测（E-25/E-28） |
-| **Jetson 首启（10-21/22）** | ✅ **已解决（10-22 晚，离线改卡）**：真因是 JP46 把 **`default.target` 指向 `nv-oem-config.target`**，而 `nv-oem-config-debconf@` 是**模板单元**，tty1 与 ttyGS0 **各跑一个向导** → 抢 `debconf` 锁 → 后到者退出、先到者在看不见的 tty1 上 `no limit` 干等。**所以重烧/换镜像全无效**。用 `scripts/jetson-offline-unlock.ps1`（读卡器→usbipd→WSL2→改 ext4）建账号 + 屏蔽向导 + 放开串口 getty，一次解决。详见 `docs/04` §2.0 |
-| **Jetson 现状（10-23 收尾）** | ✅ **内核/模块错配已解决**：往 TF 根分区装了 `lib/modules/4.9.299-tegra`（675 文件/75.2 MB，来自 32.7.3 BSP）→ `modprobe rtl8822ce` 无报错、`wlan0` 出现。🔴 **但 TF 卡物理损坏**（`error -84` + `Data CRC`，报错扇区从 21.6M 退到 4.3M）→ **必须换卡**。另：micro-USB gadget 热重启后半死（能枚举但 `Write` 报"信号灯超时"），当前只能靠 HDMI+键盘。 |
-| **Jetson 基线（10-23 实测）** | 板型 = **Jetson Nano B01（官方版，不是 SUB）** · **eMMC = L4T 32.7.3 / JP4.6.3，内核 `4.9.299-tegra`；eMMC 无系统（只有 `boot/ media/ root/ var/ + README.txt` 空壳）** · TF 根分区 = L4T R32.6.1 / Ubuntu 18.04.5 / 模块 `4.9.253`（已补 `4.9.299`）· **`mmcblk0`=14.7G eMMC（引导），`mmcblk1`=TF（根）** · **`boot/extlinux/extlinux.conf` 的 `FDT` = `kernel_...-b00-user-custom.dtb`（237290）—— 这份 dtb 决定 SD 认不认，换成官方 b00(237113) 就没有 `mmcblk1`**（E-40）· OpenCV 4.1.1（`dnn=True`/`YuNet=False`）· CUDA 10.2 · 内存 3963MB |
-| **下一步** | ① 🟡 **下视觉模型**（用户浏览器，`scripts\fetch_face_models.ps1` 或按 `docs/07` §4）→ 切 YuNet/SFace，PC 上把「熟人识别」这一段也验完 ② 🔴 **换 TF 卡**（32GB 起走 B 方案；想要亚博 ROS/YOLO 现成环境则 **128GB**） ③ 烧 `firmware/sd-blob-b01.img`（Etcher 开 verify），首启**不插 micro-USB**、向导选**最大分区**（E-34） ④ 网线直连 PC（`192.168.137.1`）补 `4.9.299` 模块（E-45） ⑤ 板上跑 `scripts/vision_selftest.py` **答 V1**、`enroll_faces.py` 注册熟人、`--profile board` 直连鲁班猫5（`docs/07` §6） ⑥ 编 OpenCV 4.5.4 → ⑦ 主线：`dialog/state_machine.py` + `main.py` ⑧ 买麦克风 |
-| **交接入口** | **下次开工先读** `memory/session-logs/2026-10-23c-PC视觉仿真.md` §8「接下来该做的」；视觉实现正文 `docs/07-视觉节点与PC仿真.md`；坑位索引 `04-pitfalls-and-risks.md` 的 **E-39~E-51**；流程细节 `docs/04` §2.0 |
+## 项目定位
 
----
+Jetson负责门口视觉，RK3588负责规则、对话与归档。完整目标仍含熟人记忆、越权拒绝和离线可用；本轮仅验收Jetson本地采集、降级检测及事件路径。
 
-## 🎯 项目一句话
+## 记忆主题
 
-大门口 Jetson Nano 做人脸识别（熟人/陌生人 + 到访计数）；家中无人时鲁班猫5（RK3588）
-用**端侧 LLM** 与来人**多轮对话**问明来意、**拒绝越权请求**，结果**推送主人**。
+| 文件 | 内容 |
+| --- | --- |
+| memory/00-maintenance-rule.md | 双库分工与维护纪律 |
+| memory/01-project-map.md | 项目结构及历史阶段 |
+| memory/02-environment.md | 当前环境事实；旧画像按日期区分 |
+| memory/03-design-decisions.md | 既有设计决策指针 |
+| memory/04-pitfalls-and-risks.md | 历史坑位与风险 |
+| memory/05-open-questions.md | 当前未通过与待验证项目 |
+| memory/06-push-and-gitignore.md | Git与隐私数据忽略规则 |
+| memory/07-network.md | 历史拓扑；IP须按现场重新确认 |
 
-**三个核心亮点**：熟人记忆（带历史上下文的问候）· 越权拒绝（**不走 LLM**）· 断网可用。
+## 会话记录与验收证据
 
----
+| 日期 | 文件 | 用途 |
+| --- | --- | --- |
+| 2026-10-31 | memory/session-logs/2026-10-31-Jetson单板验收与事件诊断.md | 本次完整收尾与下一任务卡，优先读取 |
+| 2026-10-31 | docs/Jetson事件链路诊断-2026-10-31.md | 最新同帧诊断与额外轨道结论 |
+| 2026-10-31 | docs/Jetson单板验收-2026-10-31.md | 第一阶段与补充真人测试历史 |
+| 2026-10-31 | docs/data/jetson-2026-10-31-event-diagnosis.json | 最新结构化结论 |
+| 2026-10-31 | docs/data/jetson-2026-10-31-acceptance.json | 第一阶段数据及后续轮次指针 |
+| 2026-10-23 | memory/session-logs/2026-10-23c-PC视觉仿真.md | PC仿真历史，不替代板端结果 |
+| 2026-10-23 | memory/session-logs/2026-10-23b-eMMC版本实测与内核模块同步.md | 历史内核/模块与TF故障背景 |
+| 2026-10-17 | memory/session-logs/2026-10-17d-PC模型测试与无状态架构.md | 历史LLM架构实验 |
 
-## 📚 记忆文件索引
+其他旧会话按日期保存在memory/session-logs/，不删除；需要时按主题检索。
 
-| # | 主题 | 文件 | 一句话 |
-| :--- | :--- | :--- | :--- |
-| 00 | 记忆维护纪律 | `memory/00-maintenance-rule.md` | **规则源**：双库分工、写入纪律、自检清单 |
-| 01 | 项目地图 | `memory/01-project-map.md` | 仓库定位、当前阶段、目录、硬件状态 |
-| 02 | 环境与硬件事实 | `memory/02-environment.md` | 两块板子的约束、开发环境、网络方案、**转换机 GPU** |
-| 03 | 关键设计决策 | `memory/03-design-decisions.md` | D1~D15 决策与理由（**指针式**） |
-| 04 | 已知坑与风险 | `memory/04-pitfalls-and-risks.md` | P0/P1/P2 坑、流程风险、已识别的设计缺陷 |
-| 05 | 待验证与开放问题 | `memory/05-open-questions.md` | **未验证项看板**：V0~V8、开放问题、待采集数据 |
-| 06 | 推送与 .gitignore 纪律 | `memory/06-push-and-gitignore.md` | 推送命令、忽略规则、自检（**2026-10-15 从 00 拆出**） |
-| 07 | 网络方案事实 | `memory/07-network.md` | 现场拓扑、NAT 约束、**IP 规划值 vs 实测值**、端口（**2026-10-17 从 02 拆出**） |
+## 技术文档真源
 
-### 📓 会话记录（流水账，非规则）
+设计正文：docs/README.md及docs/01至07。原始日志与逐帧元数据：logs/jetson-20261031/（已忽略，不入Git）。模型、人脸特征、截图、数据库和录音均保持忽略。
 
-| 日期 | 文件 | 主题 |
-| :--- | :--- | :--- |
-| 2026-10-23 | `memory/session-logs/2026-10-23c-PC视觉仿真.md` | **等卡期间不空转**：`vision/` 9 模块 + 63 测试落地；`face_event` 实跑经 WS 入 SQLite；双后端降级（Haar/none）；两个新坑（中文路径 imread、jsonl 顶掉 WS）；**上板清单** |
-| 2026-10-23 | `memory/session-logs/2026-10-23b-eMMC版本实测与内核模块同步.md` | **实测定版**：eMMC = L4T 32.7.3 / JP4.6.3（从 `boot/Image` 字符串读，rootfs 是空壳）；官方无配套 SD 镜像；**降内核失败的真因是 dtb**（237290 才认 SD）；最终用 32.7.3 模块树解决错配、`wlan0` 复活；TF 卡物理损坏；经验 8 条 + 下一步 |
-| 2026-10-23 | `memory/session-logs/2026-10-23-板型纠正与镜像选择.md` | **收尾/交接**：型号纠正（**B01 官方版，不是 SUB**）、镜像选择的决策依据（**eMMC 内核与 TF 模块必须同源**）、11 个问题清单、经验 8 条、**下一步五步走** |
-| 2026-10-22 | `memory/session-logs/2026-10-22b-离线修卡与内核错配.md` | **那晚**：debconf 锁真因（`default.target→nv-oem-config.target` + 模板单元双跑）、离线修卡脚本、串口接管、扩分区、**内核/模块错配导致 WiFi 起不来**、卡在没有出口 |
-| 2026-10-21 | `memory/session-logs/2026-10-22-Jetson首启卡死与串口救回.md` | **首启卡死定位**：OEM 向导回退到 micro-USB 串口（EDID 坏）；`plink` 乱码→`putty` GUI；向导拔电→账号没建成；`wsl --mount` 不认可移动盘；**已重烧，首启待做**；含「下次开工第一件事」 |
-| 2026-10-20 | `memory/session-logs/2026-10-20-Jetson B01 官方镜像.md` | **型号纠正 + 官方 JP46 镜像下载校验**；A02/B01 镜像不可混用；下载踩坑（schannel 不通→Python）；烧写步骤见 `docs/04` §2.0 |
-| 2026-10-17 | `memory/session-logs/2026-10-17d-PC模型测试与无状态架构.md` | **夜篇**：PC 实测 0.6B/1.7B，确认多轮复读是结构问题；定「规则 + 状态机 + 每轮无状态」；**含明天上板步骤** |
-| 2026-10-17 | `memory/session-logs/2026-10-17c-板端实测与规则引擎.md` | **收尾篇**：板端人设复验数据、**越权实测失败**（V10）、提示词拖慢 43%（V11）；落地 `dialog/` 第一批代码（46 测试全绿）；**下次任务 N-1~N-6** |
-| 2026-10-17 | `memory/session-logs/2026-10-17-鲁班猫5提示词补丁.md` | **llm_demo 系统提示词补丁**（**上篇**）：发现官方 `rkllm_set_chat_template()` 入口 + thinking 偷 token；补丁本机验证通过；**待上板实测** |
-| 2026-10-17 | `memory/session-logs/2026-10-17b-打包与目录治理.md` | **下篇**：v1/v2 包治理（**v1 是打包输入，勿删**）、PC 侧归整到 `board-pkg/`、**板端 `~/sentinel/` 目录**、传输方式选型 |
-| 2026-10-16 | `memory/session-logs/2026-10-16-Jetson环境受阻.md` | **V1 受阻暂停**：Jetson 缺 `cv2.dnn`/无 CUDA/OpenCV 3.2.0；**转回鲁班猫5**；7 个问题与发现；下次任务清单 |
-| 2026-10-15 | `memory/session-logs/2026-10-15-模型转换与V2验证.md` | **模型转换链路打通 + V2 死亡点通过**（**上篇**：板端与交付物，P6~P12）；**2026-10-17 拆分** |
-| 2026-10-15 | `memory/session-logs/2026-10-15b-模型转换链路.md` | **下篇**：转换链路与环境坑（P1~P5、P11），含复现转换的最短路径 |
+## aiVault知识指针
 
-> **会话记录只记"这次发生了什么"**，结论与事实已归入 `02`/`04`/`05`，不在此重复。
-> **下次开工**：读 `MEMORY.md` 状态板 → 读对应会话记录的「下次任务」节。
+根目录：E:\Document\Ethan'vault\aiVault。
 
----
+- wiki/concepts/Edge_Vision_Pipeline_Validation.md：同帧、分层、时序和旧版Python验收方法。
+- wiki/comparisons/Jetson_Haar_Probe_vs_Production.qmd：本次Haar两路实验、计时边界及解释限制。
+- wiki/concepts/Dual_Store_Knowledge_vs_Project_Memory.md：知识与进度分库约定。
+- wiki/concepts/Edge_LLM_Model_Selection_Latency_Budget.md：既有端侧LLM延迟分析。
 
-## 📄 技术文档索引（正文真源在 `docs/`）
+## 固定协作约定
 
-| 文档 | 内容 |
-| :--- | :--- |
-| `docs/README.md` | 文档导航 + 五条铁律 |
-| `docs/01-总体设计.md` | 范围边界、架构、数据流、技术选型 |
-| `docs/02-接口协议.md` | JSON 消息格式、SQLite 表结构、config.yaml |
-| `docs/03-对话系统设计.md` | 状态机、槽位、**越权拦截**、提示词 |
-| `docs/04-部署与运维.md` | 环境搭建、RKLLM 部署、**故障排查手册** |
-| `docs/05-演示与答辩.md` | **演示脚本**、兜底方案、**答辩问答预案** |
-| `docs/06-实施计划.md` | 4 周计划、里程碑、降级预案 |
-| `docs/07-视觉节点与PC仿真.md` | **视觉节点实现正文**：双后端（YuNet/Haar）、PC 仿真命令、**上板清单**、V1 怎么答 |
-| `docs/AI门卫联调总结-技术版.md` | **2026-10-17 联调技术复盘**：7 个核心问题、实测数据、提示词演进 |
-| `docs/智能门卫值班日记-第一天上岗翻车实录.md` | **同批坑的幽默叙事版**（门卫第一人称，可作答辩素材/科普文） |
+Codex规划与独立验收，DeepSeek限定实现；先定义接口、范围和测试。任务卡保留【输入输出定义】【核心算法逻辑伪代码】【异常与边界条件】【验收测试用例】。
 
-> `docs/` 是设计正文的**唯一真源**。记忆库只放指针与摘要，**不复制正文**。
-
----
-
-## 📤 推送与 .gitignore 纪律（**每次改动必做**）
-
-| 动作 | 命令 / 要求 |
-| :--- | :--- |
-| **推送** | `git add . && git commit -m "..." && git push origin main` |
-| **推送前自检** | `"D:\Program Files\Git\bin\bash.exe" scripts\check_gitignore.sh` |
-| **新建文件夹** | **必须在 `.gitignore` 中加上该目录**，然后跑自检验证 |
-
-> ⚠️ **铁律**：① 改了有用文件**必须推送**，不推送 = 没做完；
-> ② 新增文件夹**必须确认 `.gitignore` 覆盖**，跑脚本验证，别靠记忆。
-> 详见 `memory/00-maintenance-rule.md`。
-
-⚠️ **`.gitignore` 只对未跟踪文件生效** —— 已 `git add` 过的文件要
-`git rm --cached` 才能停止跟踪。**正确顺序是先写规则、再放文件。**
-
----
-
-## 🔗 双库分工（防止知识分叉）
-
-| 库 | 位置 | 存什么 |
-| :--- | :--- | :--- |
-| **aiVault**（知识真源） | `E:\Document\Ethan'vault\aiVault` | 知识正文：机理、原理、对比、实测数据 |
-| **项目记忆库**（本库） | `E:\哨兵管家` | **进度**：做了什么、下一步、踩坑、未验证项 |
-
-**通用约定正文**：`aiVault/wiki/concepts/Dual_Store_Knowledge_vs_Project_Memory.md`
-
-**本项目已沉淀到 aiVault 的知识**：
-- `aiVault/wiki/concepts/Edge_LLM_Model_Selection_Latency_Budget.md`
-  —— 端侧 LLM 选型与语音对话延迟预算（RK3588 实测 tokens/s 对照）
-
----
-
-## ⚙️ 五条铁律（速查）
-
-1. **播报时闭麦** —— 否则系统自问自答
-2. **卡 2 小时就换方案** —— 一个人做，硬啃是最大时间黑洞
-3. **第 3 周冻结功能，第 4 周不改环境**
-4. **所有阈值外置到配置文件** —— 现场改配置比改代码快一百倍
-5. **数据边测边记** —— 最后三天补不出来
-
----
-
-## 📤 推送状态
-
-✅ **本仓库是 git 仓库**：远端 `git@github.com:ethan123-zhang/edge-guard-ai.git`，分支 `main`。
-
-| 库 | 推送命令 |
-| :--- | :--- |
-| **本项目**（进度） | `E:\哨兵管家\pushToGithub.bat` |
-| **aiVault**（知识） | `E:\Document\Ethan'vault\aiVault\push_ai.bat` |
-
-✅ **`.gitignore` 已创建并验证**（2026-10-15，见 `memory/06-push-and-gitignore.md`）：
-模型文件（`.rkllm`/`.onnx`）、数据库、人脸特征、访客截图、音频均已排除。
-**新增目录时仍必须同步加规则并跑自检**，见 `memory/00-maintenance-rule.md` 高危项表。
-
----
-
-## 维护提示
-
-- 每次写入后过一遍 `memory/00` 末尾的**自检清单**
-- **不要把 `docs/` 里的规划项写成"已完成"** —— 本项目设计先行，极易混淆
+设备凭据不保存到记忆或任务卡。Git保存前检查实际范围和隐私规则，不提交无关文件、原始图像或认证信息。

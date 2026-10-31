@@ -1,0 +1,28 @@
+# 2026-10-31 Jetson U盘系统实测档：仅本地采集和 Haar 检测。
+# 运行：python3 scripts/vision_sim.py --profile jetson_local --no-window --no-server
+# 本档不提供身份识别；默认运行20秒后退出。
+camera:
+  source: 0
+  backend: v4l2
+  width: 1280
+  height: 720
+  mirror: false
+  warmup_frames: 5
+
+detection:
+  backend: haar
+  haar_cascade: /usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml
+
+recognition:
+  backend: none
+
+server:
+  enabled: false
+
+output:
+  save_snapshots: false
+
+runtime:
+  max_fps: 2
+  duration_sec: 20
+  headless: true

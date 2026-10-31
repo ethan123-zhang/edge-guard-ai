@@ -1,10 +1,21 @@
 ---
 type: project
 topic: 环境与硬件事实
-last_updated: 2026-10-17
+last_updated: 2026-10-31
 ---
 
 # 环境与硬件事实
+## 当前基线（2026-10-31，覆盖下方历史画像）
+
+- 当前使用U盘根分区 `/dev/sda1 ext4`，SSH登录已验证；故障TF卡不再是当前阻塞。本轮未重新核验完整引导链。
+- Ubuntu18.04.6，内核4.9.299-tegra，L4T release文件为R32.7.3；Python3.6.9，OpenCV4.1.1。
+- dnn存在；FaceDetectorYN与FaceRecognizerSF不存在；CUDA设备计数返回0，不作GPU加速通过结论。
+- 根分区55G，检查时可用约7.3G；内存3963MB，swap6077MB。下一次安装/编译前重新核实空间。
+- 摄像头USB UVC，/dev/video0，05a3:9230；两档采集通过。用户规格表与实测结果分开，见最新验收报告。
+- 板端验收目录 `/home/jetson/sentinel-check-20261031-1939`；`jetson_local`为Haar+none，无网络与截图。
+- 当前证据：`docs/Jetson事件链路诊断-2026-10-31.md`。通用知识方法正文见aiVault。
+
+> 以下段落保留旧日期画像，不代表当前U盘系统；遇到冲突以本节和最新实测报告为准。历史口令不再保留。
 
 > 只记录**事实**与**已确认的约束**。未验证的推测放在 `05-open-questions.md`。
 
@@ -33,7 +44,7 @@ last_updated: 2026-10-17
 >    **引导器 + 内核在 eMMC，根分区在 TF 卡**。这是现状，也是这块板的结构。
 > 3. **亚博 SUB 版是另一条产品线**（U 盘镜像 + EMMC 引导 + `flash.sh -r jetson-nano-devkit-emmc`），
 >    **与本板无关，别照 SUB 的教程操作**。
-> 4. 亚博出厂镜像的默认账号是 **`jetson` / `yahboom`**（他们文档原文），与本项目自建的 `jetson` 账号无关。
+> 4. 认证方式由用户提供；口令不写入项目记忆。
 
 > 🟢 **2026-10-20 重大进展：官方镜像已确认可用、已下载**
 > - 型号口径已纠正为 **Jetson Nano B01**；**官方技术员确认**：这块 B01 板**可以直接用 NVIDIA 官方

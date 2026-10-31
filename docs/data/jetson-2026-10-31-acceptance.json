@@ -1,0 +1,783 @@
+{
+  "run_date": "2026-10-31",
+  "started_at": "2026-10-31T19:39:32+08:00",
+  "evidence_saved_at": "2026-10-31T19:54:14+08:00",
+  "scope": "Jetson only; no peer board integration; no identity recognition",
+  "system": {
+    "root": "/dev/sda1 ext4",
+    "python": "3.6.9",
+    "kernel": "4.9.299-tegra",
+    "disk_available_gb_at_start": 7.3
+  },
+  "camera_probes": {
+    "640x480": {
+      "task": "JETSON-PROBE-01",
+      "timestamp_utc": "2026-10-31T11:49:07Z",
+      "status": "ok_no_faces",
+      "exit_code": 0,
+      "success": true,
+      "success_scope": "capture_and_optional_detection_only_not_identity_recognition",
+      "python": "3.6.9",
+      "opencv": "4.1.1",
+      "has_dnn": true,
+      "has_yunet_api": false,
+      "has_sface_api": false,
+      "platform": "Linux-4.9.299-tegra-aarch64-with-Ubuntu-18.04-bionic",
+      "machine": "aarch64",
+      "camera": {
+        "device": 0,
+        "device_arg": "0",
+        "backend": "CAP_V4L2",
+        "opened": true,
+        "requested_width": 640,
+        "requested_height": 480,
+        "requested_resolution": "640x480",
+        "actual_width": 640,
+        "actual_height": 480,
+        "actual_resolution": "640x480",
+        "warmup_requested": 5,
+        "warmup_valid": 5,
+        "warmup_failed": 0,
+        "frames_requested": 30,
+        "valid_frames": 30,
+        "failed_frames": 0
+      },
+      "capture": {
+        "p50_ms": 1.05,
+        "p95_ms": 1.75,
+        "samples": 30,
+        "scope": "有效帧的 cap.read() 耗时；不含预热和失败读取"
+      },
+      "detection": {
+        "backend": "haar",
+        "available": true,
+        "cascade_path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+        "cascade_source": "system",
+        "cascade_candidates": [
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+            "source": "system",
+            "loaded": true,
+            "reason": null
+          }
+        ],
+        "p50_ms": 33.64,
+        "p95_ms": 34.34,
+        "samples": 30,
+        "timing_scope": "有效帧的 cvtColor(BGR2GRAY) + Haar detectMultiScale 耗时",
+        "attempted_frames": 30,
+        "failed_frames": 0,
+        "frames_with_face": 0,
+        "total_faces": 0,
+        "faces_per_frame": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "faces_per_frame_scope": "每个有效帧一项；null 表示该帧检测抛错，不是 0 张脸"
+      },
+      "recognition": {
+        "performed": false,
+        "verified": false,
+        "missing_apis": [
+          "cv2.FaceDetectorYN",
+          "cv2.FaceRecognizerSF"
+        ],
+        "note": "本探针不执行身份识别；采集或检测通过不代表识别通过。"
+      },
+      "errors": [],
+      "warnings": [
+        "cv2.data.haarcascades 不可用，继续尝试系统 Haar 路径",
+        "所有有效帧均未检出人脸；这不是错误，也不等于身份识别验证，Haar 对正脸/光照要求较高"
+      ],
+      "notes": [
+        "本探针不保存、不输出图像或人名，不读取人脸库。",
+        "无人脸不是错误，也不等于身份识别验证。",
+        "Haar 仅检测正面人脸，对光照、姿态和遮挡敏感。",
+        "无 GPU 假设；本探针只使用 CPU 上的 OpenCV。"
+      ]
+    },
+    "1280x720": {
+      "task": "JETSON-PROBE-01",
+      "timestamp_utc": "2026-10-31T11:49:11Z",
+      "status": "ok_no_faces",
+      "exit_code": 0,
+      "success": true,
+      "success_scope": "capture_and_optional_detection_only_not_identity_recognition",
+      "python": "3.6.9",
+      "opencv": "4.1.1",
+      "has_dnn": true,
+      "has_yunet_api": false,
+      "has_sface_api": false,
+      "platform": "Linux-4.9.299-tegra-aarch64-with-Ubuntu-18.04-bionic",
+      "machine": "aarch64",
+      "camera": {
+        "device": 0,
+        "device_arg": "0",
+        "backend": "CAP_V4L2",
+        "opened": true,
+        "requested_width": 1280,
+        "requested_height": 720,
+        "requested_resolution": "1280x720",
+        "actual_width": 1280,
+        "actual_height": 720,
+        "actual_resolution": "1280x720",
+        "warmup_requested": 5,
+        "warmup_valid": 5,
+        "warmup_failed": 0,
+        "frames_requested": 30,
+        "valid_frames": 30,
+        "failed_frames": 0
+      },
+      "capture": {
+        "p50_ms": 9.43,
+        "p95_ms": 15.43,
+        "samples": 30,
+        "scope": "有效帧的 cap.read() 耗时；不含预热和失败读取"
+      },
+      "detection": {
+        "backend": "haar",
+        "available": true,
+        "cascade_path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+        "cascade_source": "system",
+        "cascade_candidates": [
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+            "source": "system",
+            "loaded": true,
+            "reason": null
+          }
+        ],
+        "p50_ms": 90.59,
+        "p95_ms": 93.9,
+        "samples": 30,
+        "timing_scope": "有效帧的 cvtColor(BGR2GRAY) + Haar detectMultiScale 耗时",
+        "attempted_frames": 30,
+        "failed_frames": 0,
+        "frames_with_face": 0,
+        "total_faces": 0,
+        "faces_per_frame": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "faces_per_frame_scope": "每个有效帧一项；null 表示该帧检测抛错，不是 0 张脸"
+      },
+      "recognition": {
+        "performed": false,
+        "verified": false,
+        "missing_apis": [
+          "cv2.FaceDetectorYN",
+          "cv2.FaceRecognizerSF"
+        ],
+        "note": "本探针不执行身份识别；采集或检测通过不代表识别通过。"
+      },
+      "errors": [],
+      "warnings": [
+        "cv2.data.haarcascades 不可用，继续尝试系统 Haar 路径",
+        "所有有效帧均未检出人脸；这不是错误，也不等于身份识别验证，Haar 对正脸/光照要求较高"
+      ],
+      "notes": [
+        "本探针不保存、不输出图像或人名，不读取人脸库。",
+        "无人脸不是错误，也不等于身份识别验证。",
+        "Haar 仅检测正面人脸，对光照、姿态和遮挡敏感。",
+        "无 GPU 假设；本探针只使用 CPU 上的 OpenCV。"
+      ]
+    }
+  },
+  "bad_device": {
+    "task": "JETSON-PROBE-01",
+    "timestamp_utc": "2026-10-31T11:49:49Z",
+    "status": "camera_open_failed",
+    "exit_code": 1,
+    "success": false,
+    "success_scope": "capture_and_optional_detection_only_not_identity_recognition",
+    "python": "3.6.9",
+    "opencv": "4.1.1",
+    "has_dnn": true,
+    "has_yunet_api": false,
+    "has_sface_api": false,
+    "platform": "Linux-4.9.299-tegra-aarch64-with-Ubuntu-18.04-bionic",
+    "machine": "aarch64",
+    "camera": {
+      "device": "/dev/video999",
+      "device_arg": "/dev/video999",
+      "backend": "CAP_V4L2",
+      "opened": false,
+      "requested_width": 1280,
+      "requested_height": 720,
+      "requested_resolution": "1280x720",
+      "actual_width": null,
+      "actual_height": null,
+      "actual_resolution": null,
+      "warmup_requested": 5,
+      "warmup_valid": 0,
+      "warmup_failed": 0,
+      "frames_requested": 3,
+      "valid_frames": 0,
+      "failed_frames": 0
+    },
+    "capture": {
+      "p50_ms": null,
+      "p95_ms": null,
+      "samples": 0,
+      "scope": "有效帧的 cap.read() 耗时；不含预热和失败读取"
+    },
+    "detection": {
+      "backend": "haar",
+      "available": true,
+      "cascade_path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+      "cascade_source": "system",
+      "cascade_candidates": [
+        {
+          "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+          "source": "system",
+          "loaded": true,
+          "reason": null
+        }
+      ],
+      "p50_ms": null,
+      "p95_ms": null,
+      "samples": 0,
+      "timing_scope": "有效帧的 cvtColor(BGR2GRAY) + Haar detectMultiScale 耗时",
+      "attempted_frames": 0,
+      "failed_frames": 0,
+      "frames_with_face": 0,
+      "total_faces": 0,
+      "faces_per_frame": [],
+      "faces_per_frame_scope": "每个有效帧一项；null 表示该帧检测抛错，不是 0 张脸"
+    },
+    "recognition": {
+      "performed": false,
+      "verified": false,
+      "missing_apis": [
+        "cv2.FaceDetectorYN",
+        "cv2.FaceRecognizerSF"
+      ],
+      "note": "本探针不执行身份识别；采集或检测通过不代表识别通过。"
+    },
+    "errors": [
+      {
+        "stage": "camera_open",
+        "frame_index": null,
+        "type": "ProbeError",
+        "message": "摄像头打不开：device='/dev/video999' backend=CAP_V4L2"
+      }
+    ],
+    "warnings": [
+      "cv2.data.haarcascades 不可用，继续尝试系统 Haar 路径"
+    ],
+    "notes": [
+      "本探针不保存、不输出图像或人名，不读取人脸库。",
+      "无人脸不是错误，也不等于身份识别验证。",
+      "Haar 仅检测正面人脸，对光照、姿态和遮挡敏感。",
+      "无 GPU 假设；本探针只使用 CPU 上的 OpenCV。"
+    ]
+  },
+  "boundary_exit_codes": {
+    "bad_device": 1,
+    "frames_zero": 2,
+    "json_path_directory": 3
+  },
+  "existing_selftest": {
+    "ts": 1793447262265,
+    "profile": "localcheck",
+    "env": {
+      "python": "3.6.9",
+      "platform": "Linux-4.9.299-tegra-aarch64-with-Ubuntu-18.04-bionic",
+      "machine": "aarch64",
+      "cv2": "4.1.1",
+      "has_dnn": true,
+      "has_yunet_api": false,
+      "has_sface_api": false
+    },
+    "models": {
+      "yunet": {
+        "path": "/home/jetson/sentinel-check-20261031-1939/vision/models/face_detection_yunet_2023mar.onnx",
+        "exists": false,
+        "size": 0
+      },
+      "sface": {
+        "path": "/home/jetson/sentinel-check-20261031-1939/vision/models/face_recognition_sface_2021dec.onnx",
+        "exists": false,
+        "size": 0
+      }
+    },
+    "gallery": {
+      "path": "/home/jetson/sentinel-check-20261031-1939/vision/face_db",
+      "count": 0,
+      "names": {}
+    },
+    "bench": {
+      "frames": 30,
+      "detector": "haar(haarcascade_frontalface_default.xml, min=80px, 无关键点→识别降级)",
+      "recognizer": "none（没有 SFace 模型：所有脸按陌生人上报）",
+      "detect_ms_p50": 216.16,
+      "detect_ms_p95": 236.43,
+      "embed_ms_p50": 0.0,
+      "faces_avg": 0,
+      "frames_with_face": 0
+    }
+  },
+  "sample_face_selftest": {
+    "ts": 1793447452343,
+    "profile": "jetson_local",
+    "env": {
+      "python": "3.6.9",
+      "platform": "Linux-4.9.299-tegra-aarch64-with-Ubuntu-18.04-bionic",
+      "machine": "aarch64",
+      "cv2": "4.1.1",
+      "has_dnn": true,
+      "has_yunet_api": false,
+      "has_sface_api": false
+    },
+    "models": {
+      "yunet": {
+        "path": "/home/jetson/sentinel-check-20261031-1939/vision/models/face_detection_yunet_2023mar.onnx",
+        "exists": false,
+        "size": 0
+      },
+      "sface": {
+        "path": "/home/jetson/sentinel-check-20261031-1939/vision/models/face_recognition_sface_2021dec.onnx",
+        "exists": false,
+        "size": 0
+      }
+    },
+    "gallery": {
+      "path": "/home/jetson/sentinel-check-20261031-1939/vision/face_db",
+      "count": 0,
+      "names": {}
+    },
+    "bench": {
+      "frames": 3,
+      "detector": "haar(haarcascade_frontalface_default.xml, min=80px, 无关键点→识别降级)",
+      "recognizer": "none（没有 SFace 模型：所有脸按陌生人上报）",
+      "detect_ms_p50": 59.72,
+      "detect_ms_p95": 66.28,
+      "embed_ms_p50": 0.01,
+      "faces_avg": 1,
+      "frames_with_face": 3
+    }
+  },
+  "sample_event_validation": {
+    "source": "OpenCV bundled lena.jpg; not a real visitor",
+    "face_event_count": 1,
+    "schema_errors": []
+  },
+  "existing_suite": {
+    "total": 63,
+    "passed": 63,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "interpreter": "Python 3.6.9",
+    "log": "vision-tests-final.log"
+  },
+  "local_pipeline": {
+    "duration_sec": 20.2,
+    "frames": 35,
+    "source": "USB camera",
+    "exit_code": 0,
+    "sink": "null",
+    "snapshots_created": false
+  },
+  "limitations": [
+    "已验证真人检测正例（95/120帧）；单独主循环测试未生成真人事件；未评测准确率",
+    "YuNet/SFace APIs absent in OpenCV 4.1.1; target ONNX models absent in staged workspace",
+    "CUDA device count returned zero; no GPU acceleration acceptance",
+    "No real-known-person enrollment or identity validation"
+  ],
+  "sha256": {
+    "scripts/jetson_vision_probe.py": "e0a37d137dbb23520f12219a1809db4469e87ac7c743ac7a4fd2277652d9ae6c",
+    "vision/config/jetson_local.yaml": "3e2d587cc22b11b4742d26a77ef0d2012c7f1f144bd01f423422d6545d46a9e0",
+    "vision/tests/test_py36_compat.py": "f786aea73be6496313c28dc1929cf4ad6a0e255c82b0ba134b4290fcc935eb25"
+  },
+  "live_after_ready": {
+    "task": "JETSON-PROBE-01",
+    "timestamp_utc": "2026-10-31T11:59:03Z",
+    "status": "ok_no_faces",
+    "exit_code": 0,
+    "success": true,
+    "success_scope": "capture_and_optional_detection_only_not_identity_recognition",
+    "python": "3.6.9",
+    "opencv": "4.1.1",
+    "has_dnn": true,
+    "has_yunet_api": false,
+    "has_sface_api": false,
+    "platform": "Linux-4.9.299-tegra-aarch64-with-Ubuntu-18.04-bionic",
+    "machine": "aarch64",
+    "camera": {
+      "device": 0,
+      "device_arg": "0",
+      "backend": "CAP_V4L2",
+      "opened": true,
+      "requested_width": 640,
+      "requested_height": 480,
+      "requested_resolution": "640x480",
+      "actual_width": 640,
+      "actual_height": 480,
+      "actual_resolution": "640x480",
+      "warmup_requested": 5,
+      "warmup_valid": 5,
+      "warmup_failed": 0,
+      "frames_requested": 30,
+      "valid_frames": 30,
+      "failed_frames": 0
+    },
+    "capture": {
+      "p50_ms": 1.02,
+      "p95_ms": 1.95,
+      "samples": 30,
+      "scope": "有效帧的 cap.read() 耗时；不含预热和失败读取"
+    },
+    "detection": {
+      "backend": "haar",
+      "available": true,
+      "cascade_path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+      "cascade_source": "system",
+      "cascade_candidates": [
+        {
+          "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+          "source": "system",
+          "loaded": true,
+          "reason": null
+        }
+      ],
+      "p50_ms": 33.72,
+      "p95_ms": 34.97,
+      "samples": 30,
+      "timing_scope": "有效帧的 cvtColor(BGR2GRAY) + Haar detectMultiScale 耗时",
+      "attempted_frames": 30,
+      "failed_frames": 0,
+      "frames_with_face": 0,
+      "total_faces": 0,
+      "faces_per_frame": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "faces_per_frame_scope": "每个有效帧一项；null 表示该帧检测抛错，不是 0 张脸"
+    },
+    "recognition": {
+      "performed": false,
+      "verified": false,
+      "missing_apis": [
+        "cv2.FaceDetectorYN",
+        "cv2.FaceRecognizerSF"
+      ],
+      "note": "本探针不执行身份识别；采集或检测通过不代表识别通过。"
+    },
+    "errors": [],
+    "warnings": [
+      "cv2.data.haarcascades 不可用，继续尝试系统 Haar 路径",
+      "所有有效帧均未检出人脸；这不是错误，也不等于身份识别验证，Haar 对正脸/光照要求较高"
+    ],
+    "notes": [
+      "本探针不保存、不输出图像或人名，不读取人脸库。",
+      "无人脸不是错误，也不等于身份识别验证。",
+      "Haar 仅检测正面人脸，对光照、姿态和遮挡敏感。",
+      "无 GPU 假设；本探针只使用 CPU 上的 OpenCV。"
+    ]
+  },
+  "live_face_confirmed": {
+    "task": "JETSON-PROBE-01",
+    "timestamp_utc": "2026-10-31T12:02:30Z",
+    "status": "ok",
+    "exit_code": 0,
+    "success": true,
+    "success_scope": "capture_and_optional_detection_only_not_identity_recognition",
+    "python": "3.6.9",
+    "opencv": "4.1.1",
+    "has_dnn": true,
+    "has_yunet_api": false,
+    "has_sface_api": false,
+    "platform": "Linux-4.9.299-tegra-aarch64-with-Ubuntu-18.04-bionic",
+    "machine": "aarch64",
+    "camera": {
+      "device": 0,
+      "device_arg": "0",
+      "backend": "CAP_V4L2",
+      "opened": true,
+      "requested_width": 640,
+      "requested_height": 480,
+      "requested_resolution": "640x480",
+      "actual_width": 640,
+      "actual_height": 480,
+      "actual_resolution": "640x480",
+      "warmup_requested": 5,
+      "warmup_valid": 5,
+      "warmup_failed": 0,
+      "frames_requested": 120,
+      "valid_frames": 120,
+      "failed_frames": 0
+    },
+    "capture": {
+      "p50_ms": 1.03,
+      "p95_ms": 1.17,
+      "samples": 120,
+      "scope": "有效帧的 cap.read() 耗时；不含预热和失败读取"
+    },
+    "detection": {
+      "backend": "haar",
+      "available": true,
+      "cascade_path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+      "cascade_source": "system",
+      "cascade_candidates": [
+        {
+          "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+          "source": "system",
+          "loaded": true,
+          "reason": null
+        }
+      ],
+      "p50_ms": 135.49,
+      "p95_ms": 148.62,
+      "samples": 120,
+      "timing_scope": "有效帧的 cvtColor(BGR2GRAY) + Haar detectMultiScale 耗时",
+      "attempted_frames": 120,
+      "failed_frames": 0,
+      "frames_with_face": 95,
+      "total_faces": 95,
+      "faces_per_frame": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "faces_per_frame_scope": "每个有效帧一项；null 表示该帧检测抛错，不是 0 张脸"
+    },
+    "recognition": {
+      "performed": false,
+      "verified": false,
+      "missing_apis": [
+        "cv2.FaceDetectorYN",
+        "cv2.FaceRecognizerSF"
+      ],
+      "note": "本探针不执行身份识别；采集或检测通过不代表识别通过。"
+    },
+    "errors": [],
+    "warnings": [
+      "cv2.data.haarcascades 不可用，继续尝试系统 Haar 路径"
+    ],
+    "notes": [
+      "本探针不保存、不输出图像或人名，不读取人脸库。",
+      "无人脸不是错误，也不等于身份识别验证。",
+      "Haar 仅检测正面人脸，对光照、姿态和遮挡敏感。",
+      "无 GPU 假设；本探针只使用 CPU 上的 OpenCV。"
+    ]
+  },
+  "live_pipeline_after_confirmed": {
+    "duration_sec": 10.1,
+    "frames": 15,
+    "events": 0,
+    "dropped": 0,
+    "exit_code": 0,
+    "resolution": "1280x720",
+    "min_face_px": 80,
+    "sink": "jsonl",
+    "snapshots_created": false,
+    "note": "与探针的采集时段、分辨率、最小脸尺寸不同；未定位零事件原因"
+  },
+  "subsequent_event_round": {
+    "report": "docs/Jetson事件链路诊断-2026-10-31.md",
+    "data": "docs/data/jetson-2026-10-31-event-diagnosis.json",
+    "status": "后续原配置真人事件已生成；存在额外小框轨道，可靠去重仍未验收"
+  }
+}

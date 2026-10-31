@@ -1,0 +1,203 @@
+{
+  "started_at": "2026-10-31T20:06:51+08:00",
+  "saved_at": "2026-10-31T20:21:55+0800",
+  "scope": "Jetson local only; no peer-board integration",
+  "camera_user_supplied_spec": {
+    "sensor": "OV2710 1/2.7inch",
+    "pixels": 2000000,
+    "formats": "YUV/MJPG",
+    "max_fps_claimed": 120,
+    "diagonal_fov_deg_claimed": 148,
+    "distortion_percent_claimed": -17,
+    "usb": "2.0",
+    "note": "用户提供的参数表；非本轮实测标定值"
+  },
+  "baseline_pipeline": {
+    "resolution": [
+      1280,
+      720
+    ],
+    "duration_sec": 20.4,
+    "frames": 35,
+    "dropped": 0,
+    "events": 1,
+    "schema_errors": [],
+    "exit_code": 0
+  },
+  "same_frame_640": {
+    "frames_valid": 40,
+    "frames_failed": 0,
+    "actual_frame_size": [
+      640,
+      480
+    ],
+    "elapsed_sec": 22.121,
+    "config": {
+      "profile": "jetson_local",
+      "frames": 40,
+      "width": 640,
+      "height": 480,
+      "camera": {
+        "source": 0,
+        "backend": "v4l2",
+        "width": 640,
+        "height": 480,
+        "mirror": false,
+        "warmup_frames": 5
+      },
+      "detection": {
+        "backend": "haar",
+        "model": "models/face_detection_yunet_2023mar.onnx",
+        "score_threshold": 0.6,
+        "nms_threshold": 0.3,
+        "top_k": 50,
+        "min_face_px": 80,
+        "haar_cascade": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+        "haar_min_neighbors": 5
+      },
+      "tracker": {
+        "confirm_frames": 3,
+        "cooldown_sec": 10.0,
+        "track_ttl_sec": 2.0
+      },
+      "max_fps": 2.0,
+      "frame_interval_sec": 0.5
+    },
+    "detectors": {
+      "probe": {
+        "backend": "haar",
+        "cascade": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+        "equalize": false,
+        "scale_factor": 1.1,
+        "min_neighbors": 5,
+        "min_size": 30
+      },
+      "production": {
+        "backend": "haar",
+        "describe": "haar(haarcascade_frontalface_default.xml, min=80px, 无关键点→识别降级)",
+        "equalize": true,
+        "min_face_px": 80
+      }
+    },
+    "probe": {
+      "face_frames": 1,
+      "events": 0,
+      "first_event_frame": null,
+      "event_track_ids": []
+    },
+    "production": {
+      "face_frames": 0,
+      "events": 0,
+      "first_event_frame": null,
+      "event_track_ids": []
+    }
+  },
+  "same_frame_1280_ready": {
+    "frames_valid": 40,
+    "frames_failed": 0,
+    "actual_frame_size": [
+      1280,
+      720
+    ],
+    "elapsed_sec": 22.715,
+    "config": {
+      "profile": "jetson_local",
+      "frames": 40,
+      "width": 1280,
+      "height": 720,
+      "camera": {
+        "source": 0,
+        "backend": "v4l2",
+        "width": 1280,
+        "height": 720,
+        "mirror": false,
+        "warmup_frames": 5
+      },
+      "detection": {
+        "backend": "haar",
+        "model": "models/face_detection_yunet_2023mar.onnx",
+        "score_threshold": 0.6,
+        "nms_threshold": 0.3,
+        "top_k": 50,
+        "min_face_px": 80,
+        "haar_cascade": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+        "haar_min_neighbors": 5
+      },
+      "tracker": {
+        "confirm_frames": 3,
+        "cooldown_sec": 10.0,
+        "track_ttl_sec": 2.0
+      },
+      "max_fps": 2.0,
+      "frame_interval_sec": 0.5
+    },
+    "detectors": {
+      "probe": {
+        "backend": "haar",
+        "cascade": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+        "equalize": false,
+        "scale_factor": 1.1,
+        "min_neighbors": 5,
+        "min_size": 30
+      },
+      "production": {
+        "backend": "haar",
+        "describe": "haar(haarcascade_frontalface_default.xml, min=80px, 无关键点→识别降级)",
+        "equalize": true,
+        "min_face_px": 80
+      }
+    },
+    "probe": {
+      "face_frames": 40,
+      "events": 1,
+      "first_event_frame": 3,
+      "event_track_ids": [
+        1
+      ]
+    },
+    "production": {
+      "face_frames": 40,
+      "events": 2,
+      "first_event_frame": 3,
+      "event_track_ids": [
+        1,
+        2
+      ]
+    }
+  },
+  "extra_production_event": {
+    "frame": 7,
+    "track_id": 2,
+    "bbox": [
+      510,
+      379,
+      112,
+      112
+    ],
+    "previous_largest_bbox": [
+      492,
+      297,
+      245,
+      245
+    ],
+    "small_box_covered_ratio": 1.0,
+    "interpretation": "额外小框形成独立轨道；疑似嵌套误检，尚无保存图像证据确认"
+  },
+  "tests": {
+    "total": 63,
+    "passed": 63,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "interpreter": "Python3.6.9"
+  },
+  "runtime_algorithm_modified": false,
+  "snapshot_directory_created": false,
+  "limitations": [
+    "历史零事件窗口缺逐帧证据，不能追溯唯一原因",
+    "真人事件生成通过；一人一次到访可靠性未通过",
+    "Haar降级检测不等于熟人身份识别",
+    "两次分辨率测试处于不同取景时段，不能单独归因于分辨率"
+  ],
+  "script_sha256": "db09481b2aa12f03f5df7c1580d859bb593ccd30c083a62d29ab2774d596f951"
+}
