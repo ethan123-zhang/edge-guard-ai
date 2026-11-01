@@ -1,0 +1,58 @@
+{
+  "pc": {
+    "opencv": "5.0.0",
+    "models": {
+      "face_detection_yunet_2023mar.onnx": {
+        "bytes": 232589,
+        "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
+      },
+      "face_recognition_sface_2021dec.onnx": {
+        "bytes": 38696353,
+        "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+      }
+    },
+    "detections": 2,
+    "features": [
+      {
+        "dimensions": 128,
+        "finite": true
+      },
+      {
+        "dimensions": 128,
+        "finite": true
+      }
+    ],
+    "elapsed_sec": 0.20299999999997453,
+    "scope": "PC first public-video frame only; no identity gallery or retained frames/features; board not tested"
+  },
+  "board": {
+    "opencv": "4.1.1",
+    "models": [
+      {
+        "name": "face_detection_yunet_2023mar.onnx",
+        "bytes": 232589,
+        "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+        "loaded": false,
+        "error": "OpenCV 4.1.1 ONNX importer getMatFromTensor assertion: no supported tensor payload",
+        "load_sec": 0.005518719999599853
+      },
+      {
+        "name": "face_recognition_sface_2021dec.onnx",
+        "bytes": 38696353,
+        "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+        "loaded": true,
+        "forward": {
+          "shape": [
+            1,
+            128
+          ],
+          "finite": true,
+          "scope": "unaligned full public frame tensor smoke only; not identity-quality validation"
+        },
+        "load_sec": 3.5682562430010876
+      }
+    ],
+    "scope": "Isolated official model load and unaligned public-frame SFace forward smoke; no identity validation"
+  },
+  "overall_reliability": "not_passed"
+}
