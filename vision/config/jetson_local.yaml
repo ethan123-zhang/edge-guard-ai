@@ -12,6 +12,9 @@ camera:
 detection:
   backend: haar
   haar_cascade: /usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml
+  # 2026-11-01 同帧 20 帧实测：plain 19/20 帧检出，equalized 3/20。
+  # 仅当前场景证据（仰拍/顶灯背景亮），不外推到其他场景。
+  haar_equalize: false
 
 recognition:
   backend: none

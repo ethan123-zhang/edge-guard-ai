@@ -1,0 +1,91 @@
+{
+  "date": "2026-11-01",
+  "scope": "Jetson Haar same-frame nested-box suppression",
+  "code_regression": "passed",
+  "field_reliability": "not_passed",
+  "board_environment": {
+    "python": "3.6.9",
+    "opencv": "4.1.1",
+    "root": "/dev/sda1 ext4"
+  },
+  "tests": {
+    "baseline": 63,
+    "new": 29,
+    "total": 92,
+    "target_native_passed": true,
+    "red": {
+      "failures": 2,
+      "errors": 22
+    }
+  },
+  "historical_replay": {
+    "frames": 40,
+    "raw_events": 2,
+    "filtered_events": 1,
+    "first_event_frame": 3,
+    "suppressed_boxes": 3,
+    "fixture_matches_source": true
+  },
+  "live_rounds": [
+    {
+      "name": "live-stable",
+      "sampling_complete": true,
+      "valid_frames": 40,
+      "failed_reads": 0,
+      "old_detected_frames": 0,
+      "new_detected_frames": 0,
+      "old_events": 0,
+      "new_events": 0,
+      "suppressed": 0,
+      "elapsed_sec": 22.715,
+      "acceptance": "not_passed_no_faces_detected"
+    },
+    {
+      "name": "live-stable-adjusted",
+      "sampling_complete": true,
+      "valid_frames": 40,
+      "failed_reads": 0,
+      "old_detected_frames": 0,
+      "new_detected_frames": 0,
+      "old_events": 0,
+      "new_events": 0,
+      "suppressed": 0,
+      "elapsed_sec": 22.863,
+      "acceptance": "not_passed_no_faces_detected"
+    }
+  ],
+  "hashes": {
+    "vision/detector.py": "d223253ff321c2ce26ad5e52652d7c09ccc7f7466358c7b054edde72419bd004",
+    "vision/tests/test_detector.py": "dfdeaed5ab2607db2bc2326480052d0238b71087616e2be893a35c28de4ec769",
+    "vision/tests/fixtures/haar_nested_trace.json": "d62e49b073b4e60826fb6d6d11f3da6bdb5cf798efdff5df70da683feccc6720",
+    "logs/jetson-20261101/live_nested_probe.py": "0a6f6823837d3891700816eeba6fd67f5f99616ea9bb706d7718c36a94882e30"
+  },
+  "unverified": [
+    "live_adjacent_two_people",
+    "live_occlusion_reentry",
+    "identity_recognition",
+    "long_term_stability"
+  ],
+  "known_limits": [
+    "zero live detections in both old and new paths; cause not diagnosed",
+    "nested geometry cannot establish whether a box is a false positive",
+    "severely nested real faces may be suppressed",
+    "existing tracker votes are cumulative; consecutive-frame semantics unchanged"
+  ],
+  "board_directory": "/home/jetson/sentinel-check-20261101-nested",
+  "privacy": {
+    "saved_images": false,
+    "cross_board_sends": false
+  },
+  "next_step": "verify camera framing and detector input, recover a controlled live positive before reliability acceptance",
+  "sample_positive": {
+    "frames": 3,
+    "detector": "haar(haarcascade_frontalface_default.xml, min=80px, 抑制嵌套小框(面积<=大框50%且覆盖>=90%), 无关键点→识别降级)",
+    "recognizer": "none（没有 SFace 模型：所有脸按陌生人上报）",
+    "detect_ms_p50": 60.09,
+    "detect_ms_p95": 65.68,
+    "embed_ms_p50": 0.01,
+    "faces_avg": 1,
+    "frames_with_face": 3
+  }
+}

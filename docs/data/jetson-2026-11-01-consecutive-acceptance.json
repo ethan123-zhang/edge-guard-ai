@@ -1,0 +1,120 @@
+{
+  "date": "2026-11-01",
+  "scope": "consecutive_confirmation_fix",
+  "board_directory": "/home/jetson/sentinel-check-20261101-consecutive-170927",
+  "environment": {
+    "python": "3.6.9",
+    "opencv": "4.1.1",
+    "process_environment": {
+      "OPENBLAS_CORETYPE": "ARMV8",
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1"
+    }
+  },
+  "tests": {
+    "local_full_passed": 151,
+    "board_full_passed": 151,
+    "tracker_passed": 23,
+    "added_tracker_tests": 10,
+    "original_tracker_regression_failures": 6
+  },
+  "acceptance_checks": [
+    {
+      "case": "head-window",
+      "samples": 28,
+      "expected_event_ms": [
+        31000,
+        31000
+      ],
+      "actual_event_ms": [
+        31000.0,
+        31000.0
+      ],
+      "passed": true,
+      "media_sha256": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38",
+      "cascade_sha256": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0"
+    },
+    {
+      "case": "control-ttl",
+      "samples": 25,
+      "expected_event_ms": [
+        1000,
+        1000,
+        10500,
+        10500
+      ],
+      "actual_event_ms": [
+        1000.0,
+        1000.0,
+        10500.0,
+        10500.0
+      ],
+      "passed": true,
+      "media_sha256": "c7004e05b821d84459146eaa2782525f8b4fba351133c6240481d109774b729c",
+      "cascade_sha256": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0"
+    },
+    {
+      "case": "control-gap",
+      "samples": 6,
+      "expected_event_ms": [
+        2500,
+        2500
+      ],
+      "actual_event_ms": [
+        2500.0,
+        2500.0
+      ],
+      "passed": true,
+      "media_sha256": "12a967711f6958ba92e97d3c0901a3ca6b57f81f7c94d38de2fdc8315e122484",
+      "cascade_sha256": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0"
+    }
+  ],
+  "passed_checks": 3,
+  "failed_checks": 0,
+  "frozen_video_regression_passed": true,
+  "overall_field_reliability_passed": false,
+  "same_media_cascade_and_sample_box_multisets_as_baseline": true,
+  "source_hashes": {
+    "vision/__init__.py": "1608b36b739fbe173cc60b7cae89f7bee6113e4478a632a5c48aceb73bc55256",
+    "vision/camera.py": "3821d093a8dc6d804e4a019534b22904e84d846ad1f81c8cf05d1c04a003b97a",
+    "vision/config/base.yaml": "014959046c7f01008c85ed222dd5779474de0cc77c8d2a2b71275dbd6def65db",
+    "vision/config/board.yaml": "80540b8206f1097b0e9eb20885d85c30f53fac134ce86eb91073d65974ffba8f",
+    "vision/config/jetson_local.yaml": "59457f532e2f6f4f018c490184888c3b5ba7b53ed8108ca0206e10afff1c2c1a",
+    "vision/config/sim.yaml": "70de425c92e277fd89b03af8cd0f1ae36b26f139bc1be75e19a5eda5c7e3d0bd",
+    "vision/config.py": "df2afd25a87ff63f942270783a9979602454d5682df879ff7d231fd5dc6877f6",
+    "vision/detector.py": "297c376264b65288d3361e8ab99d7b7b79b83bc67b0796f6a0f8faa0f50b8281",
+    "vision/events.py": "3c43e7a47c0772f8239dcfe0f086162c587987f73d8f073723fdf51ae7fcf425",
+    "vision/gallery.py": "06fc521dea9ef5664f2e18b4dd6b860400d0770777c395a78f04f005fc389faf",
+    "vision/imageio.py": "7fddda3ff202e7a952aaca4451a34aaa31cc0a5a51e6b43ce858c35c154dc0aa",
+    "vision/recognizer.py": "e30464da556872ce9ca4ed32cf39bfb0a6daf5f9b6bfcd749db01e12e9360e88",
+    "vision/run_tests.py": "d67d1bd3c94e14102b17bdd2c887ec29730e72f4082cfb02bcb5e9e4d959d831",
+    "vision/service.py": "bff23d388f24ed713becf950d6a0a6e409328403e04279c2101572d42d4c17be",
+    "vision/tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "vision/tests/fixtures/haar_nested_trace.json": "d62e49b073b4e60826fb6d6d11f3da6bdb5cf798efdff5df70da683feccc6720",
+    "vision/tests/test_config.py": "15da0f677af15acb288e2a70d698ba897b5472f89dbd7a4afe611fe22d53343a",
+    "vision/tests/test_detector.py": "d56fad15c0a2712a024496c99404dcf0aec5a0f168fb4047a8907dcb96a305ce",
+    "vision/tests/test_events.py": "49dc537a6940187b8416934784f62849850846bbc99e701c1741d11cc25ebf35",
+    "vision/tests/test_gallery.py": "9c4390ee639f966d216203140bec4c6a2e03f27f53aa7c07ca94bfcfd4073f2c",
+    "vision/tests/test_py36_compat.py": "f786aea73be6496313c28dc1929cf4ad6a0e255c82b0ba134b4290fcc935eb25",
+    "vision/tests/test_service.py": "e6fd741256a8143c20faae7a30a3f08e6424ad9c7b60def2baa7222fbf14e9c9",
+    "vision/tests/test_tracker.py": "f65a3d79dc77d1f941966bb0627a4b50c45176ac0f6bed20e27465fd3b0caea4",
+    "vision/tests/test_video_probe.py": "4463c36bc65e2879aeb650a653475e334c34fb82ded3fbdaf131f7e2f0dcba75",
+    "vision/tests/test_ws_protocol.py": "eefb28c4ebe39a477a11e0528531d0499afdcbe058d4ae4eba56e3a33571b434",
+    "vision/tracker.py": "689208588ea431dfd7d99c0f73b198ce45f263d1cc769022f6a7379690a77648",
+    "vision/ws_client.py": "827a94c11adfc11e67016083b6c23c6c1c4263c23d76b0c881f2e00d64ba5564",
+    "vision/ws_protocol.py": "0f8588cf65d79bb81b8e32931a05e2b40e3d34fcb92601f1f3c931d67e6097c1",
+    "scripts/video_pipeline_probe.py": "24830c1ada021813c62581cb5e15989119e59e66f2a02a65dcb05b995a8459fc",
+    "scripts/vision_sim.py": "de27b2af2aacb13adeb3130412e5000e46e9b8a252e4bd52ba3613e05718de54",
+    "scripts/vision_selftest.py": "3680ed41e322875f0cb7e37565da648ffa64afa31a550cb76fab7ef60c06eb58"
+  },
+  "review": {
+    "independent_diff_review_passed": true,
+    "readonly_reviewer_blockers": 0
+  },
+  "limits": [
+    "Artificial blank frames are controlled inputs, not natural occlusion.",
+    "No camera, identity gallery, screenshots, network events or deployed service were used.",
+    "Natural occlusion/reentry, long duration, known-face recognition/cooldown in real scenes and dual-board integration remain unvalidated.",
+    "OpenBLAS ARMV8 selection was process-local; system packages and service environment were unchanged."
+  ]
+}

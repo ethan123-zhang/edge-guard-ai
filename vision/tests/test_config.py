@@ -66,6 +66,31 @@ class TestValidate(unittest.TestCase):
         self.assertIn("confirm_frames", str(ctx.exception))
 
 
+class TestHaarEqualizeFlag(unittest.TestCase):
+    """detection.haar_equalize：默认 True；只允许严格 bool；jetson_local 显式关闭。"""
+
+    def test_default_is_true(self):
+        self.assertIs(config.DEFAULTS["detection"]["haar_equalize"], True)
+        self.assertIs(config.load("sim")["detection"]["haar_equalize"], True)
+
+    def test_jetson_local_disables_equalization(self):
+        cfg = config.load("jetson_local")
+        self.assertIs(cfg["detection"]["haar_equalize"], False)
+
+    def test_missing_key_still_validates(self):
+        cfg = config.load("sim")
+        del cfg["detection"]["haar_equalize"]
+        config.validate(cfg)  # 旧配置缺新键不报错，行为默认 True
+
+    def test_rejects_non_bool_values(self):
+        for bad in ("false", "true", 0, 1, None):
+            cfg = config.load("sim")
+            cfg["detection"]["haar_equalize"] = bad
+            with self.assertRaises(config.ConfigError) as ctx:
+                config.validate(cfg)
+            self.assertIn("detection.haar_equalize", str(ctx.exception))
+
+
 class TestPaths(unittest.TestCase):
     def test_models_and_gallery_live_under_vision(self):
         path = config.resolve_vision("models/x.onnx").replace("\\", "/")

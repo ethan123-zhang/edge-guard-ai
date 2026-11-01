@@ -1,0 +1,236 @@
+{
+  "date": "2026-11-01",
+  "board_directory": "/home/jetson/sentinel-check-20261101-video",
+  "environment": {
+    "python": "3.6.9",
+    "opencv": "4.1.1"
+  },
+  "unit_tests": {
+    "passed": 141
+  },
+  "video_runs": {
+    "head-window": {
+      "ok": true,
+      "samples": 28,
+      "decoded": 529,
+      "stop": "end",
+      "events": 2,
+      "event_media_ms": [
+        31000.0,
+        31000.0
+      ],
+      "kept_hist": {
+        "2": 27,
+        "1": 1
+      },
+      "clock": "explicit_cfr_index_fps",
+      "first_media_ms": 30000.0,
+      "violations": 0,
+      "errors": [],
+      "video_sha": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38",
+      "cascade_sha": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0"
+    },
+    "walking-full": {
+      "ok": true,
+      "samples": 122,
+      "decoded": 732,
+      "stop": "eof",
+      "events": 1,
+      "event_media_ms": [
+        8500.0
+      ],
+      "kept_hist": {
+        "0": 109,
+        "1": 11,
+        "2": 2
+      },
+      "clock": "explicit_cfr_index_fps",
+      "first_media_ms": 0.0,
+      "violations": 0,
+      "errors": [],
+      "video_sha": "91af68da819a9c0caab06c6c21414e6ebdb378ff28fee90e1f937165bc1007c6",
+      "cascade_sha": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0"
+    },
+    "head-full": {
+      "ok": true,
+      "samples": 287,
+      "decoded": 1719,
+      "stop": "eof",
+      "events": 12,
+      "event_media_ms": [
+        1000.0,
+        1000.0,
+        12500.0,
+        12500.0,
+        25000.0,
+        25000.0,
+        62500.0,
+        64500.0,
+        65000.0,
+        129000.0,
+        141500.0,
+        141500.0
+      ],
+      "kept_hist": {
+        "2": 219,
+        "0": 45,
+        "1": 22,
+        "3": 1
+      },
+      "clock": "explicit_cfr_index_fps",
+      "first_media_ms": 0.0,
+      "violations": 0,
+      "errors": [],
+      "video_sha": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38",
+      "cascade_sha": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0"
+    },
+    "control-ttl": {
+      "ok": true,
+      "samples": 25,
+      "decoded": 150,
+      "stop": "eof",
+      "events": 4,
+      "event_media_ms": [
+        1000.0,
+        1000.0,
+        10500.0,
+        10500.0
+      ],
+      "kept_hist": {
+        "2": 18,
+        "0": 7
+      },
+      "clock": "explicit_cfr_index_fps",
+      "first_media_ms": 0.0,
+      "violations": 0,
+      "errors": [],
+      "video_sha": "c7004e05b821d84459146eaa2782525f8b4fba351133c6240481d109774b729c",
+      "cascade_sha": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0"
+    },
+    "control-gap": {
+      "ok": true,
+      "samples": 6,
+      "decoded": 36,
+      "stop": "eof",
+      "events": 2,
+      "event_media_ms": [
+        1500.0,
+        1500.0
+      ],
+      "kept_hist": {
+        "2": 5,
+        "0": 1
+      },
+      "clock": "explicit_cfr_index_fps",
+      "first_media_ms": 0.0,
+      "violations": 0,
+      "errors": [],
+      "video_sha": "12a967711f6958ba92e97d3c0901a3ca6b57f81f7c94d38de2fdc8315e122484",
+      "cascade_sha": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0"
+    }
+  },
+  "media_clock_proofs": {
+    "face-demographics-walking.mp4": {
+      "frames": 732,
+      "first_pts": 0.0,
+      "last_pts": 60.916667,
+      "min_delta": 0.08333299999999966,
+      "max_delta": 0.08333400000000069,
+      "cfr_12_verified": true
+    },
+    "head-pose-face-detection-female-and-male.mp4": {
+      "frames": 1719,
+      "first_pts": 0.0,
+      "last_pts": 143.166667,
+      "min_delta": 0.0833329999999961,
+      "max_delta": 0.08333400000000779,
+      "cfr_12_verified": true
+    },
+    "control-two-faces-ttl.mp4": {
+      "frames": 150,
+      "first_pts": 0.0,
+      "last_pts": 12.416667,
+      "cfr_12_verified": true
+    },
+    "control-confirmation-gap.mp4": {
+      "frames": 36,
+      "first_pts": 0.0,
+      "last_pts": 2.916667,
+      "cfr_12_verified": true
+    }
+  },
+  "acceptance_checks": [
+    {
+      "id": "natural_two_faces_30_44",
+      "kind": "natural_video_window",
+      "expected_event_count": 2,
+      "actual_event_count": 2,
+      "actual_event_media_ms": [
+        31000.0,
+        31000.0
+      ],
+      "passed": true
+    },
+    {
+      "id": "synthetic_short_gap_and_ttl_reentry",
+      "kind": "frozen_public_frame_and_black",
+      "expected_event_media_ms": [
+        1000,
+        1000,
+        10500,
+        10500
+      ],
+      "actual_event_media_ms": [
+        1000.0,
+        1000.0,
+        10500.0,
+        10500.0
+      ],
+      "passed": true
+    },
+    {
+      "id": "synthetic_confirmation_gap",
+      "kind": "frozen_public_frame_and_black",
+      "expected_event_media_ms": [
+        2500,
+        2500
+      ],
+      "actual_event_media_ms": [
+        1500.0,
+        1500.0
+      ],
+      "passed": false
+    }
+  ],
+  "passed_checks": 2,
+  "failed_checks": 1,
+  "sampling_and_protocol_all_valid": true,
+  "overall_reliability_passed": false,
+  "source_hashes": {
+    "scripts/video_pipeline_probe.py": "24830c1ada021813c62581cb5e15989119e59e66f2a02a65dcb05b995a8459fc",
+    "vision/tests/test_video_probe.py": "4463c36bc65e2879aeb650a653475e334c34fb82ded3fbdaf131f7e2f0dcba75",
+    "vision/detector.py": "297c376264b65288d3361e8ab99d7b7b79b83bc67b0796f6a0f8faa0f50b8281",
+    "vision/tracker.py": "5671a8fdf17795461597be5cd3059e2b03b154f7214536dab40df50f591a5fd4",
+    "vision/config.py": "df2afd25a87ff63f942270783a9979602454d5682df879ff7d231fd5dc6877f6",
+    "vision/config/jetson_local.yaml": "59457f532e2f6f4f018c490184888c3b5ba7b53ed8108ca0206e10afff1c2c1a"
+  },
+  "source_materials": [
+    {
+      "file": "face-demographics-walking.mp4",
+      "url": "https://storage.openvinotoolkit.org/data/test_data/videos/face-demographics-walking.mp4"
+    },
+    {
+      "file": "head-pose-face-detection-female-and-male.mp4",
+      "url": "https://storage.openvinotoolkit.org/data/test_data/videos/head-pose-face-detection-female-and-male.mp4"
+    }
+  ],
+  "limits": [
+    "No camera or user participation was required; production code was unchanged in this turn.",
+    "Artificial blank frames are controlled perturbations, not natural occlusion or real-world reentry.",
+    "Walking and full head-pose clips are observational runs without complete per-frame ground truth.",
+    "Whole head-pose event count 12 is not a count of people or visits.",
+    "Decode/analysis exit 0 does not override a failed semantic acceptance check.",
+    "Identity recognition, known-face cooldown, real camera quality, and network output were not tested."
+  ],
+  "next_step": "Use the confirmation-gap video as a failing regression before a scoped tracker fix; retain the TTL and natural two-face positive cases."
+}

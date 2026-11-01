@@ -15,6 +15,12 @@ import numpy as np
 from vision import config
 
 
+# 嵌套小框抑制的固定几何阈值：只修 Haar「大框里又报一个小框」这一种形态，
+# 不是通用 NMS，也不外置成配置项（本轮明确不扩大范围）。
+NESTED_AREA_RATIO = 0.5
+NESTED_COVERAGE_RATIO = 0.9
+
+
 class DetectorUnavailable(RuntimeError):
     """模型/级联文件缺失或加载失败。消息里要给出"下一步该干什么"。"""
 
@@ -57,6 +63,56 @@ class FaceDetection(object):
 
     def __repr__(self):
         return "FaceDetection(bbox=%s, score=%.3f)" % (self.bbox, self.score)
+
+
+def _intersection_area(box_a, box_b):
+    """两个 (x, y, w, h) 的交集面积；不相交返回 0。"""
+    ax, ay, aw, ah = box_a
+    bx, by, bw, bh = box_b
+    inter_w = max(0, min(ax + aw, bx + bw) - max(ax, bx))
+    inter_h = max(0, min(ay + ah, by + bh) - max(ay, by))
+    return inter_w * inter_h
+
+
+def suppress_nested_detections(detections):
+    """压掉同帧里「几乎完全套在已保留大框内」的小框（Haar 常见重复响应）。
+
+    规则固定，不做通用 NMS：
+    - 只考虑有效且正面积的框（w/h <= 0 直接丢弃，避免除零）
+    - 按面积从大到小处理；同面积按坐标排序，保证结果确定
+    - 候选面积 <= 已保留大框面积 * 0.5，且 交集/候选面积 >= 0.9 → 抑制
+    - 返回值是**新列表**、按**输入顺序**排列、元素是**入参原对象**；
+      入参列表和对象都不改
+
+    重复的相同尺寸框不在本轮处理范围；相邻双脸、同尺寸部分重叠、单独的小脸
+    都会被保留。这里只说明几何线索，不断言嵌套框一定是误检。
+    """
+    candidates = []
+    for index, item in enumerate(detections):
+        width, height = item.w, item.h
+        if width <= 0 or height <= 0:
+            continue
+        # (输入序号, 面积, x, y, w, h)：后四项只用于确定性排序
+        candidates.append((index, width * height, item.x, item.y, width, height))
+    candidates.sort(key=lambda entry: (-entry[1], entry[2], entry[3], entry[4], entry[5]))
+
+    kept_indices = set()
+    kept_boxes = []   # (面积, (x, y, w, h))，只含已保留的大框
+    for index, area, x, y, width, height in candidates:
+        box = (x, y, width, height)
+        nested = False
+        for kept_area, kept_box in kept_boxes:
+            if area > kept_area * NESTED_AREA_RATIO:
+                continue
+            coverage = _intersection_area(box, kept_box) / float(area)
+            if coverage >= NESTED_COVERAGE_RATIO:
+                nested = True
+                break
+        if not nested:
+            kept_indices.add(index)
+            kept_boxes.append((area, box))
+
+    return [item for index, item in enumerate(detections) if index in kept_indices]
 
 
 class YunetDetector(object):
@@ -112,7 +168,8 @@ class YunetDetector(object):
 class HaarDetector(object):
     backend = "haar"
 
-    def __init__(self, cascade_path="", min_face_px=80, min_neighbors=5, scale_factor=1.1):
+    def __init__(self, cascade_path="", min_face_px=80, min_neighbors=5, scale_factor=1.1,
+                 equalize=True):
         path = cascade_path or os.path.join(
             cv2.data.haarcascades, "haarcascade_frontalface_default.xml"
         )
@@ -120,6 +177,9 @@ class HaarDetector(object):
         self.min_face_px = int(min_face_px)
         self.min_neighbors = int(min_neighbors)
         self.scale_factor = float(scale_factor)
+        # 由 detection.haar_equalize 选择预处理，避免把单一场景的效果外推到所有环境。
+        # 默认保持 True，向后兼容旧配置。
+        self.equalize = bool(equalize)
         if not os.path.exists(path):
             raise DetectorUnavailable("找不到 Haar 级联文件：%s" % path)
         self._cascade = cv2.CascadeClassifier(path)
@@ -128,7 +188,8 @@ class HaarDetector(object):
 
     def detect(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray = cv2.equalizeHist(gray)
+        if self.equalize:
+            gray = cv2.equalizeHist(gray)
         boxes = self._cascade.detectMultiScale(
             gray,
             scaleFactor=self.scale_factor,
@@ -136,11 +197,13 @@ class HaarDetector(object):
             minSize=(self.min_face_px, self.min_face_px),
             flags=cv2.CASCADE_SCALE_IMAGE,
         )
-        return [FaceDetection(x, y, w, h, 0.99) for (x, y, w, h) in boxes]
+        return suppress_nested_detections(
+            [FaceDetection(x, y, w, h, 0.99) for (x, y, w, h) in boxes]
+        )
 
     def describe(self):
-        return "haar(%s, min=%dpx, 无关键点→识别降级)" % (
-            os.path.basename(self.cascade_path), self.min_face_px
+        return "haar(%s, min=%dpx, equalize=%s, 抑制嵌套小框(面积<=大框50%%且覆盖>=90%%), 无关键点→识别降级)" % (
+            os.path.basename(self.cascade_path), self.min_face_px, self.equalize
         )
 
 
@@ -173,4 +236,5 @@ def create_detector(cfg, log=None):
         cascade_path=det_cfg["haar_cascade"],
         min_face_px=det_cfg["min_face_px"],
         min_neighbors=det_cfg["haar_min_neighbors"],
+        equalize=det_cfg.get("haar_equalize", True),
     )

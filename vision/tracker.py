@@ -1,7 +1,9 @@
 """身份稳定：把"每帧的检测"变成"一次事件"（docs/02 §3.1 的发送时机）。
 
 三件事都是协议硬要求，不是优化：
-1. **连续 N 帧**才算确认（`confirm_frames`，默认 3）—— 避免瞬时误检刷屏
+1. **连续 N 帧**才算确认（`confirm_frames`，默认 3）—— 避免瞬时误检刷屏。
+   只数**当前连续段**：漏检一帧或身份标签切换都会清空旧段重数，
+   而不是把整条轨道的历史命中累加起来。
 2. **同一 face_id 冷却**（`cooldown_sec`，默认 10s）—— 传输层去重
 3. **同一 track 只发一次**（`emitted` 标记）—— 人站在门口不应重复上报
 
@@ -37,6 +39,12 @@ class TrackEvent(object):
 
 
 class _Track(object):
+    """一条空间轨道（由 IoU 匹配维持，TTL 内不换 track_id）。
+
+    `votes` / `meta` **只描述当前连续段**：未匹配或身份标签变化时整段清空。
+    这样漏检前的高置信度、旧姓名、旧票数都不会污染新连续段的事件。
+    """
+
     __slots__ = ("id", "bbox", "first_ts", "last_ts", "votes", "meta", "unk_face_id", "emitted")
 
     def __init__(self, track_id, bbox, frame_ts, unk_face_id):
@@ -44,8 +52,8 @@ class _Track(object):
         self.bbox = tuple(bbox)
         self.first_ts = int(frame_ts)
         self.last_ts = int(frame_ts)
-        self.votes = {}      # 身份标签 -> 出现帧数
-        self.meta = {}       # 身份标签 -> (is_known, name, best_score)
+        self.votes = {}      # 当前连续段: 身份标签 -> 连续命中数（至多一个键）
+        self.meta = {}       # 当前连续段: 身份标签 -> (is_known, name, best_score)
         self.unk_face_id = unk_face_id
         self.emitted = False
 
@@ -118,6 +126,12 @@ class FaceTracker(object):
             track.last_ts = frame_ts
             self._vote(track, face)
 
+        # 本帧没匹配上的旧轨道：清空当前连续段（保留 track_id / 未知身份 ID /
+        # emitted / last_ts 的原有语义），恢复后必须重新连续确认
+        for track in self._tracks:
+            if id(track) not in used_tracks:
+                self._reset_segment(track)
+
         for face in unmatched:
             if id(face) in used_faces:
                 continue
@@ -144,14 +158,26 @@ class FaceTracker(object):
         return candidate
 
     def _vote(self, track, face):
+        """推进当前连续段：同标签连续命中 +1，换标签则整段重来。"""
         label = face.get("face_id") or track.unk_face_id
-        track.votes[label] = track.votes.get(label, 0) + 1
+        if label not in track.votes:
+            # 新连续段：旧段的票数和身份元数据一律作废
+            track.votes = {label: 0}
+            track.meta = {}
+        track.votes[label] += 1
+
         is_known = bool(face.get("face_id"))
         name = face.get("name") if is_known else None
         score = float(face.get("score") or 0.0)
         prev = track.meta.get(label)
         if prev is None or score > prev[2]:
             track.meta[label] = (is_known, name, score)
+
+    @staticmethod
+    def _reset_segment(track):
+        """打断连续段：清空票和该段身份元数据，轨道本身留着。"""
+        track.votes = {}
+        track.meta = {}
 
     def _collect(self, frame_ts):
         events = []

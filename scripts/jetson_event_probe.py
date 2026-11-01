@@ -108,7 +108,7 @@ def run(args):
                       "scale_factor": 1.1, "min_neighbors": 5, "min_size": 30},
             "production": {"backend": production.backend,
                            "describe": production.describe(),
-                           "equalize": production.backend == "haar",
+                           "equalize": bool(getattr(production, "equalize", False)),
                            "min_face_px": min_face_px}},
         "actual_frame_size": None, "frames": [], "frames_valid": 0,
         "frames_failed": 0, "total_events": 0, "probe_total_events": 0,

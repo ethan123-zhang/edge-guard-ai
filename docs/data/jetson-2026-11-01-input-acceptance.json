@@ -1,0 +1,250 @@
+{
+  "date": "2026-11-01",
+  "scope": "Jetson input diagnosis and profile-specific Haar equalization switch",
+  "board_directory": "/home/jetson/sentinel-check-20261101-input",
+  "tests": {
+    "native_python": "3.6.9",
+    "opencv": "4.1.1",
+    "red_total": 52,
+    "red_failures": 6,
+    "red_errors": 4,
+    "green_total": 104,
+    "green_passed": true
+  },
+  "same_frame_baseline": {
+    "requested": {
+      "device": 0,
+      "backend": "v4l2",
+      "resolution": "1280x720",
+      "frames": 20,
+      "period_sec": 1.0
+    },
+    "valid_frames": 20,
+    "failed_frames": 0,
+    "not_attempted": 0,
+    "actual_resolution": "1280x720",
+    "paths": {
+      "plain30": {
+        "measured_frames": 20,
+        "detected_frames": 19,
+        "total_boxes": 19,
+        "failed_frames": 0,
+        "p50_ms": 264.76,
+        "p95_ms": 296.36
+      },
+      "plain80": {
+        "measured_frames": 20,
+        "detected_frames": 19,
+        "total_boxes": 19,
+        "failed_frames": 0,
+        "p50_ms": 98.26,
+        "p95_ms": 114.18
+      },
+      "equalized30": {
+        "measured_frames": 20,
+        "detected_frames": 3,
+        "total_boxes": 3,
+        "failed_frames": 0,
+        "p50_ms": 283.86,
+        "p95_ms": 295.15
+      },
+      "equalized80": {
+        "measured_frames": 20,
+        "detected_frames": 3,
+        "total_boxes": 3,
+        "failed_frames": 0,
+        "p50_ms": 110.52,
+        "p95_ms": 124.14
+      }
+    },
+    "production": {
+      "backend": "haar",
+      "measured_frames": 20,
+      "detected_frames": 3,
+      "total_boxes": 3,
+      "p50_ms": 86.61,
+      "p95_ms": 94.74
+    },
+    "distinct_gray_sha256": 20,
+    "complete": true,
+    "incomplete_reasons": [],
+    "status": "complete",
+    "exit_code": 0
+  },
+  "baseline_tracker_replay": {
+    "plain80": {
+      "events": [
+        {
+          "frame": 4,
+          "track_id": 1,
+          "bbox": [
+            544,
+            295,
+            245,
+            245
+          ]
+        }
+      ],
+      "event_count": 1
+    },
+    "equalized80": {
+      "events": [],
+      "event_count": 0
+    }
+  },
+  "postfix_diagnostic": {
+    "requested": {
+      "device": 0,
+      "backend": "v4l2",
+      "resolution": "1280x720",
+      "frames": 10,
+      "period_sec": 1.0
+    },
+    "valid_frames": 10,
+    "failed_frames": 0,
+    "not_attempted": 0,
+    "actual_resolution": "1280x720",
+    "paths": {
+      "plain30": {
+        "measured_frames": 10,
+        "detected_frames": 10,
+        "total_boxes": 10,
+        "failed_frames": 0,
+        "p50_ms": 335.04,
+        "p95_ms": 355.74
+      },
+      "plain80": {
+        "measured_frames": 10,
+        "detected_frames": 10,
+        "total_boxes": 10,
+        "failed_frames": 0,
+        "p50_ms": 126.15,
+        "p95_ms": 129.86
+      },
+      "equalized30": {
+        "measured_frames": 10,
+        "detected_frames": 10,
+        "total_boxes": 10,
+        "failed_frames": 0,
+        "p50_ms": 361.85,
+        "p95_ms": 372.74
+      },
+      "equalized80": {
+        "measured_frames": 10,
+        "detected_frames": 10,
+        "total_boxes": 10,
+        "failed_frames": 0,
+        "p50_ms": 136.47,
+        "p95_ms": 140.51
+      }
+    },
+    "production": {
+      "backend": "haar",
+      "measured_frames": 10,
+      "detected_frames": 10,
+      "total_boxes": 10,
+      "p50_ms": 99.9,
+      "p95_ms": 102.8
+    },
+    "comparison_reference_path": "plain80",
+    "distinct_gray_sha256": 10,
+    "complete": true,
+    "incomplete_reasons": [],
+    "status": "complete",
+    "exit_code": 0
+  },
+  "main_loop": {
+    "duration_sec": 20.5,
+    "frames": 37,
+    "events": 1,
+    "sent": 1,
+    "failed": 0,
+    "dropped": 0,
+    "event_schema_passed": true,
+    "save_snapshots": false,
+    "server_enabled": false
+  },
+  "occlusion_reentry": {
+    "valid_frames": 60,
+    "failed_frames": 0,
+    "elapsed_sec": 32.817,
+    "expected_events": 2,
+    "actual_events": 3,
+    "passed": false,
+    "events": [
+      {
+        "frame": 6,
+        "relative_sec": 2.405,
+        "track_id": 2,
+        "bbox": [
+          437,
+          291,
+          281,
+          281
+        ],
+        "problems": []
+      },
+      {
+        "frame": 44,
+        "relative_sec": 21.413,
+        "track_id": 6,
+        "bbox": [
+          457,
+          258,
+          308,
+          308
+        ],
+        "problems": []
+      },
+      {
+        "frame": 49,
+        "relative_sec": 23.914,
+        "track_id": 8,
+        "bbox": [
+          485,
+          344,
+          122,
+          122
+        ],
+        "problems": []
+      }
+    ],
+    "observation": "Small boxes on frames 46,47,49 generated track 8 despite missing frame 48; current voting is cumulative."
+  },
+  "consecutive_reset_diagnostic": {
+    "production_event_count": 3,
+    "probe_event_count": 1,
+    "production_changed": false,
+    "limitation": "Probe also removes reentry event; not accepted as a fix."
+  },
+  "hashes": {
+    "vision/detector.py": "297c376264b65288d3361e8ab99d7b7b79b83bc67b0796f6a0f8faa0f50b8281",
+    "vision/config.py": "df2afd25a87ff63f942270783a9979602454d5682df879ff7d231fd5dc6877f6",
+    "vision/config/jetson_local.yaml": "59457f532e2f6f4f018c490184888c3b5ba7b53ed8108ca0206e10afff1c2c1a",
+    "vision/tests/test_detector.py": "d56fad15c0a2712a024496c99404dcf0aec5a0f168fb4047a8907dcb96a305ce",
+    "vision/tests/test_config.py": "15da0f677af15acb288e2a70d698ba897b5472f89dbd7a4afe611fe22d53343a",
+    "scripts/jetson_input_probe.py": "87a7c8151192a3db98dbde5b619094f44c2dece73e3aad559bfbf6e3190a5e9b",
+    "scripts/jetson_event_probe.py": "2290e55c45bb304cc1c06a1495878d3410f08fc73e0fd2c609b2819c311b8819"
+  },
+  "acceptance": {
+    "stable_single_person": "passed_this_short_window",
+    "occlusion_reentry": "failed",
+    "adjacent_two_people": "not_tested",
+    "identity_recognition": "not_tested",
+    "long_term": "not_tested",
+    "overall_reliability": "not_passed"
+  },
+  "limitations": [
+    "Detection-frame proportions are not accuracy.",
+    "Both preprocessing paths detected 10/10 in the later batch; batch differences do not establish a unique cause of earlier zero detections.",
+    "Same-frame suppression does not address small boxes appearing alone across time.",
+    "Strict continuous confirmation and reentry behavior need a separate frozen contract."
+  ],
+  "privacy": {
+    "one_preview_authorized": true,
+    "temporary_preview_deleted": true,
+    "additional_camera_images_saved": false,
+    "cross_board_sends": false
+  },
+  "next_step": "Freeze consecutive-confirmation and reentry semantics; build trace regression checking both spurious events and intended reentry before scoped tracker changes."
+}

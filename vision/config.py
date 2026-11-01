@@ -54,6 +54,7 @@ DEFAULTS = {
         "min_face_px": 80,    # 小于此像素的人脸忽略（远处观众不该触发）
         "haar_cascade": "",   # 空=用 OpenCV 自带的 frontalface_default
         "haar_min_neighbors": 5,
+        "haar_equalize": True,  # Haar 是否做直方图均衡化；jetson_local 显式关
     },
     "recognition": {
         "backend": "auto",    # auto|sface|none
@@ -170,6 +171,9 @@ def validate(cfg):
     _need(str(det["backend"]) in _BACKEND_CHOICES["detection"],
           "detection.backend=%r 不合法，可选 %s"
           % (det["backend"], _BACKEND_CHOICES["detection"]))
+    _need(isinstance(det.get("haar_equalize", True), bool),
+          "detection.haar_equalize 必须是布尔值 true/false，当前 %r"
+          % (det.get("haar_equalize"),))
     _need(0.0 < float(det["score_threshold"]) <= 1.0,
           "detection.score_threshold 必须在 (0, 1] 之间")
     _need(0.0 < float(det["nms_threshold"]) <= 1.0,
