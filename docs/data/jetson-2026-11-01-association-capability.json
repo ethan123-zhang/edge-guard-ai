@@ -1,0 +1,190 @@
+{
+  "schema": "sentinel/association-capability@1",
+  "checked_at": "2026-11-01T20:33:59.469283+08:00",
+  "approved_policy": "Conservative association; first verify capability; retain separate candidates when ambiguous.",
+  "scope": "Read-only inventory in named model roots; no camera, face gallery, image/embedding retention, downloads, installs, production edits, or business events.",
+  "local": {
+    "python": "3.12.14",
+    "executable": "<bundled-test-python>",
+    "model_root": "vision/models",
+    "model_root_exists": true,
+    "model_files": [],
+    "board_pkg_onnx_files": [],
+    "opencv_spec_present": true,
+    "opencv": "5.0.0",
+    "opencv_path": "<project-review-deps>/cv2/__init__.py",
+    "apis": {
+      "FaceDetectorYN": true,
+      "FaceRecognizerSF": true
+    },
+    "existing_public_media": {
+      "exists": true,
+      "sha256": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38"
+    },
+    "scope": "Local configured directories and current test interpreter only; not a whole-machine inventory.",
+    "inference": "not_run_project_models_missing"
+  },
+  "board": {
+    "python": "3.6.9",
+    "executable": "/usr/bin/python3",
+    "opencv": "4.1.1",
+    "opencv_path": "/usr/lib/python3.6/dist-packages/cv2/python-3.6/cv2.cpython-36m-aarch64-linux-gnu.so",
+    "apis": {
+      "FaceDetectorYN": {
+        "present": false,
+        "create_callable": false
+      },
+      "FaceRecognizerSF": {
+        "present": false,
+        "create_callable": false
+      },
+      "FaceDetectorYN_create": {
+        "present": false,
+        "callable": false
+      },
+      "FaceRecognizerSF_create": {
+        "present": false,
+        "callable": false
+      },
+      "ORB_create": {
+        "present": true,
+        "callable": true
+      },
+      "calcOpticalFlowPyrLK": {
+        "present": true,
+        "callable": true
+      },
+      "dnn": {
+        "present": true,
+        "readNetFromONNX": true
+      }
+    },
+    "model_roots": [
+      {
+        "root": "<consecutive-isolation>/vision/models",
+        "exists": false,
+        "files": []
+      },
+      {
+        "root": "<stability-isolation>/vision/models",
+        "exists": false,
+        "files": []
+      },
+      {
+        "root": "/usr/share/opencv4",
+        "exists": true,
+        "files": [
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_russian_plate_number.xml",
+            "bytes": 75482
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_eye.xml",
+            "bytes": 341406
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_licence_plate_rus_16stages.xml",
+            "bytes": 47775
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml",
+            "bytes": 540616
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalcatface_extended.xml",
+            "bytes": 382918
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_alt.xml",
+            "bytes": 676709
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_alt_tree.xml",
+            "bytes": 2689040
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_profileface.xml",
+            "bytes": 828514
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_smile.xml",
+            "bytes": 188506
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_lowerbody.xml",
+            "bytes": 395322
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+            "bytes": 930127
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_lefteye_2splits.xml",
+            "bytes": 195369
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_upperbody.xml",
+            "bytes": 785819
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_righteye_2splits.xml",
+            "bytes": 196170
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_fullbody.xml",
+            "bytes": 476827
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_frontalcatface.xml",
+            "bytes": 411388
+          },
+          {
+            "path": "/usr/share/opencv4/haarcascades/haarcascade_eye_tree_eyeglasses.xml",
+            "bytes": 601661
+          },
+          {
+            "path": "/usr/share/opencv4/lbpcascades/lbpcascade_profileface.xml",
+            "bytes": 47015
+          },
+          {
+            "path": "/usr/share/opencv4/lbpcascades/lbpcascade_silverware.xml",
+            "bytes": 47027
+          },
+          {
+            "path": "/usr/share/opencv4/lbpcascades/lbpcascade_frontalface_improved.xml",
+            "bytes": 54039
+          },
+          {
+            "path": "/usr/share/opencv4/lbpcascades/lbpcascade_frontalface.xml",
+            "bytes": 51856
+          },
+          {
+            "path": "/usr/share/opencv4/lbpcascades/lbpcascade_frontalcatface.xml",
+            "bytes": 138705
+          }
+        ]
+      },
+      {
+        "root": "/usr/share/opencv",
+        "exists": false,
+        "files": []
+      }
+    ],
+    "environment": {
+      "OPENBLAS_CORETYPE": "ARMV8",
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1"
+    },
+    "inference": "not_run_project_api_and_models_missing",
+    "scope": "No camera, identity gallery, frame persistence, model downloads, dependency changes, or service changes."
+  },
+  "result": "existing_yunet_sface_project_path_not_ready",
+  "person_association_quality": "not_tested",
+  "overall_reliability": "not_passed",
+  "production_source_sha256_unchanged": true,
+  "raw_capture_sha256": {
+    "local": "6e2362e2e29f3e31e15977ee00e57db873328e69fbd2e616c0b2ac72eede9d44",
+    "board": "44dd7bef02debd6d70632a322bc2cea272a33a2ce1680ddb83c36b8c980cc645"
+  },
+  "publication": "Device identity and private absolute workspace paths remain only in ignored local captures; published summary uses role labels."
+}
