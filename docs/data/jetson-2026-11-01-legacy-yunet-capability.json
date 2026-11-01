@@ -1,0 +1,432 @@
+{
+  "schema": "sentinel/legacy-yunet-capability@1",
+  "original_model_commit": "c97242ce7f2a554e288b50eabd9f5df957e78801",
+  "original_model_sha256": "50ef07f702a31741ca46a4c0d947773b64143b9362780237bf0d427d6c79bab7",
+  "conversion": {
+    "scope": "experimental schema conversion; ONNX checker9 and PC numeric equivalence only",
+    "changes": [
+      {
+        "node": "MaxPool_5",
+        "removed_default_ceil_mode": 0
+      },
+      {
+        "node": "MaxPool_18",
+        "removed_default_ceil_mode": 0
+      },
+      {
+        "node": "MaxPool_25",
+        "removed_default_ceil_mode": 0
+      },
+      {
+        "node": "MaxPool_32",
+        "removed_default_ceil_mode": 0
+      },
+      {
+        "node": "MaxPool_39",
+        "removed_default_ceil_mode": 0
+      },
+      {
+        "node": "Slice_105",
+        "slice_constants": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      },
+      {
+        "node": "Slice_110",
+        "slice_constants": [
+          [
+            14
+          ],
+          [
+            16
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      },
+      {
+        "node": "Slice_115",
+        "slice_constants": [
+          [
+            16
+          ],
+          [
+            17
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      }
+    ],
+    "sha256": "f664a8d7e393935dc6d6e0823da8f903c84ae816b66a97d7157b9320f9d21b2f",
+    "comparison": [
+      {
+        "frame_index": 0,
+        "max_abs_diff": 0.0,
+        "shapes": [
+          [
+            5875,
+            14
+          ],
+          [
+            5875,
+            2
+          ],
+          [
+            5875,
+            1
+          ]
+        ]
+      },
+      {
+        "frame_index": 120,
+        "max_abs_diff": 0.0,
+        "shapes": [
+          [
+            5875,
+            14
+          ],
+          [
+            5875,
+            2
+          ],
+          [
+            5875,
+            1
+          ]
+        ]
+      },
+      {
+        "frame_index": 720,
+        "max_abs_diff": 0.0,
+        "shapes": [
+          [
+            5875,
+            14
+          ],
+          [
+            5875,
+            2
+          ],
+          [
+            5875,
+            1
+          ]
+        ]
+      },
+      {
+        "frame_index": 1500,
+        "max_abs_diff": 0.0,
+        "shapes": [
+          [
+            5875,
+            14
+          ],
+          [
+            5875,
+            2
+          ],
+          [
+            5875,
+            1
+          ]
+        ]
+      }
+    ]
+  },
+  "board_forward": {
+    "opencv": "4.1.1",
+    "model_sha256": "f664a8d7e393935dc6d6e0823da8f903c84ae816b66a97d7157b9320f9d21b2f",
+    "source_commit": "c97242ce7f2a554e288b50eabd9f5df957e78801",
+    "loaded": true,
+    "load_sec": 0.008020399998713401,
+    "forward": {
+      "names": [
+        "loc",
+        "conf",
+        "iou"
+      ],
+      "shapes": [
+        [
+          5875,
+          14
+        ],
+        [
+          5875,
+          2
+        ],
+        [
+          5875,
+          1
+        ]
+      ],
+      "finite": true,
+      "sec": 0.051634498000566964
+    }
+  },
+  "pc_pipeline": {
+    "opencv": "5.0.0",
+    "scope": "four public-video frames only; side labels are fixture evaluation, not production identity; no frames or vectors retained",
+    "frames": [
+      {
+        "source_frame": 0,
+        "faces": [
+          {
+            "bbox": [
+              512.881,
+              87.428,
+              136.738,
+              134.007
+            ],
+            "landmarks": [
+              572.284,
+              141.81,
+              620.011,
+              140.633,
+              613.624,
+              166.966,
+              576.779,
+              187.343,
+              615.941,
+              186.788
+            ],
+            "score": 0.9987205862998962,
+            "feature_dimensions": 128,
+            "finite": true,
+            "fixture_side": "right",
+            "native_align_mean_abs_pixel_difference": 0.00010629251700680272
+          },
+          {
+            "bbox": [
+              125.074,
+              101.753,
+              129.944,
+              123.981
+            ],
+            "landmarks": [
+              154.566,
+              154.262,
+              192.381,
+              154.537,
+              163.725,
+              178.745,
+              161.136,
+              196.17,
+              191.306,
+              195.989
+            ],
+            "score": 0.9970493912696838,
+            "feature_dimensions": 128,
+            "finite": true,
+            "fixture_side": "left",
+            "native_align_mean_abs_pixel_difference": 0.00018601190476190475
+          }
+        ],
+        "elapsed_sec": 0.09400000000005093
+      },
+      {
+        "source_frame": 120,
+        "faces": [],
+        "elapsed_sec": 0.0
+      },
+      {
+        "source_frame": 720,
+        "faces": [],
+        "elapsed_sec": 0.016000000000076398
+      },
+      {
+        "source_frame": 1500,
+        "faces": [
+          {
+            "bbox": [
+              486.482,
+              93.658,
+              139.495,
+              130.62
+            ],
+            "landmarks": [
+              502.617,
+              142.819,
+              539.544,
+              141.377,
+              502.216,
+              164.455,
+              519.472,
+              189.273,
+              545.209,
+              187.455
+            ],
+            "score": 0.9955027103424072,
+            "feature_dimensions": 128,
+            "finite": true,
+            "fixture_side": "right",
+            "native_align_mean_abs_pixel_difference": 7.971938775510203e-05
+          }
+        ],
+        "elapsed_sec": 0.016000000000076398
+      }
+    ],
+    "similarities": [
+      {
+        "source_frame": 0,
+        "side": "left",
+        "reference_side": "right",
+        "cosine": 0.07447413355112076
+      },
+      {
+        "source_frame": 1500,
+        "side": "right",
+        "reference_side": "right",
+        "cosine": 0.7428807020187378
+      },
+      {
+        "source_frame": 1500,
+        "side": "right",
+        "reference_side": "left",
+        "cosine": 0.07822419703006744
+      }
+    ]
+  },
+  "board_pipeline": {
+    "opencv": "4.1.1",
+    "scope": "four public-video frames only; side labels are fixture evaluation, not production identity; no frames or vectors retained",
+    "frames": [
+      {
+        "source_frame": 0,
+        "faces": [
+          {
+            "bbox": [
+              512.358,
+              87.238,
+              136.81,
+              134.409
+            ],
+            "landmarks": [
+              572.634,
+              141.632,
+              619.62,
+              140.47,
+              614.098,
+              166.851,
+              576.972,
+              187.465,
+              615.422,
+              186.935
+            ],
+            "score": 0.9986036419868469,
+            "feature_dimensions": 128,
+            "finite": true,
+            "fixture_side": "right"
+          },
+          {
+            "bbox": [
+              124.946,
+              101.684,
+              130.074,
+              123.935
+            ],
+            "landmarks": [
+              154.661,
+              154.234,
+              193.039,
+              154.843,
+              164.195,
+              179.089,
+              160.703,
+              196.163,
+              191.092,
+              196.28
+            ],
+            "score": 0.9970110058784485,
+            "feature_dimensions": 128,
+            "finite": true,
+            "fixture_side": "left"
+          }
+        ],
+        "elapsed_sec": 0.39051273000040965
+      },
+      {
+        "source_frame": 120,
+        "faces": [],
+        "elapsed_sec": 0.08341297600054531
+      },
+      {
+        "source_frame": 720,
+        "faces": [],
+        "elapsed_sec": 0.09939919299904432
+      },
+      {
+        "source_frame": 1500,
+        "faces": [
+          {
+            "bbox": [
+              486.425,
+              93.71,
+              139.581,
+              130.432
+            ],
+            "landmarks": [
+              502.663,
+              142.893,
+              539.71,
+              141.384,
+              502.552,
+              164.442,
+              519.694,
+              189.167,
+              545.479,
+              187.3
+            ],
+            "score": 0.9954250454902649,
+            "feature_dimensions": 128,
+            "finite": true,
+            "fixture_side": "right"
+          }
+        ],
+        "elapsed_sec": 0.19162637499903212
+      }
+    ],
+    "similarities": [
+      {
+        "source_frame": 0,
+        "side": "left",
+        "reference_side": "right",
+        "cosine": 0.06795191019773483
+      },
+      {
+        "source_frame": 1500,
+        "side": "right",
+        "reference_side": "right",
+        "cosine": 0.722099781036377
+      },
+      {
+        "source_frame": 1500,
+        "side": "right",
+        "reference_side": "left",
+        "cosine": 0.06532949954271317
+      }
+    ]
+  },
+  "result": "isolated_four_frame_pipeline_executable",
+  "detection_and_association_quality": "not_accepted",
+  "overall_reliability": "not_passed"
+}
