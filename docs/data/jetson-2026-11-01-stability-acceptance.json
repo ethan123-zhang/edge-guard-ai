@@ -1,0 +1,226 @@
+{
+  "schema": "sentinel/offline-replay-stability-acceptance@1",
+  "date": "2026-11-01",
+  "scope": "600sec_wall_clock_artificial_video_replay",
+  "board_directory": "/home/jetson/sentinel-check-20261101-stability-01",
+  "environment": {
+    "python": "3.6.9",
+    "opencv": "4.1.1",
+    "process_environment": {
+      "OPENBLAS_CORETYPE": "ARMV8",
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1"
+    }
+  },
+  "tests": {
+    "local_full_passed": 191,
+    "board_full_passed": 191,
+    "new_stability_tests": 40,
+    "review_regression_red_failures": 5
+  },
+  "checks": {
+    "process_completed": true,
+    "actual_600sec": true,
+    "all_events_protocol_valid": true,
+    "one_process_replayed_at_least_four_complete_clips": true,
+    "two_hz_workload_covered": true,
+    "resources_independently_passed": true,
+    "resource_time_coverage": true
+  },
+  "stress_resource_gate_passed": true,
+  "overall_field_reliability_passed": false,
+  "real_wall_sec": 600.169,
+  "wall_window_sec": 600.088,
+  "external_driver": {
+    "exit_code": 0,
+    "external_wall_sec": 601.2497108890002,
+    "planned_wall_sec": 600
+  },
+  "media_sec": 600.0,
+  "decode": {
+    "decoded_frames_total": 7201,
+    "sampled_frames": 1201,
+    "skipped_frames": 6000,
+    "loops_completed": 4,
+    "eofs": 4,
+    "frames_in_first_loop": 1719,
+    "decoder_opens": 5,
+    "read_ms_total": 35106.009,
+    "read_ms_max": 28.902,
+    "frame_count_check": {
+      "declared": 1719,
+      "first_loop_decoded": 1719,
+      "applicable": true,
+      "equal": true,
+      "note": "循环长度一致性以每圈实测帧数互相比对为准；声明帧数只作警告"
+    }
+  },
+  "events_total": 48,
+  "protocol_violations": 0,
+  "resources": {
+    "warmup_sec": 60,
+    "limits": {
+      "rss_mib": 64,
+      "fd_count": 2,
+      "threads": 4
+    },
+    "snapshot_count": 115,
+    "baseline": {
+      "supported": true,
+      "source": "procfs",
+      "reason": null,
+      "rss_kb": 92448,
+      "rss_mib": 90.28125,
+      "threads": 8,
+      "fd_count": 5,
+      "elapsed_sec": 63.058
+    },
+    "final": {
+      "supported": true,
+      "source": "procfs",
+      "reason": null,
+      "rss_kb": 88616,
+      "rss_mib": 86.539062,
+      "threads": 8,
+      "fd_count": 5,
+      "elapsed_sec": 600.087
+    },
+    "independent_growth": {
+      "rss_mib": -3.7421879999999987,
+      "fd_count": 0,
+      "threads": 0
+    },
+    "peak_after_warmup": {
+      "rss_mib": 90.28125,
+      "fd_count": 5,
+      "threads": 8
+    },
+    "reported_verdict": {
+      "status": "ok",
+      "ok": true,
+      "warmup_sec": 60.0,
+      "baseline": {
+        "supported": true,
+        "source": "procfs",
+        "reason": null,
+        "rss_kb": 92448,
+        "rss_mib": 90.28125,
+        "threads": 8,
+        "fd_count": 5,
+        "elapsed_sec": 63.058
+      },
+      "final": {
+        "supported": true,
+        "source": "procfs",
+        "reason": null,
+        "rss_kb": 88616,
+        "rss_mib": 86.539062,
+        "threads": 8,
+        "fd_count": 5,
+        "elapsed_sec": 600.087
+      },
+      "growth": {
+        "rss_mib": -3.742,
+        "fd": 0.0,
+        "threads": 0.0
+      },
+      "limits": {
+        "rss_growth_mib": 64.0,
+        "fd_growth": 2,
+        "thread_growth": 4
+      },
+      "exceeded": []
+    }
+  },
+  "pacing": {
+    "rate_hz": 2.0,
+    "interval_ms": 500.0,
+    "ticks": 1201,
+    "late_ticks": 930,
+    "late_threshold_ms": 1.0,
+    "late_fraction": 0.774355,
+    "late_ms_total": 1216.124,
+    "late_ms_max": 4.376,
+    "sleep_calls": 1200,
+    "sleep_ms_total": 512447.536,
+    "final_wait_ms": 0.0,
+    "window_sec": 600.088019,
+    "lateness": {
+      "count": 1201,
+      "mean_ms": 1.013,
+      "max_ms": 4.376,
+      "buckets": [
+        {
+          "range": "0-1ms",
+          "count": 271
+        },
+        {
+          "range": "1-2ms",
+          "count": 929
+        },
+        {
+          "range": "2-5ms",
+          "count": 1
+        }
+      ],
+      "percentiles_ms": {
+        "p50": 2.0,
+        "p90": 2.0,
+        "p99": 2.0,
+        "p999": 2.0
+      },
+      "approximation": "分位数由固定毫秒分桶的上界估计，不保留逐帧迟到原始值"
+    },
+    "last_tick": {
+      "tick": 1200,
+      "target_sec": 5365.621159682,
+      "wake_sec": 5365.62221389,
+      "late_ms": 1.0542079999140697,
+      "sleep_ms": 422.266139000385
+    },
+    "note": "按进程内单调墙钟逐 tick 等待；迟到分位数只作调度诊断，不替代资源/业务验收"
+  },
+  "media_sha256": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38",
+  "cascade_sha256": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0",
+  "source_hashes": {
+    "scripts/video_pipeline_probe.py": "24830c1ada021813c62581cb5e15989119e59e66f2a02a65dcb05b995a8459fc",
+    "scripts/video_stability_probe.py": "2bccee2a2077d1a18bcac1772577283ece32c8db91d2de1a7be46e39dbcc3e4c",
+    "scripts/vision_selftest.py": "3680ed41e322875f0cb7e37565da648ffa64afa31a550cb76fab7ef60c06eb58",
+    "scripts/vision_sim.py": "de27b2af2aacb13adeb3130412e5000e46e9b8a252e4bd52ba3613e05718de54",
+    "vision/__init__.py": "1608b36b739fbe173cc60b7cae89f7bee6113e4478a632a5c48aceb73bc55256",
+    "vision/camera.py": "3821d093a8dc6d804e4a019534b22904e84d846ad1f81c8cf05d1c04a003b97a",
+    "vision/config.py": "df2afd25a87ff63f942270783a9979602454d5682df879ff7d231fd5dc6877f6",
+    "vision/config/base.yaml": "014959046c7f01008c85ed222dd5779474de0cc77c8d2a2b71275dbd6def65db",
+    "vision/config/board.yaml": "80540b8206f1097b0e9eb20885d85c30f53fac134ce86eb91073d65974ffba8f",
+    "vision/config/jetson_local.yaml": "59457f532e2f6f4f018c490184888c3b5ba7b53ed8108ca0206e10afff1c2c1a",
+    "vision/config/sim.yaml": "70de425c92e277fd89b03af8cd0f1ae36b26f139bc1be75e19a5eda5c7e3d0bd",
+    "vision/detector.py": "297c376264b65288d3361e8ab99d7b7b79b83bc67b0796f6a0f8faa0f50b8281",
+    "vision/events.py": "3c43e7a47c0772f8239dcfe0f086162c587987f73d8f073723fdf51ae7fcf425",
+    "vision/gallery.py": "06fc521dea9ef5664f2e18b4dd6b860400d0770777c395a78f04f005fc389faf",
+    "vision/imageio.py": "7fddda3ff202e7a952aaca4451a34aaa31cc0a5a51e6b43ce858c35c154dc0aa",
+    "vision/recognizer.py": "e30464da556872ce9ca4ed32cf39bfb0a6daf5f9b6bfcd749db01e12e9360e88",
+    "vision/run_tests.py": "d67d1bd3c94e14102b17bdd2c887ec29730e72f4082cfb02bcb5e9e4d959d831",
+    "vision/service.py": "bff23d388f24ed713becf950d6a0a6e409328403e04279c2101572d42d4c17be",
+    "vision/tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "vision/tests/fixtures/haar_nested_trace.json": "d62e49b073b4e60826fb6d6d11f3da6bdb5cf798efdff5df70da683feccc6720",
+    "vision/tests/test_config.py": "15da0f677af15acb288e2a70d698ba897b5472f89dbd7a4afe611fe22d53343a",
+    "vision/tests/test_detector.py": "d56fad15c0a2712a024496c99404dcf0aec5a0f168fb4047a8907dcb96a305ce",
+    "vision/tests/test_events.py": "49dc537a6940187b8416934784f62849850846bbc99e701c1741d11cc25ebf35",
+    "vision/tests/test_gallery.py": "9c4390ee639f966d216203140bec4c6a2e03f27f53aa7c07ca94bfcfd4073f2c",
+    "vision/tests/test_py36_compat.py": "f786aea73be6496313c28dc1929cf4ad6a0e255c82b0ba134b4290fcc935eb25",
+    "vision/tests/test_service.py": "e6fd741256a8143c20faae7a30a3f08e6424ad9c7b60def2baa7222fbf14e9c9",
+    "vision/tests/test_tracker.py": "f65a3d79dc77d1f941966bb0627a4b50c45176ac0f6bed20e27465fd3b0caea4",
+    "vision/tests/test_video_probe.py": "4463c36bc65e2879aeb650a653475e334c34fb82ded3fbdaf131f7e2f0dcba75",
+    "vision/tests/test_video_stability_probe.py": "57e1f3afcb9c3e64847aa8bc9873d9a49eef3aba64eae144772847eeefa25e79",
+    "vision/tests/test_ws_protocol.py": "eefb28c4ebe39a477a11e0528531d0499afdcbe058d4ae4eba56e3a33571b434",
+    "vision/tracker.py": "689208588ea431dfd7d99c0f73b198ce45f263d1cc769022f6a7379690a77648",
+    "vision/ws_client.py": "827a94c11adfc11e67016083b6c23c6c1c4263c23d76b0c881f2e00d64ba5564",
+    "vision/ws_protocol.py": "0f8588cf65d79bb81b8e32931a05e2b40e3d34fcb92601f1f3c931d67e6097c1"
+  },
+  "limits": [
+    "Artificial replay over a bounded 600-second wall-clock window; not natural same-person reentry.",
+    "One detector/tracker process spans EOF; no camera, gallery, screenshots, network event output, or deployed service used.",
+    "Resource stability does not imply event deduplication, identity accuracy, multi-day stability, or field reliability.",
+    "The separate natural-pose local event gate remains failed: expected 2, actual 12."
+  ]
+}

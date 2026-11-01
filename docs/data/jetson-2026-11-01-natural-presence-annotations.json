@@ -1,0 +1,104 @@
+{
+  "schema": "sentinel/natural-presence-annotation@1",
+  "date": "2026-11-01",
+  "annotation_basis": "Codex visual review of all 287 2Hz source samples in six contact sheets; independent of this run detector outputs",
+  "media": {
+    "file": "head-pose-face-detection-female-and-male.mp4",
+    "sha256": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38",
+    "width": 768,
+    "height": 432,
+    "fps": 12,
+    "decoded_frames": 1719
+  },
+  "coverage": {
+    "sample_fps": 2,
+    "source_frame_step": 6,
+    "sample_count": 287,
+    "first_frame": 0,
+    "last_frame": 1716,
+    "first_ms": 0,
+    "last_ms": 143000,
+    "unit": "all scheduled 2Hz samples, not every decoded frame"
+  },
+  "presence_intervals": [
+    {
+      "first_sample": 0,
+      "last_sample_inclusive": 286,
+      "persons": [
+        "screen_left",
+        "screen_right"
+      ],
+      "scene_exits": 0,
+      "scene_reentries": 0
+    }
+  ],
+  "pose_challenge_core_windows": [
+    {
+      "start_ms": 5500,
+      "end_ms_inclusive": 10500,
+      "label": "head_tilt_both"
+    },
+    {
+      "start_ms": 18500,
+      "end_ms_inclusive": 23000,
+      "label": "head_tilt_both"
+    },
+    {
+      "start_ms": 57000,
+      "end_ms_inclusive": 63000,
+      "label": "look_down_both_bodies_still_present"
+    },
+    {
+      "start_ms": 98000,
+      "end_ms_inclusive": 103000,
+      "label": "look_down_left_body_still_present"
+    },
+    {
+      "start_ms": 111000,
+      "end_ms_inclusive": 115000,
+      "label": "look_down_right_body_still_present"
+    },
+    {
+      "start_ms": 124000,
+      "end_ms_inclusive": 127500,
+      "label": "head_turn_both"
+    },
+    {
+      "start_ms": 135000,
+      "end_ms_inclusive": 140500,
+      "label": "profile_both"
+    }
+  ],
+  "business_contract": {
+    "type": "one_event_per_continuous_observed_visit",
+    "note": "Bodies remain visible in fixed left/right halves; temporary pose-driven loss of a frontal face is not a scene exit.",
+    "confirm_frames": 3,
+    "sample_fps": 2,
+    "expected_total_events": 2,
+    "expected_events": [
+      {
+        "person": "screen_left",
+        "bbox_center_x_min_inclusive": 0,
+        "bbox_center_x_max_exclusive": 384,
+        "event_media_ms": 1000
+      },
+      {
+        "person": "screen_right",
+        "bbox_center_x_min_inclusive": 384,
+        "bbox_center_x_max_exclusive": 768,
+        "event_media_ms": 1000
+      }
+    ]
+  },
+  "not_annotated": [
+    "face bounding-box ground truth",
+    "face detection precision/recall",
+    "physical-object occlusion",
+    "out-of-scene same-person reentry"
+  ],
+  "limits": [
+    "Pose variation and continuous presence only; do not label this physical occlusion or natural reentry.",
+    "Left/right labels are scene-local references, not recognized or registered identities.",
+    "This is a high-level visit reliability requirement, stricter than the existing per-track TTL contract."
+  ]
+}

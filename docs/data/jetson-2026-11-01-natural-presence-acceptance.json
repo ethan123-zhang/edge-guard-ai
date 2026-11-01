@@ -1,0 +1,202 @@
+{
+  "schema": "sentinel/natural-presence-acceptance@1",
+  "date": "2026-11-01",
+  "scope": "natural_pose_continuous_presence",
+  "target_layer": "local_face_event",
+  "visit_report_layer": "not_tested",
+  "annotation_file": "docs/data/jetson-2026-11-01-natural-presence-annotations.json",
+  "annotation_sha256": "7cc71197a4ad77883afb2b115bf6892d0f55db335df51ecb4e86ac23516999d4",
+  "media_sha256": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38",
+  "source_hashes": {
+    "scripts/video_pipeline_probe.py": "24830c1ada021813c62581cb5e15989119e59e66f2a02a65dcb05b995a8459fc",
+    "vision/config.py": "df2afd25a87ff63f942270783a9979602454d5682df879ff7d231fd5dc6877f6",
+    "vision/detector.py": "297c376264b65288d3361e8ab99d7b7b79b83bc67b0796f6a0f8faa0f50b8281",
+    "vision/events.py": "3c43e7a47c0772f8239dcfe0f086162c587987f73d8f073723fdf51ae7fcf425",
+    "vision/tracker.py": "689208588ea431dfd7d99c0f73b198ce45f263d1cc769022f6a7379690a77648"
+  },
+  "environment": {
+    "python": "3.6.9",
+    "opencv": "4.1.1",
+    "process_environment": {
+      "OPENBLAS_CORETYPE": "ARMV8",
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1"
+    }
+  },
+  "board_directory": "/home/jetson/sentinel-check-20261101-consecutive-170927",
+  "samples": 287,
+  "decoded": {
+    "decoded_frames": 1719,
+    "sampled_frames": 287,
+    "skipped_frames": 1432,
+    "eof": true,
+    "stop_reason": "eof",
+    "decode_ms_total": 4248.768769009075,
+    "ticks_skipped": 0,
+    "frame_count_check": {
+      "declared": 1719,
+      "decoded": 1719,
+      "applicable": true,
+      "note": null,
+      "equal": true
+    }
+  },
+  "sampling_and_protocol_passed": true,
+  "expected_total_events": 2,
+  "actual_total_events": 12,
+  "expected_events_per_person": {
+    "screen_left": 1,
+    "screen_right": 1
+  },
+  "actual_events_per_person": {
+    "screen_left": 7,
+    "screen_right": 5
+  },
+  "extra_events": 10,
+  "events": [
+    {
+      "person": "screen_left",
+      "media_ms": 1000.0,
+      "track_id": 1,
+      "bbox": [
+        119,
+        103,
+        109,
+        109
+      ]
+    },
+    {
+      "person": "screen_right",
+      "media_ms": 1000.0,
+      "track_id": 2,
+      "bbox": [
+        522,
+        86,
+        137,
+        137
+      ]
+    },
+    {
+      "person": "screen_right",
+      "media_ms": 12500.0,
+      "track_id": 4,
+      "bbox": [
+        532,
+        83,
+        132,
+        132
+      ]
+    },
+    {
+      "person": "screen_left",
+      "media_ms": 13000.0,
+      "track_id": 3,
+      "bbox": [
+        128,
+        101,
+        111,
+        111
+      ]
+    },
+    {
+      "person": "screen_left",
+      "media_ms": 25000.0,
+      "track_id": 5,
+      "bbox": [
+        118,
+        103,
+        110,
+        110
+      ]
+    },
+    {
+      "person": "screen_right",
+      "media_ms": 25000.0,
+      "track_id": 6,
+      "bbox": [
+        515,
+        83,
+        133,
+        133
+      ]
+    },
+    {
+      "person": "screen_left",
+      "media_ms": 62500.0,
+      "track_id": 9,
+      "bbox": [
+        127,
+        197,
+        93,
+        93
+      ]
+    },
+    {
+      "person": "screen_left",
+      "media_ms": 64500.0,
+      "track_id": 10,
+      "bbox": [
+        129,
+        90,
+        110,
+        110
+      ]
+    },
+    {
+      "person": "screen_right",
+      "media_ms": 65000.0,
+      "track_id": 11,
+      "bbox": [
+        521,
+        79,
+        131,
+        131
+      ]
+    },
+    {
+      "person": "screen_left",
+      "media_ms": 129000.0,
+      "track_id": 13,
+      "bbox": [
+        110,
+        110,
+        104,
+        104
+      ]
+    },
+    {
+      "person": "screen_right",
+      "media_ms": 141500.0,
+      "track_id": 14,
+      "bbox": [
+        530,
+        84,
+        131,
+        131
+      ]
+    },
+    {
+      "person": "screen_left",
+      "media_ms": 141500.0,
+      "track_id": 15,
+      "bbox": [
+        131,
+        103,
+        109,
+        109
+      ]
+    }
+  ],
+  "same_track_reemission_observed": false,
+  "continuous_visit_requirement_passed": false,
+  "overall_reliability_passed": false,
+  "interpretation": "Distinct unknown spatial tracks each emitted once during two continuously observed visits; track deduplication does not satisfy visit deduplication.",
+  "limits": [
+    "docs/02 defines a separate 10-minute business visit deduplication layer; this local face_event test does not measure visit_report counts.",
+    "The one-local-event-per-observed-visit gate is stricter than the existing per-track TTL transport contract.",
+    "Complete annotations cover the 2Hz sampling grid, not all source frames.",
+    "No face-box ground truth: detection precision/recall is not measured.",
+    "Pose variation is not physical-object occlusion; no natural scene reentry is present.",
+    "No production algorithm or threshold was modified in this validation phase."
+  ]
+}
