@@ -1,0 +1,208 @@
+{
+  "schema": "sentinel/association-contract-baseline@1",
+  "reviewed_at": "2026-11-01T20:11:28.406956+08:00",
+  "scope": "Local replay and code inspection only; no board, camera, identity gallery, production changes, or business-layer execution.",
+  "source_sha256": {
+    "vision/tracker.py": "689208588ea431dfd7d99c0f73b198ce45f263d1cc769022f6a7379690a77648",
+    "vision/service.py": "bff23d388f24ed713becf950d6a0a6e409328403e04279c2101572d42d4c17be",
+    "vision/recognizer.py": "e30464da556872ce9ca4ed32cf39bfb0a6daf5f9b6bfcd749db01e12e9360e88",
+    "vision/config/jetson_local.yaml": "59457f532e2f6f4f018c490184888c3b5ba7b53ed8108ca0206e10afff1c2c1a",
+    "dialog/db.py": "4607fd5ca5f5ed4b4b58cad1f937ccbf91af59cc7063b8f89a91e55e615136c1",
+    "vision/tests/fixtures/natural_pose_visit_trace.json": "ac391166bf21408916006e2c07efc6941ecc9fdf0be7b1e861f119f7d7ceca36"
+  },
+  "unit_tests": {
+    "tests": 191,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "log": "logs/video-validation/association-baseline-20261101.log",
+    "log_sha256": "bb25a03ebcc8f62cfa681e91d103c8bcaea4451222a660f87a6e9216ca4203e1"
+  },
+  "natural_replay": {
+    "sample_count": 287,
+    "strict_target": 2,
+    "observed_count": 12,
+    "left_count": 7,
+    "right_count": 5,
+    "events": [
+      {
+        "t_ms": 1000,
+        "track_id": 1,
+        "side": "left"
+      },
+      {
+        "t_ms": 1000,
+        "track_id": 2,
+        "side": "right"
+      },
+      {
+        "t_ms": 12500,
+        "track_id": 4,
+        "side": "right"
+      },
+      {
+        "t_ms": 13000,
+        "track_id": 3,
+        "side": "left"
+      },
+      {
+        "t_ms": 25000,
+        "track_id": 5,
+        "side": "left"
+      },
+      {
+        "t_ms": 25000,
+        "track_id": 6,
+        "side": "right"
+      },
+      {
+        "t_ms": 62500,
+        "track_id": 9,
+        "side": "left"
+      },
+      {
+        "t_ms": 64500,
+        "track_id": 10,
+        "side": "left"
+      },
+      {
+        "t_ms": 65000,
+        "track_id": 11,
+        "side": "right"
+      },
+      {
+        "t_ms": 129000,
+        "track_id": 13,
+        "side": "left"
+      },
+      {
+        "t_ms": 141500,
+        "track_id": 14,
+        "side": "right"
+      },
+      {
+        "t_ms": 141500,
+        "track_id": 15,
+        "side": "left"
+      }
+    ],
+    "result": "reproduced_failure"
+  },
+  "indistinguishable_observation_counterexample": {
+    "frames": [
+      {
+        "t_ms": 0,
+        "boxes": [
+          [
+            100,
+            100,
+            80,
+            80
+          ]
+        ]
+      },
+      {
+        "t_ms": 500,
+        "boxes": [
+          [
+            100,
+            100,
+            80,
+            80
+          ]
+        ]
+      },
+      {
+        "t_ms": 1000,
+        "boxes": [
+          [
+            100,
+            100,
+            80,
+            80
+          ]
+        ]
+      },
+      {
+        "t_ms": 1500,
+        "boxes": []
+      },
+      {
+        "t_ms": 2000,
+        "boxes": []
+      },
+      {
+        "t_ms": 2500,
+        "boxes": []
+      },
+      {
+        "t_ms": 3000,
+        "boxes": []
+      },
+      {
+        "t_ms": 3500,
+        "boxes": [
+          [
+            100,
+            100,
+            80,
+            80
+          ]
+        ]
+      },
+      {
+        "t_ms": 4000,
+        "boxes": [
+          [
+            100,
+            100,
+            80,
+            80
+          ]
+        ]
+      },
+      {
+        "t_ms": 4500,
+        "boxes": [
+          [
+            100,
+            100,
+            80,
+            80
+          ]
+        ]
+      }
+    ],
+    "available_inputs": [
+      "t_ms",
+      "bbox",
+      "face_id=None",
+      "name=None",
+      "score=0.0"
+    ],
+    "world_a": {
+      "ground_truth": "Same person remains present with face not detected in gap",
+      "desired_session_count": 1
+    },
+    "world_b": {
+      "ground_truth": "First person leaves; different person appears at same box after gap",
+      "desired_session_count": 2
+    },
+    "current_local_event_times_ms": [
+      1000,
+      4500
+    ],
+    "conclusion": "Identical observations cannot determine which world occurred; independent identity/continuity evidence is required."
+  },
+  "capability": {
+    "configured_detector": "haar",
+    "configured_recognizer": "none",
+    "null_embedding": null,
+    "tracker_receives_embeddings": false,
+    "dialog_state_machine_present": false,
+    "visit_report_execution": "not_tested",
+    "business_dedup_implementation": "not_present_in_current_dialog_package"
+  },
+  "design_status": "proposal_pending_confirmation",
+  "overall_reliability": "not_passed"
+}
