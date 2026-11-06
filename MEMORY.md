@@ -10,7 +10,8 @@ last_updated: 2026-11-06
 
 ## 当前状态与续接（2026-11-06）
 
-- 最新实验：[Jetson TensorRT 加速评估](docs/Jetson-TRT加速评估-2026-11-06.md)：板端 cv2 未编 CUDA，检测/SFace 走 CPU（84/219 ms）；TRT FP16 后 11.2/18.1 ms，单帧约 309→35 ms（8.8×），YuNet 最大差 7.5e-6、SFace 余弦 0.99999。坑：YuNet ONNX 声明 120×160 实际喂 320；pycuda 只存 int 指针会被 GC。证据 `docs/data/trt-acceleration-2026-11-06.json`。
+- 最新实验：[TensorRT 封装](docs/TensorRT封装-2026-11-06.md)：`vision/trt_backend.py` 做 sidecar 哈希绑定（engine/模型 sha256、TRT 版本、profile）、动态批量、不可用回退 CPU；板端 40 帧回归检出 69 vs 69、bbox 差 0.0001 px、特征余弦最小 0.999979；检测 83.8→45.9 ms、SFace 218→35.8 ms。发现旧 `decode()` 每帧重建 5875 先验 ≈31 ms，是检测段瓶颈。证据 `docs/data/trt-wrapper-regression-2026-11-06.json`。
+- 上一轮：[Jetson TensorRT 加速评估](docs/Jetson-TRT加速评估-2026-11-06.md)：板端 cv2 未编 CUDA，检测/SFace 走 CPU（84/219 ms）；TRT FP16 后 11.2/18.1 ms，单帧约 309→35 ms（8.8×），YuNet 最大差 7.5e-6、SFace 余弦 0.99999。坑：YuNet ONNX 声明 120×160 实际喂 320；pycuda 只存 int 指针会被 GC。证据 `docs/data/trt-acceleration-2026-11-06.json`。
 - 上一轮：[合成场景关联验收](docs/合成场景关联验收-2026-11-06.md)：用 HF LFW 同人/异人配对拼三段受控片段（替换/相邻/恢复），跑检测→SFace→`FaceTracker`→`AnonymousAssociator`（τ=0.45、δ=0.10）。三段全过：替换 2 会话不继承、相邻 2 会话不互占、恢复 `own_best=0.9851` 关联回原会话。发现旧版解码器大脸先验 5×5 网格（步长 64），固定位置放脸可能整帧漏检。证据 `docs/data/scenario-association-eval-2026-11-06.json`。
 - 前一轮：[板端复验](docs/质量筛选与保守参考策略-2026-11-06.md)：Jetson（3.6.9/4.1.1）重跑同一哈希固定视频，`rms_norm≤0.10` 仍只保留 25 张脸且同侧最低 > 异侧最高（0.5724/0.2239），参考库 16 左 + 5 右，τ=0.45 覆盖 97.8%、歧义 0；多出的 1 张负边距脸被 δ=0.10 拒绝。证据 `docs/data/quality-board-rerun-2026-11-06.json`。板端 numpy/cv2 需 `OPENBLAS_CORETYPE=ARMV8`。
 - 更早：[LFW 独立配对验证](docs/质量筛选与保守参考策略-2026-11-06.md)：从 Hugging Face 取 500 同人 + 500 异人配对，AUC 0.9939 / EER 1.6%，异人最高余弦 0.353，τ=0.36–0.60 FAR 均 0；质量门在正脸图像无增益。据此把候选操作点从 τ=0.60 修订为 τ=0.45/δ=0.10（视频覆盖 95.6%→98.4%，错关联仍 0），仍待场景素材验收。
@@ -18,6 +19,7 @@ last_updated: 2026-11-06
 - 上一次实验：[旧版YuNet隔离链路](docs/旧版YuNet隔离链路验收-2026-11-01.md)通过四帧执行验证，无系统升级；完整287点覆盖已于11-06补齐。
 
 - 关联层核心已实现但默认关闭：`vision/association.py`（τ=0.45、δ=0.10、入册 rms_norm≤0.10），20 项单测；尚未接入 `VisionService`，事件协议不变。
+- TRT 封装已实现但默认关闭：`vision/trt_backend.py`（哈希绑定 + 动态批量 + 回退 CPU），17 项单测；板端回归通过，尚未接入 `VisionService`；接入前先把 decode 先验预计算（当前约 31 ms/帧）。
 - 当前进度真源：[PROGRESS.md](PROGRESS.md)。Jetson已能本地检测与生成事件；完整身份识别和可靠去重仍未通过。
 - 最新验收：[自然姿态本地事件](docs/自然姿态本地事件验收-2026-11-01.md)预期2实际12，未通过；[600秒压力](docs/板端稳定性验收-2026-11-01.md)通过，本机/板端191项通过。整体可靠性仍未通过。
 - 续接：用户已确认[保守关联合同](docs/跨轨关联与两层去重合同-2026-11-01.md)。合成场景（替换/相邻/恢复）已通过；仍缺真实门口素材与歧义用例，之后才接 `VisionService`。自然姿态12条失败保留，不得以延长TTL或减少事件数宣告修复。

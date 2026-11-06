@@ -1,6 +1,13 @@
 # 当前进度与续接入口
 
-## Jetson TensorRT 加速评估（2026-11-06 第七轮，最新）
+## TensorRT 封装完成（2026-11-06 第八轮，最新）
+
+- 新增 `vision/trt_backend.py`：sidecar 哈希绑定（engine/模型 sha256 + TensorRT 版本 + 输入 profile）、动态批量（SFace 1/4/8）、无 TensorRT 时 `create_backend()` 返回 `None` 回退 CPU；17 项单测。
+- 板端回归（40 采样帧）：检出 69 vs 69、bbox 最大差 0.0001 px、69 张脸特征余弦最小 0.999979；检测段 83.8→45.9 ms（1.8×）、SFace 218.1→35.8 ms（6.1×）。
+- 关键发现：检测只快 1.8× 是因为旧 `decode()` 每帧纯 Python 重建 5875 个先验框 + NMS ≈31 ms；单独 engine 11.7 ms。接生产前先把解码预计算/numpy 化。
+- 默认仍不启用，未接 `VisionService`。证据 `docs/data/trt-wrapper-regression-2026-11-06.json`，说明 [TensorRT 封装](docs/TensorRT封装-2026-11-06.md)。
+
+## Jetson TensorRT 加速评估（2026-11-06 第七轮）
 
 - 板端 `cv2` 4.1.1 未编 CUDA（`getCudaEnabledDeviceCount()=0`），检测/识别一直走 CPU；CUDA 10.2 与 TensorRT 8.2.1 实际都在板子上。
 - 只读基准（40 帧采样）：CPU 中位 检测 84.0 ms + SFace 219.0 ms/帧 ≈ 309 ms/采样帧；TRT FP16 检测 11.2 ms + SFace 18.1 ms/脸 ≈ **35 ms/帧（单脸，约 8.8×）**。

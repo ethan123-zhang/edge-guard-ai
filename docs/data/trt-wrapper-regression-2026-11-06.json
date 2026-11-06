@@ -1,0 +1,102 @@
+{
+ "schema": "sentinel/trt-wrapper-regression@1",
+ "date": "2026-11-06",
+ "scope": "board-only regression of vision/trt_backend.py vs the cv2.dnn CPU path on 40 sampled frames of the hash-pinned video",
+ "device": {
+  "board": "Jetson (yahboom)",
+  "python": "3.6.9",
+  "opencv": "4.1.1",
+  "tensorrt": "8.2.1.8",
+  "cuda": "10.2"
+ },
+ "hashes": {
+  "yunet_model": "aa44aaf041d6fed5cdc9c6300b2f5ad1843259dbd2a091f855f66bbf4f20d21e",
+  "sface_model": "50ac8188f2edacf57025e09d5405ca7d2edb0425d4ba96bcdb26cfa1cfad7c5b",
+  "video": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38"
+ },
+ "engines": {
+  "yunet": {
+   "engine": "yunet_fp16.engine",
+   "fp16": true,
+   "input_profile": {
+    "min": [
+     1,
+     3,
+     320,
+     320
+    ],
+    "opt": [
+     1,
+     3,
+     320,
+     320
+    ],
+    "max": [
+     1,
+     3,
+     320,
+     320
+    ]
+   }
+  },
+  "sface": {
+   "engine": "sface_batch_fp16.engine",
+   "fp16": true,
+   "input_profile": {
+    "min": [
+     1,
+     3,
+     112,
+     112
+    ],
+    "opt": [
+     4,
+     3,
+     112,
+     112
+    ],
+    "max": [
+     8,
+     3,
+     112,
+     112
+    ]
+   }
+  }
+ },
+ "sidecar_binding": {
+  "schema": "sentinel/trt-engine@1",
+  "checks": [
+   "engine sha256",
+   "model sha256",
+   "tensorrt version",
+   "input profile"
+  ],
+  "passed": {
+   "yunet": true,
+   "sface": true,
+   "logs": []
+  }
+ },
+ "regression": {
+  "frames": 40,
+  "cpu_faces": 69,
+  "trt_faces": 69,
+  "count_mismatch_frames": 0,
+  "max_bbox_abs_diff_px": 0.0001,
+  "embeddings_compared": 69,
+  "min_cosine": 0.999979,
+  "median_cosine": 0.999987
+ },
+ "timing_ms_median": {
+  "cpu_detect": 83.8,
+  "trt_detect": 45.87,
+  "cpu_sface_all_faces": 218.09,
+  "trt_sface_batched": 35.82
+ },
+ "notes": [
+  "trt_detect/cpu_detect include the legacy python decode (~31 ms/frame, priors rebuilt every call), so the detection-only speedup is ~4.7x and the end-to-end detection stage is 1.8x until decode is precomputed",
+  "sface batched timing covers every face of the frame in one engine call; CPU sface timing is the per-face loop",
+  "engine files and sidecars live in the ignored board workdir, not in the repo"
+ ]
+}
