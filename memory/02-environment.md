@@ -14,6 +14,7 @@ last_updated: 2026-10-31
 - 摄像头USB UVC，/dev/video0，05a3:9230；两档采集通过。用户规格表与实测结果分开，见最新验收报告。
 - 板端验收目录 `/home/jetson/sentinel-check-20261031-1939`；`jetson_local`为Haar+none，无网络与截图。
 - 当前证据：`docs/Jetson事件链路诊断-2026-10-31.md`。通用知识方法正文见aiVault。
+- 2026-11-06 板端复验路径：`ssh jetson@10.77.156.4`（已装本机公钥，不需要口令）；**导入 numpy/cv2 前必须 `export OPENBLAS_CORETYPE=ARMV8`**，否则 OpenBLAS 选错核型直接 `Illegal instruction`。质量研究目录 `/home/jetson/sentinel-quality-20261106/`，模型在 `~/sentinel-check-20261101-dnn-models/`，固定视频在 `~/sentinel-check-20261101-video/datasets/video-validation/`。
 
 > 以下段落保留旧日期画像，不代表当前U盘系统；遇到冲突以本节和最新实测报告为准。历史口令不再保留。
 
