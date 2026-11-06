@@ -1,6 +1,14 @@
 # 当前进度与续接入口
 
-## 合成场景关联验收通过（2026-11-06 第六轮，最新）
+## Jetson TensorRT 加速评估（2026-11-06 第七轮，最新）
+
+- 板端 `cv2` 4.1.1 未编 CUDA（`getCudaEnabledDeviceCount()=0`），检测/识别一直走 CPU；CUDA 10.2 与 TensorRT 8.2.1 实际都在板子上。
+- 只读基准（40 帧采样）：CPU 中位 检测 84.0 ms + SFace 219.0 ms/帧 ≈ 309 ms/采样帧；TRT FP16 检测 11.2 ms + SFace 18.1 ms/脸 ≈ **35 ms/帧（单脸，约 8.8×）**。
+- 正确性：YuNet 最大绝对差 7.5e-6；SFace FP32 余弦 1.0000、FP16 0.99999（最大绝对差 0.0113）。
+- 两个坑已定位：YuNet ONNX 声明 120×160 但实际喂 320（需改声明维度的实验副本）；pycuda 只存 int 指针会被 GC 导致 `invalid argument`（须保留 `DeviceAllocation`）。
+- 未接生产：Engine 封装、FP16 回归、回退 CPU、engine/模型哈希绑定都还没做。证据 `docs/data/trt-acceleration-2026-11-06.json`，叙述 [Jetson TRT 加速评估](docs/Jetson-TRT加速评估-2026-11-06.md)。
+
+## 合成场景关联验收通过（2026-11-06 第六轮）
 
 - 现场不便拍摄，改用公开 LFW 同人/异人配对构造三段受控片段（替换 / 相邻 / 恢复），跑 旧版检测 → SFace → `FaceTracker` → `AnonymousAssociator`（τ=0.45、δ=0.10、质量门 0.10）。
 - 三段全部通过：替换场景 2 条轨道 2 个会话、第二人 `own_best=−0.0556` 未继承；相邻场景同帧两条轨道各建会话、不互占；恢复场景第二段 `own_best=0.9851` 关联回原会话（2 轨道 1 会话）。

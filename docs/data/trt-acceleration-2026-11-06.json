@@ -1,0 +1,136 @@
+{
+ "schema": "sentinel/trt-acceleration-study@1",
+ "date": "2026-11-06",
+ "scope": "Jetson-only, read-only benchmark of the existing ONNX models with TensorRT vs OpenCV dnn CPU; no production code or config changed",
+ "device": {
+  "board": "Jetson (yahboom)",
+  "cuda": "10.2.300",
+  "tensorrt": "8.2.1",
+  "python": "3.6.9",
+  "opencv": "4.1.1",
+  "opencv_cuda": "not compiled in (cv2.cuda.getCudaEnabledDeviceCount()=0)"
+ },
+ "hashes": {
+  "yunet_trt320.onnx": "aa44aaf041d6fed5cdc9c6300b2f5ad1843259dbd2a091f855f66bbf4f20d21e",
+  "face_recognition_sface_2021dec.onnx": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+  "head-pose-face-detection-female-and-male.mp4": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38",
+  "legacy-pipeline-probe.py": "c4a86caafbc65fbbe708090dba5ed01f67b62e6caebf46d96b5b26c7e1e051ff"
+ },
+ "cpu_stage_ms_median": {
+  "blob_det": 3.05,
+  "det_forward": 84.02,
+  "decode": 0.1,
+  "align": 2.76,
+  "sface_forward": 218.98
+ },
+ "trt_ms": {
+  "yunet": {
+   "trt_first_ms": 41.38,
+   "trt_median_ms": 15.17,
+   "trt_min_ms": 13.39
+  },
+  "yunet_fp16": {
+   "trt_first_ms": 13.17,
+   "trt_median_ms": 11.22,
+   "trt_min_ms": 10.36
+  },
+  "sface": {
+   "trt_median_ms": 22.47,
+   "trt_min_ms": 22.24
+  },
+  "sface_fp16": {
+   "trt_median_ms": 18.05,
+   "trt_min_ms": 17.66
+  }
+ },
+ "engines": {
+  "yunet": {
+   "fp16": false,
+   "engine_mb": 1.0
+  },
+  "yunet_fp16": {
+   "fp16": true,
+   "engine_mb": 1.0
+  },
+  "sface": {
+   "fp16": false,
+   "engine_mb": 39.19
+  },
+  "sface_fp16": {
+   "fp16": true,
+   "engine_mb": 20.05
+  }
+ },
+ "parity": {
+  "yunet": {
+   "outputs": [
+    {
+     "name": "loc",
+     "size": 82250,
+     "max_abs_diff": 7.510185241699219e-06
+    },
+    {
+     "name": "conf",
+     "size": 11750,
+     "max_abs_diff": 4.76837158203125e-07
+    },
+    {
+     "name": "iou",
+     "size": 5875,
+     "max_abs_diff": 1.0728836059570312e-06
+    }
+   ],
+   "max_abs_diff": [],
+   "cosine": null
+  },
+  "yunet_fp16": {
+   "outputs": [
+    {
+     "name": "loc",
+     "size": 82250,
+     "max_abs_diff": 7.510185241699219e-06
+    },
+    {
+     "name": "conf",
+     "size": 11750,
+     "max_abs_diff": 4.76837158203125e-07
+    },
+    {
+     "name": "iou",
+     "size": 5875,
+     "max_abs_diff": 1.0728836059570312e-06
+    }
+   ],
+   "max_abs_diff": [],
+   "cosine": null
+  },
+  "sface": {
+   "outputs": [],
+   "max_abs_diff": [
+    5.245208740234375e-06
+   ],
+   "cosine": 1.0
+  },
+  "sface_fp16": {
+   "outputs": [],
+   "max_abs_diff": [
+    0.011302828788757324
+   ],
+   "cosine": 0.9999903440475464
+  }
+ },
+ "ratios": {
+  "yunet_fp32": 5.54,
+  "yunet_fp16": 7.49,
+  "sface_fp32": 9.75,
+  "sface_fp16": 12.13,
+  "per_frame_cpu_total_ms": 308.91,
+  "per_frame_trt_fp16_total_ms": 35.18
+ },
+ "notes": [
+  "the original YuNet ONNX declares a 120x160 input although the pipeline feeds 320x320; a 320-input copy (only the declared dims changed, checker passed) was built for TensorRT, hash aa44aaf041d6fed5",
+  "OpenCV dnn CPU baseline on the board: detect forward 84 ms/frame, SFace forward 219 ms/frame (all detected faces in that frame)",
+  "TensorRT fp16: detect 11.2 ms, SFace 18.1 ms per face; parity vs CPU: YuNet max abs diff 7.5e-6, SFace fp32 cosine 1.0000 / fp16 cosine 0.99999",
+  "sface_forward CPU timing covers every face in a frame, so the speed ratio per face is roughly half of the printed number when two faces are present"
+ ]
+}
