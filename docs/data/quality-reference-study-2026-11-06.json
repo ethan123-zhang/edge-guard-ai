@@ -1,5 +1,5 @@
 {
-  "schema": "sentinel/quality-reference-study@1",
+  "schema": "sentinel/quality-reference-study@2",
   "date": "2026-11-06",
   "scope": "exploratory on one fixed public video; side==identity fixture label; one video only; production association not enabled; overall reliability still not passed",
   "interpreter": "3.12.6 4.13.0",
@@ -8,8 +8,8 @@
     "yunet_2022_opset9_experiment.onnx": "f664a8d7e393935dc6d6e0823da8f903c84ae816b66a97d7157b9320f9d21b2f",
     "face_recognition_sface_2021dec.onnx": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
     "legacy-pipeline-probe.py": "c4a86caafbc65fbbe708090dba5ed01f67b62e6caebf46d96b5b26c7e1e051ff",
-    "quality-study-20261106.py": "88db9dd415618059c720ea522d96b71758991e3552e6881e8f856df45a5783ec",
-    "full-result-json": "8c38dae74a419b290bed21a13d9f2f972770a2ab0df57c368ff515c7634da625"
+    "quality-study-20261106.py": "6d69e35ab49d32a17a863074e121181c643302a0c82901745f28758bc3ef63f9",
+    "full-result-json": "0351e8ea2157a7c3c4635f68926c2eca69d05cf5528c53413a90b5cac000774a"
   },
   "decoded_frames": 1719,
   "samples": 260,
@@ -1079,6 +1079,96 @@
         "lq>0.12": 272
       },
       "existing_evidence": {
+        "tau=0.40,delta=0.05": {
+          "associated": 312,
+          "coverage": 0.9905,
+          "ambiguous_kept_separate": 0,
+          "coverage_by_tier": {
+            "hq<=0.10": 1.0,
+            "mq<=0.12": 1.0,
+            "lq>0.12": 0.989
+          }
+        },
+        "tau=0.40,delta=0.10": {
+          "associated": 312,
+          "coverage": 0.9905,
+          "ambiguous_kept_separate": 0,
+          "coverage_by_tier": {
+            "hq<=0.10": 1.0,
+            "mq<=0.12": 1.0,
+            "lq>0.12": 0.989
+          }
+        },
+        "tau=0.40,delta=0.15": {
+          "associated": 312,
+          "coverage": 0.9905,
+          "ambiguous_kept_separate": 0,
+          "coverage_by_tier": {
+            "hq<=0.10": 1.0,
+            "mq<=0.12": 1.0,
+            "lq>0.12": 0.989
+          }
+        },
+        "tau=0.45,delta=0.05": {
+          "associated": 310,
+          "coverage": 0.9841,
+          "ambiguous_kept_separate": 0,
+          "coverage_by_tier": {
+            "hq<=0.10": 1.0,
+            "mq<=0.12": 1.0,
+            "lq>0.12": 0.9816
+          }
+        },
+        "tau=0.45,delta=0.10": {
+          "associated": 310,
+          "coverage": 0.9841,
+          "ambiguous_kept_separate": 0,
+          "coverage_by_tier": {
+            "hq<=0.10": 1.0,
+            "mq<=0.12": 1.0,
+            "lq>0.12": 0.9816
+          }
+        },
+        "tau=0.45,delta=0.15": {
+          "associated": 310,
+          "coverage": 0.9841,
+          "ambiguous_kept_separate": 0,
+          "coverage_by_tier": {
+            "hq<=0.10": 1.0,
+            "mq<=0.12": 1.0,
+            "lq>0.12": 0.9816
+          }
+        },
+        "tau=0.50,delta=0.05": {
+          "associated": 307,
+          "coverage": 0.9746,
+          "ambiguous_kept_separate": 0,
+          "coverage_by_tier": {
+            "hq<=0.10": 1.0,
+            "mq<=0.12": 1.0,
+            "lq>0.12": 0.9706
+          }
+        },
+        "tau=0.50,delta=0.10": {
+          "associated": 307,
+          "coverage": 0.9746,
+          "ambiguous_kept_separate": 0,
+          "coverage_by_tier": {
+            "hq<=0.10": 1.0,
+            "mq<=0.12": 1.0,
+            "lq>0.12": 0.9706
+          }
+        },
+        "tau=0.50,delta=0.15": {
+          "associated": 307,
+          "coverage": 0.9746,
+          "ambiguous_kept_separate": 0,
+          "coverage_by_tier": {
+            "hq<=0.10": 1.0,
+            "mq<=0.12": 1.0,
+            "lq>0.12": 0.9706
+          }
+        },
         "tau=0.55,delta=0.05": {
           "associated": 305,
           "coverage": 0.9683,

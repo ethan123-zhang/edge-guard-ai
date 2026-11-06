@@ -1,0 +1,149 @@
+{
+  "schema": "sentinel/lfw-verification-eval@1",
+  "date": "2026-11-06",
+  "source": "Hugging Face datasets-server logasja/lfw pairs/test; LFW (Labeled Faces in the Wild), research use",
+  "scope": "independent labeled image pairs; complete isolated path (YuNet opset9 -> 5-point align -> SFace); evaluation only; no images in evidence",
+  "interpreter": "3.12.6 4.13.0",
+  "manifest_sha256": "7b32bd7c119d2913fdd3aae077fe654164a7dbd72e53b383d801e86e4a4d6328",
+  "model_sha256": {
+    "yunet_2022_opset9_experiment.onnx": "f664a8d7e393935dc6d6e0823da8f903c84ae816b66a97d7157b9320f9d21b2f",
+    "face_recognition_sface_2021dec.onnx": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+  },
+  "pairs_total": 1000,
+  "pairs_valid": 1000,
+  "pairs_invalid": 0,
+  "same_cosines": {
+    "count": 500,
+    "min": -0.1822,
+    "p05": 0.4498,
+    "median": 0.6673,
+    "mean": 0.6523,
+    "p95": 0.824,
+    "max": 0.9122
+  },
+  "diff_cosines": {
+    "count": 500,
+    "min": -0.17,
+    "p05": -0.0608,
+    "median": 0.0904,
+    "mean": 0.0895,
+    "p95": 0.2309,
+    "max": 0.353
+  },
+  "auc": 0.9939,
+  "eer": {
+    "threshold": 0.2891,
+    "far": 0.016,
+    "frr": 0.016
+  },
+  "far_1pct": {
+    "threshold": 0.3035,
+    "far": 0.01,
+    "frr": 0.016
+  },
+  "far_0.1pct": {
+    "threshold": 0.366,
+    "far": 0.0,
+    "frr": 0.018
+  },
+  "reference_threshold_sface_2021dec_lfw": 0.363,
+  "fixed_tau_errors": [
+    {
+      "tau": 0.36,
+      "far": 0.0,
+      "frr": 0.018
+    },
+    {
+      "tau": 0.4,
+      "far": 0.0,
+      "frr": 0.028
+    },
+    {
+      "tau": 0.45,
+      "far": 0.0,
+      "frr": 0.052
+    },
+    {
+      "tau": 0.5,
+      "far": 0.0,
+      "frr": 0.088
+    },
+    {
+      "tau": 0.6,
+      "far": 0.0,
+      "frr": 0.252
+    },
+    {
+      "tau": 0.65,
+      "far": 0.0,
+      "frr": 0.446
+    }
+  ],
+  "quality_gates": [
+    {
+      "gate": "all valid pairs",
+      "pairs": 1000,
+      "auc": 0.9939,
+      "eer": {
+        "threshold": 0.2891,
+        "far": 0.016,
+        "frr": 0.016
+      }
+    },
+    {
+      "gate": "both rms_norm<=0.10",
+      "pairs": 849,
+      "auc": 0.9944,
+      "eer": {
+        "threshold": 0.3014,
+        "far": 0.0118,
+        "frr": 0.0118
+      }
+    },
+    {
+      "gate": "both rms_norm<=0.12",
+      "pairs": 902,
+      "auc": 0.9937,
+      "eer": {
+        "threshold": 0.3014,
+        "far": 0.0133,
+        "frr": 0.0133
+      }
+    },
+    {
+      "gate": "both rms_norm<=0.15",
+      "pairs": 960,
+      "auc": 0.9936,
+      "eer": {
+        "threshold": 0.2891,
+        "far": 0.0166,
+        "frr": 0.0168
+      }
+    },
+    {
+      "gate": "both score>=0.95",
+      "pairs": 1000,
+      "auc": 0.9939,
+      "eer": {
+        "threshold": 0.2891,
+        "far": 0.016,
+        "frr": 0.016
+      }
+    },
+    {
+      "gate": "rms_norm<=0.12 & score>=0.95",
+      "pairs": 902,
+      "auc": 0.9937,
+      "eer": {
+        "threshold": 0.3014,
+        "far": 0.0133,
+        "frr": 0.0133
+      }
+    }
+  ],
+  "notes": [
+    "label 1=same identity, 0=different; confirmed numerically (same median 0.667 vs diff 0.090)",
+    "no images or vectors copied into this file",
+    "image-domain result; video-domain thresholds still need scenario footage"
+  ]
+}
