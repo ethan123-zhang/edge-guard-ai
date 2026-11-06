@@ -1,0 +1,130 @@
+{
+ "schema": "sentinel/scenario-association-eval@1",
+ "date": "2026-11-06",
+ "scope": "controlled synthetic clips composed from labeled LFW identity pairs; NOT doorway footage",
+ "source": {
+  "dataset": "bitmind/lfw (Hugging Face datasets-server rows)",
+  "identity_rule": "a same-identity LFW pair is one person; the second identity is a different pair whose cosine to the first is <0.15",
+  "cross_identity_cosine": "identity fixed by pair construction; cross-identity cosine -0.0333 (<0.15)"
+ },
+ "clip_builder": "scenario_build.py (640x480, 12 fps, mp4v; faces pasted at fixed position)",
+ "harness": "scenario_eval.py (legacy dnn detector+decode, 5-point SFace alignment, FaceTracker confirm=3 / TTL=2s, AnonymousAssociator tau=0.45 delta=0.10 quality<=0.10)",
+ "config": {
+  "tau": 0.45,
+  "margin": 0.1,
+  "quality_max_rms": 0.1
+ },
+ "passed": true,
+ "checks": [
+  {
+   "scenario": "sc01_replacement",
+   "ok": true,
+   "tracks": [
+    1,
+    2
+   ],
+   "sessions": [
+    1,
+    2
+   ],
+   "problems": [],
+   "events": [
+    {
+     "t_ms": 166,
+     "track_id": 1,
+     "session_id": 1,
+     "associated": false,
+     "reason": "new_session",
+     "rms_norm": 0.0982,
+     "own_best": null,
+     "other_best": null
+    },
+    {
+     "t_ms": 5166,
+     "track_id": 2,
+     "session_id": 2,
+     "associated": false,
+     "reason": "below_tau",
+     "rms_norm": 0.0819,
+     "own_best": -0.0556,
+     "other_best": null
+    }
+   ]
+  },
+  {
+   "scenario": "sc02_adjacent",
+   "ok": true,
+   "tracks": [
+    1,
+    2
+   ],
+   "sessions": [
+    1,
+    2
+   ],
+   "problems": [],
+   "events": [
+    {
+     "t_ms": 166,
+     "track_id": 1,
+     "session_id": 1,
+     "associated": false,
+     "reason": "new_session",
+     "rms_norm": 0.1021,
+     "own_best": null,
+     "other_best": null
+    },
+    {
+     "t_ms": 166,
+     "track_id": 2,
+     "session_id": 2,
+     "associated": false,
+     "reason": "new_session",
+     "rms_norm": 0.082,
+     "own_best": null,
+     "other_best": null
+    }
+   ]
+  },
+  {
+   "scenario": "sc03_recovery",
+   "ok": true,
+   "tracks": [
+    1,
+    2
+   ],
+   "sessions": [
+    1
+   ],
+   "problems": [],
+   "events": [
+    {
+     "t_ms": 166,
+     "track_id": 1,
+     "session_id": 1,
+     "associated": false,
+     "reason": "new_session",
+     "rms_norm": 0.0982,
+     "own_best": null,
+     "other_best": null
+    },
+    {
+     "t_ms": 5666,
+     "track_id": 2,
+     "session_id": 1,
+     "associated": true,
+     "reason": "associated",
+     "rms_norm": 0.0968,
+     "own_best": 0.9851,
+     "other_best": null
+    }
+   ]
+  }
+ ],
+ "limitations": [
+  "synthetic still-image composites, not a doorway video",
+  "LFW is research-use only; images stay in the ignored datasets/ directory",
+  "quality values sit near the 0.10 enrollment gate, so this checks association semantics more than enrollment",
+  "one identity pair only: no ambiguity case yet"
+ ]
+}
