@@ -37,6 +37,13 @@ recognition:
   cooldown_sec: 10.0
   track_ttl_sec: 2.0
 
+association:
+  # 短期匿名关联层：默认关闭。打开前必须过独立场景素材验收（换人/相邻/恢复/歧义）。
+  enabled: false
+  tau: 0.45              # 本方相似度阈值
+  margin: 0.10           # 本方 - 异方 最小边距
+  quality_max_rms: 0.10  # 入册质量门（对齐残差 ÷ 眼距）
+
 server:
   enabled: true
   heartbeat_sec: 5.0

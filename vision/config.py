@@ -65,6 +65,16 @@ DEFAULTS = {
         "cooldown_sec": 10.0,       # 同一人重复上报冷却（docs/02 §3.1）
         "track_ttl_sec": 2.0,       # 目标丢失多久后丢轨道
     },
+    "association": {
+        "enabled": False,        # 短期匿名关联层；默认关闭，打开前先过场景素材验收
+        "tau": 0.45,             # 本方相似度阈值（LFW 500 异人对 FAR=0）
+        "margin": 0.10,          # 本方 - 异方 的最小边距
+        "quality_max_rms": 0.10, # 入册质量门：对齐残差 ÷ 眼距
+        "session_ttl_sec": 120.0,
+        "track_ttl_sec": 2.0,
+        "max_sessions": 64,
+        "max_refs": 8,
+    },
     "server": {
         "enabled": True,
         "ws_url": "ws://127.0.0.1:8765",
@@ -190,6 +200,17 @@ def validate(cfg):
           "recognition.confirm_frames 应在 1~30 之间")
     _need(float(rec["cooldown_sec"]) >= 0, "recognition.cooldown_sec 不能为负")
     _need(float(rec["track_ttl_sec"]) > 0, "recognition.track_ttl_sec 必须为正")
+
+    assoc = cfg["association"]
+    _need(isinstance(assoc["enabled"], bool),
+          "association.enabled 必须是布尔值 true/false，当前 %r" % (assoc["enabled"],))
+    _need(0.0 < float(assoc["tau"]) <= 1.0, "association.tau 必须在 (0, 1] 之间")
+    _need(float(assoc["margin"]) >= 0.0, "association.margin 不能为负")
+    _need(float(assoc["quality_max_rms"]) >= 0.0, "association.quality_max_rms 不能为负")
+    _need(float(assoc["session_ttl_sec"]) > 0, "association.session_ttl_sec 必须为正")
+    _need(float(assoc["track_ttl_sec"]) > 0, "association.track_ttl_sec 必须为正")
+    _need(int(assoc["max_sessions"]) >= 1, "association.max_sessions 至少为 1")
+    _need(int(assoc["max_refs"]) >= 1, "association.max_refs 至少为 1")
 
     srv = cfg["server"]
     _need(str(srv["ws_url"]).startswith("ws://"),
