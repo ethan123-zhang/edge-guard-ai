@@ -1,6 +1,14 @@
 # 当前进度与续接入口
 
-## TensorRT 封装完成（2026-11-06 第八轮，最新）
+## 本次会话收尾：下个对话继续人脸识别提速（2026-11-06 第九轮）
+
+- 本会话完成：板端质量门复验、合成场景关联验收、TensorRT 只读评估、TensorRT 封装（`vision/trt_backend.py`，默认关闭，228 项单测）。
+- 速度基线（板端 40 帧中位）：检测段 83.8 ms（engine 11.7 + 解码 31）；SFace 218.1 ms → TRT 批量 35.8 ms。
+- **下次入口**：先做解码先验预计算（`decode()` 每帧重建 5875 先验约 31 ms，目标 <5 ms，检出/bbox 逐帧不变）；再接 `VisionService`（`runtime.backend: auto`，失败回退 CPU）；然后板端全量回归 + 摄像头实时延迟。
+- 完整计划、命令与验收指标见[人脸识别提速交接](docs/handoffs/2026-11-06-人脸识别提速交接.md)。
+- 边界不变：默认 CPU，TRT 不启用；真实门口素材、歧义场景、关联层接线、自然姿态 12 条事件均未解决。
+
+## TensorRT 封装完成（2026-11-06 第八轮）
 
 - 新增 `vision/trt_backend.py`：sidecar 哈希绑定（engine/模型 sha256 + TensorRT 版本 + 输入 profile）、动态批量（SFace 1/4/8）、无 TensorRT 时 `create_backend()` 返回 `None` 回退 CPU；17 项单测。
 - 板端回归（40 采样帧）：检出 69 vs 69、bbox 最大差 0.0001 px、69 张脸特征余弦最小 0.999979；检测段 83.8→45.9 ms（1.8×）、SFace 218.1→35.8 ms（6.1×）。
