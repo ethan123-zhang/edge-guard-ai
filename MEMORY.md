@@ -10,6 +10,8 @@ last_updated: 2026-11-06
 
 ## 当前状态与续接（2026-11-06）
 
+- 板端腾空间（第十轮）：Jetson 已用 **45G→22G、空闲 31G（87%→42%）**，`/home/jetson` 19G→1.1G。删了 2022–2023 出厂/亚博教程（jetson-inference/librealsense/opencv 源码/ROS ws/torch+tensorflow）与 Docker 里 3 年前 5.61G 的 ros2-base 镜像；保留 `/usr` 系统栈、pycuda+numpy、`~/sentinel-quality-20261106`、测试模型与视频。sudo-only 残留（CUDA deb 源 1.1G 等）见交接。
+- 下一轮入口（明天）：**P0 解码先验预计算**，做成 `vision/yunet_decode.py`（先验表缓存，<5 ms，40 帧 parity ≤0.0001 px），验收与命令见[板端存储清理与明日入口](docs/handoffs/2026-11-06-板端存储清理与明日入口.md)。P3 实时延迟被硬件卡住：板上无 `/dev/video*`，需先插 USB 摄像头。
 - 最新实验：[TensorRT 封装](docs/TensorRT封装-2026-11-06.md)：`vision/trt_backend.py` 做 sidecar 哈希绑定（engine/模型 sha256、TRT 版本、profile）、动态批量、不可用回退 CPU；板端 40 帧回归检出 69 vs 69、bbox 差 0.0001 px、特征余弦最小 0.999979；检测 83.8→45.9 ms、SFace 218→35.8 ms。发现旧 `decode()` 每帧重建 5875 先验 ≈31 ms，是检测段瓶颈。证据 `docs/data/trt-wrapper-regression-2026-11-06.json`。
 - 上一轮：[Jetson TensorRT 加速评估](docs/Jetson-TRT加速评估-2026-11-06.md)：板端 cv2 未编 CUDA，检测/SFace 走 CPU（84/219 ms）；TRT FP16 后 11.2/18.1 ms，单帧约 309→35 ms（8.8×），YuNet 最大差 7.5e-6、SFace 余弦 0.99999。坑：YuNet ONNX 声明 120×160 实际喂 320；pycuda 只存 int 指针会被 GC。证据 `docs/data/trt-acceleration-2026-11-06.json`。
 - 上一轮：[合成场景关联验收](docs/合成场景关联验收-2026-11-06.md)：用 HF LFW 同人/异人配对拼三段受控片段（替换/相邻/恢复），跑检测→SFace→`FaceTracker`→`AnonymousAssociator`（τ=0.45、δ=0.10）。三段全过：替换 2 会话不继承、相邻 2 会话不互占、恢复 `own_best=0.9851` 关联回原会话。发现旧版解码器大脸先验 5×5 网格（步长 64），固定位置放脸可能整帧漏检。证据 `docs/data/scenario-association-eval-2026-11-06.json`。
@@ -23,7 +25,7 @@ last_updated: 2026-11-06
 - 当前进度真源：[PROGRESS.md](PROGRESS.md)。Jetson已能本地检测与生成事件；完整身份识别和可靠去重仍未通过。
 - 最新验收：[自然姿态本地事件](docs/自然姿态本地事件验收-2026-11-01.md)预期2实际12，未通过；[600秒压力](docs/板端稳定性验收-2026-11-01.md)通过，本机/板端191项通过。整体可靠性仍未通过。
 - 续接：用户已确认[保守关联合同](docs/跨轨关联与两层去重合同-2026-11-01.md)。**下一个对话继续人脸识别提速**：先做解码先验预计算（约 31 ms/帧 → 目标 <5 ms），再接 `VisionService`（默认 CPU、`auto` 失败回退），见[提速交接](docs/handoffs/2026-11-06-人脸识别提速交接.md)。合成场景（替换/相邻/恢复）已通过；仍缺真实门口素材与歧义用例，之后才接关联层。自然姿态12条失败保留，不得以延长TTL或减少事件数宣告修复。
-- 本次正式收尾：[人脸识别提速交接](docs/handoffs/2026-11-06-人脸识别提速交接.md)。
+- 本次正式收尾：[板端存储清理与明日入口](docs/handoffs/2026-11-06-板端存储清理与明日入口.md)（上一份：[人脸识别提速交接](docs/handoffs/2026-11-06-人脸识别提速交接.md)）。
 - 环境与目录以交接及最新结构化证据为准；旧日期记录保留为历史，不冒充当前复验。
 
 ## 项目定位
@@ -47,6 +49,7 @@ Jetson负责门口视觉，RK3588负责规则、对话与归档。完整目标�
 
 | 日期 | 文件 | 用途 |
 | --- | --- | --- |
+| 2026-11-06 | docs/handoffs/2026-11-06-板端存储清理与明日入口.md | 板端腾空间结果、P0–P3 估时、明日入口 |
 | 2026-11-06 | docs/data/lfw-verification-eval-2026-11-06.json | LFW 独立配对验证结构化证据 |
 | 2026-11-06 | docs/handoffs/2026-11-06-完整视频隔离评估.md | 本次正式交接与续接入口 |
 | 2026-11-01 | memory/session-logs/2026-11-01-Jetson连续确认与稳定性验收收尾.md | 上一次正式交接（历史） |

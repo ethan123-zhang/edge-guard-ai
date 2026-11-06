@@ -1,5 +1,14 @@
 # 当前进度与续接入口
 
+## 板端腾空间完成，明天从 P0 开始（2026-11-06 第十轮）
+
+- 按要求本轮不动 P0–P3，只做板端盘点 + 清理 + 排期。**Jetson `/dev/sda1`：45G→22G 已用，空闲 7.1G→31G（87%→42%）**；`/home/jetson` 19G→1.1G。
+- 删掉：`jetson-inference` 3.8G、`librealsense` 1.8G、`opencv`/`opencv-3.4` 源码 1.6G、亚博教程 `software`/`yahboomcar_ws`/`catkin_ws`、torch+tensorflow 全家（含 `.local` 里 933M+677M）、DeepStream 包、darknet、pip 缓存、`.ros/log`、`ROS专用配件(源码).zip` 1.2G、零散 tarball；Docker 里 3 年前的 `yahboomtechnology/ros2-base` 镜像 5.61G 已删除。
+- 保留：`/usr` 系统栈（cv2 4.1.1 / TensorRT 8.2.1.8 / cuDNN / CUDA）、`~/.local` 的 pycuda+numpy（板上 import 复验通过）、`~/sentinel-quality-20261106` 116M、两个 `sentinel-check-*`（模型+测试视频）、`/var/swapfile` 4G。
+- 未清（需 sudo，板上无免密）：`/var/cuda-repo-l4t-10-2-local` 1.1G、`opencv_install` 46M 与 `trt_pose` 43M 的 root 属主残留、`~/.nv/ComputeCache`、`/media/jetson/...` 226M。
+- 排期估时：P0 1–2h、P1 4–6h、P2 1–2h；**P3 被硬件卡住——板上没有 `/dev/video*`（lsusb 只有蓝牙），要先插 USB 摄像头**。合计顺的话一个整工作日到 P2。
+- 明天入口：**P0 解码先验预计算 → 做成 `vision/yunet_decode.py`**（先验表缓存，目标 <5 ms，40 帧 parity ≤0.0001 px），验收与命令见[板端存储清理与明日入口](docs/handoffs/2026-11-06-板端存储清理与明日入口.md)。
+
 ## 本次会话收尾：下个对话继续人脸识别提速（2026-11-06 第九轮）
 
 - 本会话完成：板端质量门复验、合成场景关联验收、TensorRT 只读评估、TensorRT 封装（`vision/trt_backend.py`，默认关闭，228 项单测）。
