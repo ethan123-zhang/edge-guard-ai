@@ -38,6 +38,11 @@ DEFAULTS = {
         "backend": "auto",    # auto|dshow|msmf|v4l2|any
         "width": 1280,
         "height": 720,
+        # 采集格式（FOURCC）。空 = 交给 UVC/V4L2 自己协商。
+        # USB2 板端不指定时 1280x720 会被协商成 YUYV（实测采集只有 9.9 fps），
+        # 显式 "MJPG" 才能拿到 30~50 fps（2026-11-07 板端实测）。
+        "fourcc": "",
+        "fps": 0,             # 0=不指定；板端建议显式写 30（相机标称 60，USB2 撑不住）
         "mirror": False,      # 预览镜像（不影响送模型的图）
         "warmup_frames": 3,   # 摄像头刚开时常出黑帧/自动曝光跳变
     },
@@ -55,6 +60,13 @@ DEFAULTS = {
         "haar_cascade": "",   # 空=用 OpenCV 自带的 frontalface_default
         "haar_min_neighbors": 5,
         "haar_equalize": True,  # Haar 是否做直方图均衡化；jetson_local 显式关
+        # 帧级均匀保护：缩小后的灰度标准差低于此值 = 近均匀帧（镜头被遮/夜间无红外/
+        # 视频流掉线出黑帧），直接跳过检测并计入 stats.blank。
+        # 为什么需要：2026-11-07 板端实测纯黑帧会让 YuNet(2022) 输出 score=0.886、
+        # bbox 比画面还大的假脸（暗帧 16 也有 0.673），过 0.6 门限后就是一条
+        # "陌生人"事件。真实素材帧（8 条 1080p）标准差最低也有 20+，2.0 不会误伤。
+        # 0 = 关闭（老行为）。证据 docs/data/detector-black-frame-fp-2026-11-07.json。
+        "blank_std": 2.0,
     },
     "recognition": {
         "backend": "auto",    # auto|sface|none
@@ -80,6 +92,16 @@ DEFAULTS = {
         "ws_url": "ws://127.0.0.1:8765",
         "heartbeat_sec": 5.0,
         "reconnect_sec": 3.0,
+        # 连接/握手超时：对端 accept 了但不应答时，create_connection 之后
+        # 的握手读会一直挂着，主循环就卡死在 send 里（2026-11-07 实测 16.5→8.2 fps）。
+        # 局域网握手 <10 ms，1.0 s 足够。
+        "timeout": 1.0,
+        # 单帧 sendall 超时：对端不读（TCP 窗口满）时 sendall 会无限阻塞。
+        # 0.5 s 足够局域网发一条 <2 KB 的事件，超时就断开重连，不拖主循环。
+        "send_timeout": 0.5,
+        # 重连退避上限：连不上时按 3s → 6s → 12s … 退避，最长等到这个值再探测。
+        # 对端"半死"时每次探测仍要花 timeout，退避让这段损失变得可以忽略。
+        "max_reconnect_sec": 60.0,
     },
     "output": {
         "snapshot_dir": "snapshots",   # 相对仓库根，已 gitignore
@@ -183,6 +205,10 @@ def validate(cfg):
           "camera.backend=%r 不合法，可选 %s" % (cam["backend"], _CAMERA_BACKENDS))
     _need(int(cam["width"]) > 0 and int(cam["height"]) > 0,
           "camera.width/height 必须为正整数")
+    fourcc = str(cam.get("fourcc", "") or "")
+    _need(fourcc == "" or (len(fourcc) == 4 and fourcc.isalnum()),
+          "camera.fourcc 必须是 4 个字母数字（如 MJPG / YUYV）或留空，当前 %r" % (fourcc,))
+    _need(float(cam.get("fps", 0)) >= 0, "camera.fps 不能为负，当前 %r" % (cam.get("fps"),))
     _need(int(cam["warmup_frames"]) >= 0, "camera.warmup_frames 不能为负")
 
     roi = cfg["roi"]
@@ -204,6 +230,9 @@ def validate(cfg):
     _need(0.0 < float(det["nms_threshold"]) <= 1.0,
           "detection.nms_threshold 必须在 (0, 1] 之间")
     _need(float(det["min_face_px"]) >= 1, "detection.min_face_px 至少为 1 像素")
+    _need(float(det.get("blank_std", 2.0)) >= 0.0,
+          "detection.blank_std 不能为负（0=关闭帧级均匀保护），当前 %r"
+          % (det.get("blank_std"),))
 
     rec = cfg["recognition"]
     _need(str(rec["backend"]) in _BACKEND_CHOICES["recognition"],
@@ -231,6 +260,12 @@ def validate(cfg):
     _need(str(srv["ws_url"]).startswith("ws://"),
           "server.ws_url 必须以 ws:// 开头（当前 %r）" % srv["ws_url"])
     _need(float(srv["heartbeat_sec"]) > 0, "server.heartbeat_sec 必须为正")
+    _need(float(srv.get("timeout", 1.0)) > 0,
+          "server.timeout 必须为正（秒），当前 %r" % (srv.get("timeout"),))
+    _need(float(srv.get("send_timeout", 0.5)) > 0,
+          "server.send_timeout 必须为正（秒），当前 %r" % (srv.get("send_timeout"),))
+    _need(float(srv.get("max_reconnect_sec", 60.0)) >= float(srv["reconnect_sec"]),
+          "server.max_reconnect_sec 不能小于 reconnect_sec")
 
     out = cfg["output"]
     _need(str(out["snapshot_dir"]).strip() != "", "output.snapshot_dir 不能为空")

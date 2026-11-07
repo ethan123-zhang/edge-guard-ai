@@ -26,14 +26,24 @@ class FakeSource(object):
         return self
 
     def read(self):
-        height, width = self._size
-        return True, np.zeros((height, width, 3), dtype=np.uint8), events.now_ms()
+        return True, textured_frame(self._size), events.now_ms()
 
     def release(self):
         self.released = True
 
     def describe(self):
         return "fake-camera"
+
+
+def textured_frame(size=(240, 320)):
+    """有内容的帧（从左到右 0→255 渐变，灰度标准差约 74）。
+
+    **不要用 `np.zeros`**：那会命中帧级均匀保护（`detection.blank_std`），检测会被
+    跳过 —— 2026-11-07 加的保护就是为全黑帧准备的，测试夹具得用"正常画面"。
+    """
+    height, width = size
+    row = np.linspace(0, 255, width).astype(np.uint8)
+    return np.repeat(np.repeat(row[None, :, None], height, axis=0), 3, axis=2)
 
 
 class FakeDetector(object):
@@ -355,7 +365,7 @@ def build_assoc_service(tmpdir, recognizer, detector, assoc=None, confirm_frames
 def step(service, detector, frame_ts, detections):
     """驱动一帧：`_process_frame` 是纯函数式的，不用真跑主循环。"""
     detector.result = detections
-    service._process_frame(np.zeros((240, 320, 3), dtype=np.uint8), frame_ts)
+    service._process_frame(textured_frame(), frame_ts)
 
 
 class TestAssociationWiring(unittest.TestCase):
@@ -517,6 +527,92 @@ class TestDuplicateDetectionGuard(unittest.TestCase):
             step(service, detector, ts, [face_with_landmarks(), ghost])
         self.assertEqual(len(sink.of_type("face_event")), 1, "一张脸只能一条事件")
         self.assertEqual(service.associator.session_count, 1, "不能复制出第二条会话")
+
+
+class TestBlankFrameGuard(unittest.TestCase):
+    """帧级均匀保护（2026-11-07）：近黑/被遮的帧不能变成"陌生人"事件。
+
+    板端实测：纯黑帧会让 YuNet(2022) 输出 score=0.8862、bbox 比画面还大的假脸
+    （证据 docs/data/detector-black-frame-fp-2026-11-07.json）。这里钉死的是
+    "检测器根本不会被调用"，而不是"检测结果被过滤"。
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+    @staticmethod
+    def _black(size=(240, 320), value=0):
+        return np.full((size[0], size[1], 3), value, dtype=np.uint8)
+
+    def test_std_of_black_is_zero_and_of_real_frame_is_high(self):
+        self.assertEqual(VisionService._frame_std(self._black()), 0.0)
+        self.assertGreater(VisionService._frame_std(textured_frame()), 20.0)
+
+    def test_black_frame_skips_detection_and_reports_nothing(self):
+        detector = FakeDetector()
+        service, sink = build_service(self._tmp.name, detector=detector)
+        _annotated, detections = service._process_frame(self._black(), 0)
+        self.assertEqual(detector.calls, 0, "黑帧不该进检测器")
+        self.assertEqual(detections, [])
+        self.assertEqual(service.stats.blank, 1)
+        self.assertEqual(sink.of_type("face_event"), [], "空白帧不能报陌生人")
+
+    def test_dark_frame_16_is_also_skipped(self):
+        """值为 16 的暗帧在板端也能骗过 0.6 门限（score 0.6732），同样要拦。"""
+        detector = FakeDetector()
+        service, _sink = build_service(self._tmp.name, detector=detector)
+        service._process_frame(self._black(value=16), 0)
+        self.assertEqual(detector.calls, 0)
+        self.assertEqual(service.stats.blank, 1)
+
+    def test_normal_frame_is_detected(self):
+        detector = FakeDetector()
+        service, sink = build_service(self._tmp.name, detector=detector)
+        service._process_frame(textured_frame(), 0)
+        self.assertEqual(detector.calls, 1)
+        self.assertEqual(service.stats.blank, 0)
+        self.assertEqual(len(sink.of_type("face_event")), 1)
+
+    def test_guard_can_be_disabled_with_zero(self):
+        detector = FakeDetector()
+        service, _sink = build_service(self._tmp.name, detector=detector)
+        service._blank_std = 0.0
+        service._process_frame(self._black(), 0)
+        self.assertEqual(detector.calls, 1, "blank_std=0 必须是老行为")
+        self.assertEqual(service.stats.blank, 0)
+
+    def test_run_loop_counts_blank_frames(self):
+        blank_frame = self._black()
+
+        class BlackSource(FakeSource):
+            def read(self):
+                return True, blank_frame.copy(), events.now_ms()
+
+        detector = FakeDetector()
+        service, sink = build_service(self._tmp.name, detector=detector)
+        service.source = BlackSource()
+        service.run(duration_sec=0.4, should_stop=lambda: service.stats.frames >= 5)
+        self.assertEqual(detector.calls, 0)
+        self.assertGreaterEqual(service.stats.frames, 5)
+        self.assertEqual(service.stats.blank, service.stats.frames)
+        self.assertEqual(sink.of_type("face_event"), [])
+        self.assertIn("空白帧", service.stats.summary())
+
+    def test_blank_frame_does_not_break_tracking(self):
+        """空白帧只喂空列表，不能把已有轨道立刻删掉（否则回来就多报一条）。"""
+        detector = ScriptedDetector()
+        service, sink = build_assoc_service(
+            self._tmp.name, ConstantRecognizer([0.0, 1.0, 0.0]), detector,
+            {"enabled": True})
+        service._blank_std = 2.0
+        for ts in (0, 500, 1000):
+            step(service, detector, ts, [face_with_landmarks()])
+        self.assertEqual(len(sink.of_type("face_event")), 1)
+        tracks_before = service.tracker.track_count
+        service._process_frame(self._black(), 1200)
+        self.assertEqual(service.tracker.track_count, tracks_before, "TTL 内轨道不该被清")
+        self.assertEqual(service.stats.blank, 1)
 
 
 class TestBackendLabel(unittest.TestCase):

@@ -47,13 +47,15 @@ class FrameSource(object):
 
 class OpenCVCamera(FrameSource):
     def __init__(self, device=0, width=1280, height=720, backend="auto",
-                 mirror=False, warmup_frames=3):
+                 mirror=False, warmup_frames=3, fourcc="", fps=0):
         self.device = int(device)
         self.width = int(width)
         self.height = int(height)
         self.backend = str(backend)
         self.mirror = bool(mirror)
         self.warmup_frames = int(warmup_frames)
+        self.fourcc = str(fourcc or "")
+        self.fps = float(fps or 0)
         self._cap = None
 
     def open(self):
@@ -71,13 +73,41 @@ class OpenCVCamera(FrameSource):
                 "排查顺序：① 设备管理器里有没有这个摄像头 ② 别的程序（微信/浏览器）是不是占着 "
                 "③ 换 backend（dshow/msmf/auto）④ 换 device 序号" % (self.device, self.backend)
             )
+        # FOURCC 必须先于分辨率设置：UVC 在 V4L2 下按 FOURCC 决定走哪套带宽协商。
+        # 不指定时 1280x720 会被协商成 YUYV，USB2 上采集只有 ~9.9 fps（2026-11-07 板端实测）；
+        # 显式 MJPG 后同一台相机采集 49.6 fps，整条管线 6.2 → 18.7 fps。
+        if self.fourcc:
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*self.fourcc))
+        if self.fps > 0:
+            cap.set(cv2.CAP_PROP_FPS, self.fps)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self._cap = cap
         self._used_backend = used
+        failed_warmup = 0
         for _ in range(self.warmup_frames):
-            cap.read()
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                failed_warmup += 1
+        # 打开了却一帧都读不到，九成不是"相机坏了"，是后端选错了：
+        # 板端 CAP_ANY 会先试 GStreamer，而 GStreamer 管线不认 FOURCC，
+        # 设了 MJPG 之后连读 50 帧全是失败（2026-11-07 实测）。这里当场报错并给出改法，
+        # 不要留给主循环静默丢 50 帧再退。
+        if self.warmup_frames > 0 and failed_warmup == self.warmup_frames:
+            cap.release()
+            self._cap = None
+            if self.fourcc:
+                raise SourceError(
+                    "摄像头打开了但连续 %d 帧读不到（fourcc=%s backend=%s）："
+                    "板端 CAP_ANY 可能落到了 GStreamer 后端，它不认 FOURCC —— "
+                    "把 camera.backend 显式写成 v4l2 再试"
+                    % (self.warmup_frames, self.fourcc, used)
+                )
+            raise SourceError(
+                "摄像头打开了但连续 %d 帧读不到（device=%d backend=%s）："
+                "换一根 USB 线/口，或确认没被别的进程占着" % (self.warmup_frames, self.device, used)
+            )
         return self
 
     def read(self):
@@ -94,8 +124,10 @@ class OpenCVCamera(FrameSource):
             self._cap = None
 
     def describe(self):
-        return "camera device=%d %dx%d backend=%s" % (
-            self.device, self.width, self.height, getattr(self, "_used_backend", self.backend)
+        return "camera device=%d %dx%d backend=%s fourcc=%s fps=%s" % (
+            self.device, self.width, self.height,
+            getattr(self, "_used_backend", self.backend),
+            self.fourcc or "auto", ("%g" % self.fps) if self.fps > 0 else "auto",
         )
 
 
@@ -191,6 +223,7 @@ def create_source(cfg):
             device=int(spec), width=cam["width"], height=cam["height"],
             backend=cam["backend"], mirror=cam["mirror"],
             warmup_frames=cam["warmup_frames"],
+            fourcc=cam.get("fourcc", ""), fps=cam.get("fps", 0),
         )
     if os.path.isdir(root):
         return ImageDirSource(root, mirror=cam["mirror"])

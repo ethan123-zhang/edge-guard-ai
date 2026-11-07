@@ -24,6 +24,9 @@ from vision.ws_client import WebSocketClient, WsClientError
 # 同一帧两个框 IoU 超过这个值就认为是同一张脸被重复检出（去重见 `_dedupe_detections`）
 DEDUPE_IOU = 0.5
 
+# 帧级均匀保护的探针宽度：整帧缩到 160 宽再算灰度标准差，720p 上约 0.2 ms。
+BLANK_PROBE_WIDTH = 160
+
 
 # ---------------------------------------------------------------- Sink
 
@@ -67,8 +70,11 @@ class WsSink(object):
 
     name = "ws"
 
-    def __init__(self, url, reconnect_sec=3.0, log=None):
-        self._client = WebSocketClient(url, reconnect_sec=reconnect_sec, log=log)
+    def __init__(self, url, reconnect_sec=3.0, timeout=1.0, send_timeout=0.5,
+                 max_reconnect_sec=60.0, log=None):
+        self._client = WebSocketClient(url, timeout=timeout, reconnect_sec=reconnect_sec,
+                                       send_timeout=send_timeout,
+                                       max_reconnect_sec=max_reconnect_sec, log=log)
         self.log = log or (lambda msg: None)
 
     def send(self, msg):
@@ -115,17 +121,19 @@ class Stats(object):
         self.failed = 0
         self.dropped = 0
         self.suppressed = 0     # 关联层判为「同一会话已报过」而没发的条数
+        self.blank = 0          # 帧级均匀保护跳过的近均匀帧（镜头被遮/全黑/流掉线）
         self.fps = 0.0
         self.infer_ms = 0.0
         self.started_at = time.time()
 
     def summary(self):
         elapsed = max(1e-6, time.time() - self.started_at)
+        blank = " · 空白帧 %d" % self.blank if self.blank else ""
         return ("帧 %d（%.1f fps）· 上报 %d 条（成功 %d / 失败 %d）· "
-                "单帧推理 %.1f ms · 丢帧 %d · 关联去重 %d" % (
+                "单帧推理 %.1f ms · 丢帧 %d · 关联去重 %d%s" % (
                     self.frames, self.frames / elapsed, self.events,
                     self.sent, self.failed, self.infer_ms, self.dropped,
-                    self.suppressed,
+                    self.suppressed, blank,
                 ))
 
 
@@ -146,6 +154,8 @@ class VisionService(object):
         self._last_hb = 0.0
         self._match_threshold = float(cfg["recognition"]["match_threshold"])
         self._min_face_px = int(cfg["detection"]["min_face_px"])
+        self._blank_std = float(cfg["detection"].get("blank_std", 0.0) or 0.0)
+        self._blank_logged = 0
         self._save_snapshots = bool(cfg["output"]["save_snapshots"])
         self._snapshot_dir = config.resolve_project(cfg["output"]["snapshot_dir"])
         self._snapshot_quality = int(cfg["output"]["snapshot_quality"])
@@ -339,6 +349,15 @@ class VisionService(object):
         cx, cy, cw, ch = self._crop_rect(frame.shape)
         crop = frame[cy:cy + ch, cx:cx + cw]
 
+        # 帧级均匀保护：近均匀帧（镜头被遮/全黑/流掉线）根本没有可检的人脸，
+        # 而 YuNet 在这种输入上会吐"高置信大框"假脸（板端实测 score 0.886）。
+        # 这里直接跳过检测+识别，只把空结果喂给 tracker 让旧轨道按 TTL 自然老化。
+        if self._blank_std > 0.0 and self._frame_std(crop) < self._blank_std:
+            self.stats.blank += 1
+            self._log_blank()
+            self.tracker.update([], frame_ts)
+            return frame, []
+
         # 先收集这一帧所有合格的脸，再一次性提特征：新管线可以按批喂 TensorRT
         # （一张脸一次前向在板上是浪费），旧识别器则自动退化成逐张。
         dets = [det for det in self.detector.detect(crop)
@@ -386,6 +405,30 @@ class VisionService(object):
             self._report(event, frame)
 
         return frame, detections
+
+    @staticmethod
+    def _frame_std(frame, probe_width=BLANK_PROBE_WIDTH):
+        """缩小后的灰度标准差：越小画面越"均匀"（全黑 / 镜头被遮 / 流掉线）。
+
+        先缩小再算，720p 上约 0.2 ms；全黑与暗帧(16) 都是 0，真实素材帧 20+。
+        """
+        height, width = frame.shape[:2]
+        if height <= 0 or width <= 0:
+            return 0.0
+        if width > probe_width:
+            scale = float(probe_width) / float(width)
+            frame = cv2.resize(frame, (int(probe_width), max(1, int(height * scale))),
+                               interpolation=cv2.INTER_AREA)
+        gray = frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        _mean, std = cv2.meanStdDev(gray)
+        return float(std[0][0])
+
+    def _log_blank(self):
+        """限频：全黑环境 17 fps 会刷屏，所以只打前 3 条 + 每 100 条一次。"""
+        self._blank_logged += 1
+        if self._blank_logged <= 3 or self._blank_logged % 100 == 0:
+            self.log("[vision] 空白帧保护：画面近均匀，跳过检测（累计 %d 帧）"
+                     % self.stats.blank)
 
     def _embeddings(self, crop, dets):
         """一帧一次批量识别：有 `embed_batch` 就用，没有就逐张调 `embed`。
@@ -479,7 +522,11 @@ def build_sink(cfg, jsonl_path=None, log=None):
     """
     sinks = []
     if cfg["server"]["enabled"]:
-        sinks.append(WsSink(cfg["server"]["ws_url"], cfg["server"]["reconnect_sec"], log=log))
+        sinks.append(WsSink(cfg["server"]["ws_url"], cfg["server"]["reconnect_sec"],
+                            timeout=cfg["server"].get("timeout", 1.0),
+                            send_timeout=cfg["server"].get("send_timeout", 0.5),
+                            max_reconnect_sec=cfg["server"].get("max_reconnect_sec", 60.0),
+                            log=log))
     if jsonl_path:
         sinks.append(JsonlSink(jsonl_path, log=log))
     if not sinks:

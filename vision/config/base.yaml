@@ -9,6 +9,8 @@ camera:
   backend: auto          # Windows 仿真用 dshow；板端 auto → v4l2
   width: 1280
   height: 720
+  fourcc: ""             # 采集格式；板端 USB2 摄像头写 MJPG（空=UVC 默认，720p 会退 YUYV）
+  fps: 0                 # 0=不指定；板端写 30（相机标称 60，USB2 撑不住）
   mirror: false
   warmup_frames: 3
 
@@ -27,6 +29,10 @@ detection:
   nms_threshold: 0.3
   min_face_px: 80
   haar_min_neighbors: 5
+  # 帧级均匀保护：灰度标准差低于此值 = 镜头被遮/全黑/流掉线，跳过检测。
+  # 近黑帧会让 YuNet 吐高置信假脸（板端实测 score 0.886、框比画面还大），
+  # 真实素材帧标准差最低 20+，2.0 不会误伤。0 = 关闭。
+  blank_std: 2.0
 
 recognition:
   backend: auto          # 有 SFace 模型就用 sface，否则自动退 none（全部当陌生人）
@@ -48,6 +54,12 @@ server:
   enabled: true
   heartbeat_sec: 5.0
   reconnect_sec: 3.0
+  # 对端 accept 了但不应答时，握手读会一直挂着；sendall 在对端不读时也会卡住。
+  # 两个超时都必须有界，否则网络一断主循环就被拖死（实测 16.5→8.2 fps）。
+  timeout: 1.0
+  send_timeout: 0.5
+  # 连不上时 3s → 6s → 12s… 退避到这个上限再探测（"半死"对端不会每 3 秒拖一秒）
+  max_reconnect_sec: 60.0
   # ws_url 由 profile 决定（sim 指本机回环，board 指鲁班猫5 的地址）
 
 output:

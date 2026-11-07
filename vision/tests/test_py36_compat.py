@@ -28,6 +28,11 @@ BOARD_TARGETS += [
     os.path.join(PROJECT_DIR, "scripts", "vision_selftest.py"),
     os.path.join(PROJECT_DIR, "scripts", "enroll_faces.py"),
     os.path.join(PROJECT_DIR, "scripts", "check_backend.py"),
+    # 现场无显示器：注册/自检全靠这两个纯终端脚本，必须能跑在 3.6 上
+    os.path.join(PROJECT_DIR, "scripts", "camera_watch.py"),
+    os.path.join(PROJECT_DIR, "scripts", "ensure_engines.py"),
+    os.path.join(PROJECT_DIR, "scripts", "video_pipeline_probe.py"),
+    os.path.join(PROJECT_DIR, "scripts", "video_stability_probe.py"),
 ]
 
 

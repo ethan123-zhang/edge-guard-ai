@@ -8,17 +8,42 @@
 
 camera:
   source: 0
-  backend: auto
+  # 必须写 v4l2，不能留 auto：这个 L4T OpenCV 4.1.1 的 CAP_ANY 会先试 GStreamer
+  # 后端，GStreamer 管线既不认 FOURCC 也不认 BUFFERSIZE（2026-11-07 板端实测：
+  # backend=auto + FOURCC=MJPG 时 50 帧连续读不到；同参数 backend=v4l2 正常）。
+  backend: v4l2
   width: 1280
   height: 720
+  # 2026-11-07 板端实测（同一台 UVC，USB2）：不写 fourcc 时 V4L2 会把 1280x720
+  # 协商成 YUYV，采集只有 9.9 fps，整条管线 6.2 fps；显式 MJPG + 30 后
+  # 采集 49.6 fps、管线 18.7 fps（单帧推理 25.9 ms、帧→返回中位 44 ms）。
+  # 相机标称 60 fps，但 USB2 带宽撑不住（40 帧里偶发截断 JPEG），所以钉 30。
+  fourcc: MJPG
+  fps: 30
   mirror: false
   warmup_frames: 5
+
+detection:
+  # 帧级均匀保护（2026-11-07 加）：板上实测纯黑帧 YuNet(2022) 输出
+  # score=0.8862、bbox=[50,-7,1144,746]（比画面还高，overlap 分支输出 1.0688），
+  # 暗帧(值 16) 也有 0.6732 —— 都会过 0.6 门限误报陌生人。摄像头被遮、夜间无红外、
+  # 视频流掉线都属于这种情况。判据是缩小到 160 宽后的灰度标准差：
+  # 全黑/暗帧 = 0，真实素材帧（8 条 1080p）最低 20+，所以 2.0 不会误伤。
+  # CPU dnn 与 TensorRT 输出一致，不是 engine 问题；证据
+  # docs/data/detector-black-frame-fp-2026-11-07.json。写 0 = 关闭（恢复老行为）。
+  blank_std: 2.0
 
 server:
   enabled: true
   ws_url: ws://192.168.3.214:8765
   heartbeat_sec: 5.0
   reconnect_sec: 3.0
+  # 事件出口必须"断了也不拖主循环"：对端 accept 了但不应答时握手读会挂死，
+  # 对端不读时 sendall 也会挂死（实测同段视频 16.5 → 8.2 fps）。
+  # 1.0 / 0.5 秒是局域网发一条 <2 KB 事件的宽松上限；连不上按 3→6→12s 退避。
+  timeout: 1.0
+  send_timeout: 0.5
+  max_reconnect_sec: 60.0
 
 output:
   save_snapshots: true

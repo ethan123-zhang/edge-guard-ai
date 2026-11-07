@@ -200,6 +200,83 @@ class TestAssociationProfile(unittest.TestCase):
             self.assertIn(needle, str(ctx.exception))
 
 
+class TestCameraFormat(unittest.TestCase):
+    """camera.fourcc / camera.fps（2026-11-07 P2）：板端不显式要 MJPG 只有 9.9 fps。"""
+
+    def test_defaults_do_not_touch_negotiation(self):
+        cam = config.DEFAULTS["camera"]
+        self.assertEqual(cam["fourcc"], "")
+        self.assertEqual(int(cam["fps"]), 0)
+        self.assertEqual(config.load("sim")["camera"]["fourcc"], "")
+
+    def test_board_requests_mjpg_at_30fps(self):
+        cam = config.load("board")["camera"]
+        self.assertEqual(cam["fourcc"], "MJPG")
+        self.assertEqual(int(cam["fps"]), 30)
+
+    def test_rejects_malformed_fourcc(self):
+        for bad in ("MJPGX", "MJ", "MJ G"):
+            cfg = config.load("sim")
+            cfg["camera"]["fourcc"] = bad
+            with self.assertRaises(config.ConfigError) as ctx:
+                config.validate(cfg)
+            self.assertIn("camera.fourcc", str(ctx.exception))
+
+    def test_rejects_negative_fps(self):
+        cfg = config.load("sim")
+        cfg["camera"]["fps"] = -1
+        with self.assertRaises(config.ConfigError) as ctx:
+            config.validate(cfg)
+        self.assertIn("camera.fps", str(ctx.exception))
+
+
+class TestBlankFrameGuardConfig(unittest.TestCase):
+    """帧级均匀保护（2026-11-07）：近黑帧会让 YuNet 吐高置信假脸，默认要拦。"""
+
+    def test_default_is_on_with_a_conservative_threshold(self):
+        det = config.DEFAULTS["detection"]
+        self.assertAlmostEqual(det["blank_std"], 2.0)
+        self.assertAlmostEqual(config.load("sim")["detection"]["blank_std"], 2.0)
+
+    def test_board_keeps_it_on(self):
+        self.assertGreater(config.load("board")["detection"]["blank_std"], 0.0)
+
+    def test_zero_means_disabled(self):
+        cfg = config.load("sim")
+        cfg["detection"]["blank_std"] = 0
+        config.validate(cfg)
+
+    def test_rejects_negative_threshold(self):
+        cfg = config.load("sim")
+        cfg["detection"]["blank_std"] = -1.0
+        with self.assertRaises(config.ConfigError) as ctx:
+            config.validate(cfg)
+        self.assertIn("detection.blank_std", str(ctx.exception))
+
+
+class TestServerTimeoutConfig(unittest.TestCase):
+    """WS 出口的超时必须可配且有界（2026-11-07：对端不读会把主循环拖死）。"""
+
+    def test_defaults_are_bounded(self):
+        srv = config.DEFAULTS["server"]
+        self.assertGreater(srv["timeout"], 0)
+        self.assertGreater(srv["send_timeout"], 0)
+        self.assertLessEqual(srv["send_timeout"], srv["timeout"])
+
+    def test_board_overrides_are_bounded(self):
+        srv = config.load("board")["server"]
+        self.assertGreater(srv["timeout"], 0)
+        self.assertGreater(srv["send_timeout"], 0)
+
+    def test_rejects_non_positive_values(self):
+        for key in ("timeout", "send_timeout"):
+            cfg = config.load("sim")
+            cfg["server"][key] = 0
+            with self.assertRaises(config.ConfigError) as ctx:
+                config.validate(cfg)
+            self.assertIn("server.%s" % key, str(ctx.exception))
+
+
 class TestPaths(unittest.TestCase):
     def test_models_and_gallery_live_under_vision(self):
         path = config.resolve_vision("models/x.onnx").replace("\\", "/")
