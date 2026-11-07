@@ -164,6 +164,28 @@ class TestDecodeParity(unittest.TestCase):
         rows = yunet_decode.decode([loc, conf, overlap])
         self.assertEqual(len(rows), 1)
 
+    def test_score_threshold_is_configurable(self):
+        """生产侧要沿用 `detection.score_threshold`（0.6）；默认 0.9 是 parity 口径。"""
+        count = yunet_decode.PRIOR_COUNT
+        loc = np.zeros((count, 14), dtype=np.float32)
+        conf = np.zeros((count, 2), dtype=np.float32)
+        overlap = np.zeros(count, dtype=np.float32)
+        # score = sqrt(0.49 * 1.0) = 0.7：过 0.6 不过 0.9
+        conf[3, 1] = 0.49
+        overlap[3] = 1.0
+        self.assertEqual(yunet_decode.decode([loc, conf, overlap]), [])
+        rows = yunet_decode.decode([loc, conf, overlap], score_threshold=0.6)
+        self.assertEqual(len(rows), 1)
+        self.assertAlmostEqual(float(rows[0][14]), 0.7, places=4)
+
+    def test_default_threshold_matches_legacy(self):
+        loc, conf, overlap, _hits = synthetic_outputs()
+        default_rows = yunet_decode.decode([loc, conf, overlap])
+        explicit_rows = yunet_decode.decode([loc, conf, overlap], score_threshold=0.9)
+        self.assertEqual(len(default_rows), len(explicit_rows))
+        for got, want in zip(default_rows, explicit_rows):
+            self.assertTrue(np.array_equal(got, want))
+
     def test_decode_is_fast_enough_to_keep_the_gain(self):
         """回归闸门：重建先验的旧实现约 31 ms，这里留 5 倍余量（板端目标 <5 ms）。"""
         loc, conf, overlap, _hits = synthetic_outputs()

@@ -61,3 +61,15 @@ runtime:
   duration_sec: 0
   headless: false
   log_level: info
+  # 检测/识别后端（2026-11-07 P1）。板上没有 cv2.FaceDetectorYN，只有
+  # cpu/auto/trt 这三条「裸 ONNX」路径能用 YuNet + 五点对齐 + SFace：
+  #   legacy = 旧路径（FaceDetectorYN / Haar），默认不变
+  #   auto   = 检测、识别各自判断：engine 可用走 TensorRT，否则退 CPU dnn
+  #   cpu    = 强制 CPU dnn（不碰 TensorRT）
+  #   trt    = 强制 TensorRT，engine 不可用直接报错，绝不静默降级
+  backend: legacy
+  detector_onnx: models/yunet_2022_opset9_experiment.onnx   # 320 声明版，4.1.1 也能导入
+  detector_engine: ""        # 空=没有 engine；相对路径按 vision/ 解析
+  recognizer_engine: ""
+  recognizer_batch: 8        # SFace engine 的 profile 上限就是 8
+  warmup: true

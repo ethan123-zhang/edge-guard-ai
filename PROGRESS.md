@@ -1,5 +1,14 @@
 # 当前进度与续接入口
 
+## P1 裸 ONNX 管线接线完成：板上 3.69 → 17.65 fps（2026-11-07 第十二轮）
+
+- 新增 `vision/onnx_pipeline.py`：`DnnRunner`/`TrtRunner`、`OnnxYunetDetector`（320→原图缩放、留 `raw_row`）、`OnnxSfaceRecognizer.embed_batch`、`create_pipeline`（逐组件回退+预热）、`create_components`（`legacy/auto/cpu/trt` 统一入口）；配 `vision/align.py` 五点对齐（S1）。
+- `vision/service.py` 改成一帧一次批量识别（`_embeddings`/`_match`，批量条数不符退逐张）；配置新增 `runtime.backend / detector_onnx / detector_engine / recognizer_engine / recognizer_batch / warmup`；`board.yaml` 切 `auto` + 板上绝对路径；`vision_sim` 加 `--backend`。
+- **板端验收**：与旧路径 parity —— 69 vs 69 脸 / 0 帧数量不一致 / 解码行最大差 **0.0** / 特征余弦 **min 1.000000**；CPU vs TRT（0.6 阈值）79 vs 79 / bbox 0.0001 / 余弦 0.999978。整链真 `VisionService`：**CPU 3.69 fps（271 ms）→ TRT 17.65 fps（56 ms，4.8×）**，事件条数与 bbox 完全一致；`--profile board` 真机入口 12 s 209 帧 17.3 fps。
+- **抓到真坑**：OpenCV 4.1.1 批量 dnn 会把同一批的脸特征塌成同一个向量，且状态粘住（批量 8 时 8 行两两余弦=1，之后单张也回不去）。处置：`DnnRunner.max_batch = 1`，`recognizer_batch` 只对 TRT 生效，被钳时打日志，单测钉死。
+- 单测 **283 项全过**（+31）。默认仍 `legacy`，只有 `board.yaml` 是 `auto`；关联层仍未接线，自然姿态 12 条事件未解决；板上仍无 `/dev/video*`。
+- 下次入口：P2 板端全量回归（插 USB 摄像头 → 实时 fps/端到端时延 → 真机注册再认 → 复现关联层问题），命令与风险见 [P1完成与P2入口](docs/handoffs/2026-11-07-P1完成与P2入口.md)；说明见 [P1-ONNX管线接线](docs/P1-ONNX管线接线-2026-11-07.md)。
+
 ## P0 解码先验预计算完成，下一步 P1 接 VisionService（2026-11-07 第十一轮）
 
 - 新增 `vision/yunet_decode.py`：四档先验表（5875 条）模块加载时算一次缓存，热路径只剩「按分筛 → 解偏移 → NMS」；公式顺序与旧 `decode()` 逐字节一致，Python 3.6 可跑。

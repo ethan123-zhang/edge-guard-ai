@@ -91,6 +91,81 @@ class TestHaarEqualizeFlag(unittest.TestCase):
             self.assertIn("detection.haar_equalize", str(ctx.exception))
 
 
+class TestRuntimeBackend(unittest.TestCase):
+    """runtime.backend（2026-11-07 P1）：默认 legacy 不动；显式选择时要能点名报错。"""
+
+    def test_default_is_legacy(self):
+        self.assertEqual(config.DEFAULTS["runtime"]["backend"], "legacy")
+        self.assertEqual(config.load("sim")["runtime"]["backend"], "legacy")
+
+    def test_accepts_the_four_modes(self):
+        for mode in ("legacy", "auto", "cpu", "trt"):
+            cfg = config.load("sim")
+            cfg["runtime"]["backend"] = mode
+            config.validate(cfg)
+
+    def test_defaults_stay_valid_without_engines(self):
+        cfg = config.load("sim")
+        self.assertEqual(cfg["runtime"]["detector_engine"], "")
+        self.assertEqual(cfg["runtime"]["recognizer_engine"], "")
+        self.assertIs(cfg["runtime"]["warmup"], True)
+        config.validate(cfg)
+
+    def test_rejects_unknown_backend(self):
+        cfg = config.load("sim")
+        cfg["runtime"]["backend"] = "magic"
+        with self.assertRaises(config.ConfigError) as ctx:
+            config.validate(cfg)
+        self.assertIn("runtime.backend", str(ctx.exception))
+
+    def test_onnx_mode_needs_a_detector_model(self):
+        cfg = config.load("sim")
+        cfg["runtime"]["backend"] = "cpu"
+        cfg["runtime"]["detector_onnx"] = "  "
+        with self.assertRaises(config.ConfigError) as ctx:
+            config.validate(cfg)
+        self.assertIn("detector_onnx", str(ctx.exception))
+
+    def test_recognizer_batch_cannot_exceed_engine_profile(self):
+        cfg = config.load("sim")
+        cfg["runtime"]["backend"] = "cpu"
+        cfg["runtime"]["recognizer_batch"] = 9
+        with self.assertRaises(config.ConfigError) as ctx:
+            config.validate(cfg)
+        self.assertIn("recognizer_batch", str(ctx.exception))
+
+    def test_warmup_must_be_a_real_bool(self):
+        cfg = config.load("sim")
+        cfg["runtime"]["backend"] = "cpu"
+        cfg["runtime"]["warmup"] = "true"
+        with self.assertRaises(config.ConfigError) as ctx:
+            config.validate(cfg)
+        self.assertIn("runtime.warmup", str(ctx.exception))
+
+
+class TestBoardProfileP1(unittest.TestCase):
+    """board.yaml 换成裸 ONNX 管线（2026-11-07 P1）：路径必须是板上的绝对路径。"""
+
+    def test_board_selects_auto_backend(self):
+        cfg = config.load("board")
+        self.assertEqual(cfg["runtime"]["backend"], "auto")
+        self.assertTrue(cfg["runtime"]["detector_engine"].startswith("/home/jetson/"))
+        self.assertTrue(cfg["runtime"]["recognizer_engine"].startswith("/home/jetson/"))
+        self.assertTrue(cfg["runtime"]["detector_onnx"].startswith("/home/jetson/"))
+
+    def test_board_uses_the_dynamic_sface_the_engine_was_built_from(self):
+        cfg = config.load("board")
+        self.assertIn("sface_dynamic_batch", cfg["recognition"]["model"])
+
+    def test_board_profile_validates(self):
+        config.validate(config.load("board"))
+
+    def test_sim_profile_is_untouched(self):
+        cfg = config.load("sim")
+        self.assertEqual(cfg["runtime"]["backend"], "legacy")
+        self.assertEqual(cfg["runtime"]["detector_engine"], "")
+
+
 class TestPaths(unittest.TestCase):
     def test_models_and_gallery_live_under_vision(self):
         path = config.resolve_vision("models/x.onnx").replace("\\", "/")

@@ -92,6 +92,19 @@ DEFAULTS = {
         "duration_sec": 0,     # 0=跑到 Ctrl-C
         "headless": False,
         "log_level": "info",
+        # 检测/识别后端（2026-11-07 P1）。板上没有 cv2.FaceDetectorYN，
+        # 只有 cpu/auto/trt 这三条「裸 ONNX」路径能用 YuNet + SFace：
+        #   legacy = 旧路径（FaceDetectorYN / Haar + FaceRecognizerSF），默认不变
+        #   auto   = 检测/识别各自判断：engine 可用走 TRT，否则退 CPU dnn
+        #   cpu    = 强制 CPU dnn（不碰 TensorRT）
+        #   trt    = 强制 TensorRT，engine 不可用直接报错，绝不静默降级
+        "backend": "legacy",
+        # 320 声明的 YuNet 实验副本：板上 OpenCV 4.1.1 也能导入（2023 版不能）
+        "detector_onnx": "models/yunet_2022_opset9_experiment.onnx",
+        "detector_engine": "",      # 空=没有 engine；相对路径按 vision/ 解析
+        "recognizer_engine": "",
+        "recognizer_batch": 8,      # SFace engine 的 profile 上限就是 8
+        "warmup": True,             # 启动时跑一张空白图，别把首帧抖动留给现场
     },
 }
 
@@ -99,6 +112,8 @@ _BACKEND_CHOICES = {
     "detection": ("auto", "yunet", "haar"),
     "recognition": ("auto", "sface", "none"),
 }
+
+_RUNTIME_BACKENDS = ("legacy", "auto", "cpu", "trt")
 
 _CAMERA_BACKENDS = ("auto", "dshow", "msmf", "v4l2", "any")
 
@@ -221,7 +236,19 @@ def validate(cfg):
     _need(str(out["snapshot_dir"]).strip() != "", "output.snapshot_dir 不能为空")
     _need(1 <= int(out["snapshot_quality"]) <= 100,
           "output.snapshot_quality 必须在 1~100 之间")
-    _need(float(cfg["runtime"]["max_fps"]) >= 0, "runtime.max_fps 不能为负")
+
+    runtime = cfg["runtime"]
+    _need(float(runtime["max_fps"]) >= 0, "runtime.max_fps 不能为负")
+    _need(str(runtime["backend"]) in _RUNTIME_BACKENDS,
+          "runtime.backend=%r 不合法，可选 %s" % (runtime["backend"], _RUNTIME_BACKENDS))
+    if str(runtime["backend"]) != "legacy":
+        _need(str(runtime.get("detector_onnx", "")).strip() != "",
+              "runtime.backend=%s 需要 runtime.detector_onnx 指向 YuNet ONNX"
+              % runtime["backend"])
+        _need(isinstance(runtime.get("warmup", True), bool),
+              "runtime.warmup 必须是布尔值 true/false，当前 %r" % (runtime.get("warmup"),))
+        _need(1 <= int(runtime.get("recognizer_batch", 8)) <= 8,
+              "runtime.recognizer_batch 必须在 1~8 之间（SFace engine 的 profile 上限是 8）")
 
 
 def resolve_vision(rel_path):

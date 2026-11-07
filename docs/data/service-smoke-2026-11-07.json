@@ -1,0 +1,72 @@
+{
+  "opencv": "4.1.1",
+  "frames": 40,
+  "paths": {
+    "cpu": {
+      "backend": "cpu",
+      "mode": "onnx",
+      "detect": "yunet-onnx(dnn(yunet_trt320.onnx), score>=0.60)",
+      "embed": "sface-onnx(dnn(sface_dynamic_batch.onnx), batch<=1)",
+      "enrolled": "p_10023",
+      "frames": 40,
+      "fps": 3.69,
+      "mean_infer_ms": 270.96,
+      "wall_sec": 11.11,
+      "events": 4,
+      "known_events": 2,
+      "known_names": [
+        "阿姨A"
+      ],
+      "unknown_events": 2,
+      "sample_event": {
+        "type": "face_event",
+        "msg_id": "8a162c1d-847f-4724-b0df-94675080e15e",
+        "ts": 1794026302278,
+        "face_id": "p_10023",
+        "is_known": true,
+        "name": "阿姨A",
+        "confidence": 1.0,
+        "frame_ts": 1794026301999,
+        "bbox": [
+          512,
+          86,
+          136,
+          133
+        ]
+      }
+    },
+    "auto": {
+      "backend": "auto",
+      "mode": "onnx",
+      "detect": "yunet-onnx(tensorrt(yunet_fp16.engine), score>=0.60)",
+      "embed": "sface-onnx(tensorrt(sface_batch_fp16.engine), batch<=8)",
+      "enrolled": "p_10023",
+      "frames": 40,
+      "fps": 17.65,
+      "mean_infer_ms": 56.32,
+      "wall_sec": 2.73,
+      "events": 4,
+      "known_events": 2,
+      "known_names": [
+        "阿姨A"
+      ],
+      "unknown_events": 2,
+      "sample_event": {
+        "type": "face_event",
+        "msg_id": "0702c78b-bcde-455d-a963-74421eefd339",
+        "ts": 1794026320602,
+        "face_id": "p_10023",
+        "is_known": true,
+        "name": "阿姨A",
+        "confidence": 1.0,
+        "frame_ts": 1794026320548,
+        "bbox": [
+          512,
+          86,
+          136,
+          133
+        ]
+      }
+    }
+  }
+}

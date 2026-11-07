@@ -75,13 +75,17 @@ def priors():
     return _PRIORS
 
 
-def decode(outputs):
+def decode(outputs, score_threshold=SCORE_THRESHOLD):
     """把 YuNet 的原始输出解码成 15 列数组列表（bbox + 5 关键点 + score）。
 
     `outputs` 是 `[loc, conf, overlap]`：
       - `loc`     (PRIOR_COUNT, 14)
       - `conf`    (PRIOR_COUNT, 2)（第 1 列是分类置信度）
       - `overlap` (PRIOR_COUNT,) 或 (PRIOR_COUNT, 1)
+
+    `score_threshold` 默认 0.9（旧解码器的取值，P0 parity 与板端回归靠它）。
+    生产侧想沿用 `detection.score_threshold`（默认 0.6）时显式传进来即可——
+    注意 NMS 的分数门槛也用同一个值，与 `cv2.FaceDetectorYN` 的语义一致。
 
     返回按 NMS 保留下来的行，每行 `np.float32[15]`；没人脸时返回 `[]`。
     """
@@ -92,7 +96,7 @@ def decode(outputs):
             "loc 形状不对：%r（期望 %r）" % (loc.shape, (priors.shape[0], LOC_COLUMNS))
         )
     score = np.sqrt(np.maximum(0, conf[:, 1]) * np.clip(overlap.reshape(-1), 0, 1))
-    mask = score >= SCORE_THRESHOLD
+    mask = score >= score_threshold
     if not np.any(mask):
         return []
     boxes_xywh = priors[mask]
@@ -107,7 +111,7 @@ def decode(outputs):
     keep = cv2.dnn.NMSBoxes(
         boxes.astype(int).tolist(),
         score.tolist(),
-        SCORE_THRESHOLD,
+        score_threshold,
         NMS_THRESHOLD,
         top_k=NMS_TOP_K,
     )

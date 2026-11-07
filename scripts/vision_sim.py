@@ -23,7 +23,8 @@ if ROOT not in sys.path:
 
 import cv2
 
-from vision import camera, config, detector, events, gallery, recognizer, service, tracker
+from vision import (camera, config, detector, events, gallery, onnx_pipeline,
+                    recognizer, service, tracker)
 from vision.imageio import imwrite
 
 
@@ -42,6 +43,10 @@ def parse_args(argv=None):
     ap.add_argument("--jsonl", default=None, help="事件另存 JSONL（调试用）")
     ap.add_argument("--min-face-px", type=int, default=None,
                     help="覆盖 detection.min_face_px（小图测试时调小，例如 30）")
+    ap.add_argument("--backend", default=None,
+                    choices=("legacy", "auto", "cpu", "trt"),
+                    help="覆盖 runtime.backend：legacy=旧路径 / auto=有 engine 走 TRT 否则 CPU / "
+                         "cpu=裸 ONNX / trt=强制 TRT")
     ap.add_argument("--demo", action="store_true", help="回放预置事件流，不读摄像头")
     return ap.parse_args(argv)
 
@@ -58,16 +63,15 @@ def apply_overrides(cfg, args):
         cfg["runtime"]["duration_sec"] = float(args.duration)
     if args.min_face_px is not None:
         cfg["detection"]["min_face_px"] = int(args.min_face_px)
+    if args.backend is not None:
+        cfg["runtime"]["backend"] = args.backend
     return cfg
 
 
 def build_pipeline(cfg):
-    det = detector.create_detector(cfg, log=log)
-    try:
-        rec = recognizer.create_recognizer(cfg, log=log)
-    except recognizer.RecognizerUnavailable as exc:
-        log("[vision] 识别器不可用，降级为 none：%s" % exc)
-        rec = recognizer.NullRecognizer()
+    det, rec, mode = onnx_pipeline.create_components(cfg, log=log)
+    log("[vision] 后端：runtime.backend=%s → %s（检测 %s / 识别 %s）" % (
+        cfg["runtime"]["backend"], mode, det.describe(), rec.describe()))
 
     gallery_dir = config.resolve_vision(cfg["recognition"]["gallery_dir"])
     store = gallery.FaceGallery(gallery_dir, log=log).load()
@@ -186,7 +190,8 @@ def main(argv=None):
         if args.demo:
             return run_demo(cfg, args)
         return run_pipeline(cfg, args)
-    except (camera.SourceError, detector.DetectorUnavailable) as exc:
+    except (camera.SourceError, detector.DetectorUnavailable,
+            onnx_pipeline.PipelineUnavailable) as exc:
         log("[vision] 启动失败：%s" % exc)
         return 2
 

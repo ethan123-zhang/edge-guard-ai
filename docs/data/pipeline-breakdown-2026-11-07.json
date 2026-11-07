@@ -1,0 +1,36 @@
+{
+  "opencv": "4.1.1",
+  "frames": 40,
+  "cpu": {
+    "descriptions": {
+      "detect": "yunet-onnx(dnn(yunet_trt320.onnx), score>=0.60)",
+      "embed": "sface-onnx(dnn(sface_dynamic_batch.onnx), batch<=1)"
+    },
+    "faces": 79,
+    "median_ms": {
+      "blob_detect": 3.09,
+      "run_detect": 48.779,
+      "decode": 0.973,
+      "align_embed": 2.779,
+      "blob_embed": 0.237,
+      "run_embed": 109.423
+    },
+    "median_total_detect_ms": 52.859
+  },
+  "trt": {
+    "descriptions": {
+      "detect": "yunet-onnx(tensorrt(yunet_fp16.engine), score>=0.60)",
+      "embed": "sface-onnx(tensorrt(sface_batch_fp16.engine), batch<=8)"
+    },
+    "faces": 79,
+    "median_ms": {
+      "blob_detect": 3.487,
+      "run_detect": 9.895,
+      "decode": 1.098,
+      "align_embed": 3.011,
+      "blob_embed": 0.418,
+      "run_embed": 33.157
+    },
+    "median_total_detect_ms": 14.635
+  }
+}

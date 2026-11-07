@@ -1,0 +1,62 @@
+{
+  "board": "jetson",
+  "python": "3.6.9",
+  "opencv": "4.1.1",
+  "numpy": "1.19.5",
+  "frames": 40,
+  "video": "head-pose-face-detection-female-and-male.mp4",
+  "parity_vs_legacy_at_0.9": {
+    "count_mismatch_frames": 0,
+    "total_left": 69,
+    "total_right": 69,
+    "max_bbox_abs_diff": 0.0,
+    "bbox_int_truncation_max_diff": 0.997,
+    "embeddings_vs_legacy": {
+      "count": 69,
+      "min_cosine": 1.0,
+      "median_cosine": 1.0
+    },
+    "descriptions": {
+      "cpu_detect": "yunet-onnx(dnn(yunet_trt320.onnx), score>=0.90)",
+      "cpu_embed": "sface-onnx(dnn(sface_dynamic_batch.onnx), batch<=1)"
+    }
+  },
+  "cpu_vs_tensorrt_at_0.6": {
+    "count_mismatch_frames": 0,
+    "total_left": 79,
+    "total_right": 79,
+    "max_bbox_abs_diff": 0.0001,
+    "embeddings": {
+      "count": 79,
+      "min_cosine": 0.999978,
+      "median_cosine": 0.999986
+    },
+    "descriptions": {
+      "trt_detect": "yunet-onnx(tensorrt(yunet_fp16.engine), score>=0.60)",
+      "trt_embed": "sface-onnx(tensorrt(sface_batch_fp16.engine), batch<=8)",
+      "cpu_detect": "yunet-onnx(dnn(yunet_trt320.onnx), score>=0.60)"
+    }
+  },
+  "timing_ms_median": {
+    "legacy_detect": 86.17,
+    "legacy_embed": 219.74,
+    "cpu_detect": 52.57,
+    "cpu_embed": 218.75,
+    "trt_detect": 15.03,
+    "trt_embed": 36.75,
+    "cpu06_detect": 52.54,
+    "cpu06_embed": 219.2
+  },
+  "fallback": {
+    "auto_without_engines": {
+      "detect": "yunet-onnx(dnn(yunet_trt320.onnx), score>=0.60)",
+      "embed": "sface-onnx(dnn(sface_dynamic_batch.onnx), batch<=1)",
+      "logs": [
+        "[vision] \u68c0\u6d4b\u8d70 CPU dnn\uff1ayunet_trt320.onnx",
+        "[vision] \u8bc6\u522b\u8d70 CPU dnn\uff1asface_dynamic_batch.onnx",
+        "[vision] \u8bc6\u522b\u6279\u91cf\u4ece 8 \u94b3\u5230 1\uff1adnn \u4e00\u6b21\u53ea\u53ef\u9760\u5730\u5582 1 \u5f20"
+      ]
+    },
+    "trt_without_engine": "raised: \u68c0\u6d4b\u914d\u7f6e\u8981\u6c42 trt\uff0c\u4f46\u6ca1\u6709\u53ef\u7528\u7684 engine \u6587\u4ef6\uff1a'/home/jetson/sentinel-quality-20261106/missing.engine'"
+  }
+}

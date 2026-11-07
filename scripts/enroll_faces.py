@@ -24,7 +24,7 @@ if ROOT not in sys.path:
 import cv2
 import numpy as np
 
-from vision import camera, config, detector, gallery, recognizer
+from vision import camera, config, detector, gallery, onnx_pipeline, recognizer
 from vision.imageio import imread
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
@@ -123,18 +123,20 @@ def main(argv=None):
 
     cfg = config.load(args.profile, args.config_dir)
     try:
-        det = detector.create_detector(cfg, log=log)
-        rec = recognizer.create_recognizer(cfg, log=log)
-    except (detector.DetectorUnavailable, recognizer.RecognizerUnavailable) as exc:
+        det, rec, mode = onnx_pipeline.create_components(cfg, log=log)
+    except (detector.DetectorUnavailable, recognizer.RecognizerUnavailable,
+            onnx_pipeline.PipelineUnavailable) as exc:
         log("[enroll] 模型没到位：%s" % exc)
         return 2
+    log("[enroll] 后端：runtime.backend=%s → %s（%s / %s）"
+        % (cfg["runtime"]["backend"], mode, det.describe(), rec.describe()))
     if not getattr(rec, "available", False):
         log("[enroll] 当前识别器是 none（没有 SFace 模型），无法注册。先补模型：")
         log("         vision\\models\\face_recognition_sface_2021dec.onnx")
         return 2
-    if getattr(det, "backend", "") != "yunet":
-        log("[enroll] 当前检测器是 %s（没有关键点），SFace 无法对齐 —— 先补 YuNet 模型。"
-            % det.backend)
+    if getattr(det, "backend", "") not in ("yunet", "yunet-onnx"):
+        log("[enroll] 当前检测器是 %s（没有关键点），SFace 无法对齐 —— 先补 YuNet 模型，"
+            "或把 runtime.backend 设成 cpu/auto 走裸 ONNX 管线。" % det.backend)
         return 2
 
     if args.images:

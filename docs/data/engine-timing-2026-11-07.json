@@ -1,0 +1,22 @@
+{
+  "opencv": "4.1.1",
+  "frame_shape": [
+    432,
+    768,
+    3
+  ],
+  "median_ms": {
+    "backend_run_only": 16.38,
+    "trt_runner_run": 14.98,
+    "detect_whole": 16.81
+  },
+  "min_ms": {
+    "backend_run_only": 15.43,
+    "trt_runner_run": 13.96,
+    "detect_whole": 16.67
+  },
+  "p0_reference_ms": {
+    "trt_run_only": 21.5,
+    "trt_run_plus_new_decode": 22.53
+  }
+}

@@ -58,6 +58,30 @@ class FakeRecognizer(object):
         return "fake-recognizer"
 
 
+class BatchRecognizer(object):
+    """带 `embed_batch` 的识别器：记录批量/逐张调用次数，可模拟"返回少了几个"。"""
+
+    available = True
+
+    def __init__(self, shorten=False):
+        self.shorten = bool(shorten)
+        self.batch_calls = []
+        self.single_calls = 0
+
+    def embed_batch(self, frame, detections):
+        self.batch_calls.append(len(detections))
+        if self.shorten:
+            return [np.array([1.0, 0.0, 0.0], dtype=np.float32)] * (len(detections) - 1)
+        return [np.array([1.0, 0.0, 0.0], dtype=np.float32) for _ in detections]
+
+    def embed(self, frame, detection):
+        self.single_calls += 1
+        return np.array([1.0, 0.0, 0.0], dtype=np.float32)
+
+    def describe(self):
+        return "batch-fake"
+
+
 class RecordingSink(object):
     name = "recording"
 
@@ -147,6 +171,53 @@ class TestVisionService(unittest.TestCase):
         service.run(duration_sec=0.2, should_stop=lambda: service.stats.frames >= 1)
         self.assertTrue(sink.closed)
         self.assertTrue(service.source.released)
+
+
+class TestBatchRecognition(unittest.TestCase):
+    """一帧一次批量识别（2026-11-07 P1）：有 embed_batch 就用，且不能把特征对错位。"""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+    def _service(self, recognizer):
+        service, sink = build_service(self._tmp.name, recognizer=recognizer)
+        return service, sink
+
+    def test_batch_recognizer_is_called_once_per_frame(self):
+        rec = BatchRecognizer()
+        service, sink = self._service(rec)
+        service.run(duration_sec=1.0, should_stop=lambda: bool(sink.of_type("face_event")))
+        self.assertEqual(rec.single_calls, 0, "有批量接口就不该逐张调用")
+        self.assertTrue(rec.batch_calls)
+        self.assertTrue(all(count == 1 for count in rec.batch_calls))
+        self.assertTrue(sink.of_type("face_event")[0]["is_known"])
+
+    def test_all_faces_of_a_frame_go_into_one_batch_call(self):
+        rec = BatchRecognizer()
+        service, _sink = self._service(rec)
+        frame = np.zeros((240, 320, 3), dtype=np.uint8)
+        dets = [FaceDetection(10, 10, 40, 40, 0.9), FaceDetection(120, 10, 40, 40, 0.9)]
+        vectors = service._embeddings(frame, dets)
+        self.assertEqual(len(vectors), 2)
+        self.assertEqual(rec.batch_calls, [2], "两张脸必须合成一次批量前向")
+
+    def test_short_batch_answer_falls_back_to_single_embed(self):
+        """批量返回数量不对会把特征和脸对错位，必须退回逐张而不是硬凑。"""
+        rec = BatchRecognizer(shorten=True)
+        service, _sink = self._service(rec)
+        frame = np.zeros((240, 320, 3), dtype=np.uint8)
+        dets = [FaceDetection(10, 10, 40, 40, 0.9), FaceDetection(120, 10, 40, 40, 0.9)]
+        vectors = service._embeddings(frame, dets)
+        self.assertEqual(len(vectors), 2)
+        self.assertEqual(rec.batch_calls, [2])
+        self.assertEqual(rec.single_calls, 2)
+
+    def test_no_faces_means_no_recognizer_call(self):
+        rec = BatchRecognizer()
+        service, _sink = self._service(rec)
+        self.assertEqual(service._embeddings(np.zeros((240, 320, 3), dtype=np.uint8), []), [])
+        self.assertEqual(rec.batch_calls, [])
 
 
 class TestBuildSink(unittest.TestCase):

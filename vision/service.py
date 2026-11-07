@@ -246,13 +246,17 @@ class VisionService(object):
         cx, cy, cw, ch = self._crop_rect(frame.shape)
         crop = frame[cy:cy + ch, cx:cx + cw]
 
+        # 先收集这一帧所有合格的脸，再一次性提特征：新管线可以按批喂 TensorRT
+        # （一张脸一次前向在板上是浪费），旧识别器则自动退化成逐张。
+        dets = [det for det in self.detector.detect(crop)
+                if det.size >= self._min_face_px]
+        embeddings = self._embeddings(crop, dets)
+
         detections = []
         faces = []
-        for det in self.detector.detect(crop):
-            if det.size < self._min_face_px:
-                continue
+        for det, embedding in zip(dets, embeddings):
             full = det.shifted(cx, cy)
-            face_id, name, score = self._identify(crop, det)
+            face_id, name, score = self._match(embedding)
             detections.append({"detection": full, "face_id": face_id, "name": name,
                                "score": score})
             faces.append({
@@ -267,13 +271,28 @@ class VisionService(object):
 
         return frame, detections
 
-    def _identify(self, crop, det):
-        """返回 `(face_id, name, score)`；陌生人 face_id/name 为 None。
+    def _embeddings(self, crop, dets):
+        """一帧一次批量识别：有 `embed_batch` 就用，没有就逐张调 `embed`。
+
+        批量返回长度不对时不硬凑（那会把特征和脸对错位），退回逐张并在日志里说明。
+        """
+        if not dets:
+            return []
+        batch = getattr(self.recognizer, "embed_batch", None)
+        if batch is not None:
+            vectors = list(batch(crop, dets))
+            if len(vectors) == len(dets):
+                return vectors
+            self.log("[vision] 识别器批量返回 %d 个向量、本帧 %d 张脸，退回逐张"
+                     % (len(vectors), len(dets)))
+        return [self.recognizer.embed(crop, det) for det in dets]
+
+    def _match(self, embedding):
+        """`(face_id, name, score)`；陌生人 face_id/name 为 None。
 
         陌生人也带 score（与库里最像的那个人的相似度）—— 现场调阈值时
         「差一点就认出来」和「完全不像」是两回事，这个数字必须留着。
         """
-        embedding = self.recognizer.embed(crop, det)
         if embedding is None:
             return (None, None, 0.0)
         face_id, name, score = self.gallery.best(embedding)

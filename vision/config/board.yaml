@@ -23,6 +23,22 @@ server:
 output:
   save_snapshots: true
 
+recognition:
+  # 板上 SFace 的 ONNX 原件（engine 的 sidecar 绑的就是这个文件的哈希）。
+  # CPU 兜底时 dnn 直接用它；识别一次只喂 1 张，动态 batch 模型也能吃。
+  model: /home/jetson/sentinel-quality-20261106/sface_dynamic_batch.onnx
+
 runtime:
   max_fps: 0             # 板端要真实耗时基线，不人为限帧
   headless: true
+  # 板上 OpenCV 4.1.1 没有 cv2.FaceDetectorYN / FaceRecognizerSF，旧路径只能走 Haar
+  # （没有关键点 → 只能报陌生人）。这里切到裸 ONNX 管线：YuNet + 五点对齐 + SFace。
+  # auto = engine 可用走 TensorRT，不可用退 CPU dnn；两边都会打日志。
+  backend: auto
+  detector_engine: /home/jetson/sentinel-quality-20261106/yunet_fp16.engine
+  recognizer_engine: /home/jetson/sentinel-quality-20261106/sface_batch_fp16.engine
+  # 以下三项按本板 2026-11-07 实际情况改写：
+  #   - engine 与 TensorRT 版本/设备绑定，换板或升级 JetPack 必须用
+  #     logs/video-validation/trt_regression.py 重建（sidecar 会主动拦下版本漂移）
+  #   - 320 声明的 YuNet 副本（4.1.1 能导入；2023mar 原件不能）
+  detector_onnx: /home/jetson/sentinel-quality-20261106/yunet_trt320.onnx
