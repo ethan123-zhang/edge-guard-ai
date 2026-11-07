@@ -1,0 +1,205 @@
+{
+  "date": "2026-11-07",
+  "material": "datasets/doorway-20261107（8 条 Coverr 免费片 1920x1080 H.264，gitignored）",
+  "pipeline": "生产 VisionService + 裸 ONNX/TRT（board.yaml），关联层 tau=0.45 margin=0.10 quality<=0.16",
+  "sequence_builder": "logs/probes/eval_material_board.py（切片+空镜间隔+concat，1280x720@24）",
+  "results": {
+    "seq_same_twice": {
+      "expect": "1 条事件（第二次出画再回不重报）",
+      "actual": "事件 1 条 / 关联抑制 1 条"
+    },
+    "seq_diff_people": {
+      "expect": "2 条事件、不同人绝不合并",
+      "actual": "事件 2 条 / 关联抑制 0 条"
+    },
+    "seq_two_people": {
+      "expect": "并排两人各 1 条",
+      "actual": "事件 2 条 / 关联抑制 0 条"
+    },
+    "known_revisit_A": {
+      "expect": "同一人换姿态/距离仍命中",
+      "actual": "is_known=True conf=0.849"
+    },
+    "unknown_B": {
+      "expect": "不能认成 A（硬红线）",
+      "actual": "is_known=False conf=0.114"
+    }
+  },
+  "sequences": [
+    {
+      "id": "seq_same_twice",
+      "frames": 168,
+      "fps_processing": 23.02,
+      "events": 1,
+      "suppressed": 1,
+      "association_logs": [
+        "[vision] 关联层：开（tau=0.45, margin=0.10, 质量门 rms<=0.16）",
+        "[vision] 关联层：轨道 3 并入会话 1（同类 — / 异类 —）→ 不重复上报"
+      ],
+      "event_list": [
+        {
+          "ts": 1794053418074,
+          "frame_ts": 1794053418029,
+          "latency_ms": 45,
+          "face_id": "unk_1794053417913",
+          "is_known": false,
+          "confidence": 0.0,
+          "bbox": [
+            703,
+            248,
+            163,
+            137
+          ]
+        }
+      ]
+    },
+    {
+      "id": "seq_diff_people",
+      "frames": 180,
+      "fps_processing": 25.68,
+      "events": 2,
+      "suppressed": 0,
+      "association_logs": [
+        "[vision] 关联层：开（tau=0.45, margin=0.10, 质量门 rms<=0.16）"
+      ],
+      "event_list": [
+        {
+          "ts": 1794053436911,
+          "frame_ts": 1794053436853,
+          "latency_ms": 58,
+          "face_id": "unk_1794053436725",
+          "is_known": false,
+          "confidence": 0.0,
+          "bbox": [
+            458,
+            143,
+            169,
+            144
+          ]
+        },
+        {
+          "ts": 1794053440884,
+          "frame_ts": 1794053440843,
+          "latency_ms": 41,
+          "face_id": "unk_1794053440751",
+          "is_known": false,
+          "confidence": 0.0,
+          "bbox": [
+            606,
+            163,
+            119,
+            118
+          ]
+        }
+      ]
+    },
+    {
+      "id": "seq_two_people",
+      "frames": 72,
+      "fps_processing": 10.35,
+      "events": 2,
+      "suppressed": 0,
+      "association_logs": [
+        "[vision] 关联层：开（tau=0.45, margin=0.10, 质量门 rms<=0.16）"
+      ],
+      "event_list": [
+        {
+          "ts": 1794053448348,
+          "frame_ts": 1794053448287,
+          "latency_ms": 61,
+          "face_id": "unk_1794053448140",
+          "is_known": false,
+          "confidence": 0.0,
+          "bbox": [
+            959,
+            279,
+            216,
+            188
+          ]
+        },
+        {
+          "ts": 1794053449458,
+          "frame_ts": 1794053448287,
+          "latency_ms": 1171,
+          "face_id": "unk_1794053448140_2",
+          "is_known": false,
+          "confidence": 0.0,
+          "bbox": [
+            498,
+            150,
+            167,
+            142
+          ]
+        }
+      ]
+    }
+  ],
+  "recognition": [
+    {
+      "id": "known_revisit_A",
+      "clip": "woman-enters-a-cafe-9961.mp4",
+      "events": 1,
+      "known_hits": 1,
+      "event_list": [
+        {
+          "ts": 1794053472208,
+          "frame_ts": 1794053472165,
+          "latency_ms": 43,
+          "face_id": "p_test_a",
+          "is_known": true,
+          "confidence": 0.849,
+          "bbox": [
+            703,
+            248,
+            163,
+            137
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unknown_B",
+      "clip": "traveler-texting-in-hotel-hallway.mp4",
+      "events": 1,
+      "known_hits": 0,
+      "event_list": [
+        {
+          "ts": 1794053479584,
+          "frame_ts": 1794053479542,
+          "latency_ms": 42,
+          "face_id": "unk_1794053479443",
+          "is_known": false,
+          "confidence": 0.114,
+          "bbox": [
+            611,
+            162,
+            117,
+            108
+          ]
+        }
+      ]
+    }
+  ],
+  "enroll": {
+    "method": "scripts/enroll_faces.py --images（从 cafe 片 5.6~7.9 s 抽 5 帧）",
+    "faces_in_db": 1
+  },
+  "events_latency_ms": {
+    "note": "事件自身 frame_ts→ts（视频源，不是真机）",
+    "values": [
+      45,
+      58,
+      41,
+      61,
+      1171,
+      43,
+      42
+    ]
+  },
+  "boundaries": [
+    "合成序列（切片+同机位空镜拼接），不是实验室门口真实素材",
+    "素材场景是办公室/走廊/咖啡馆/车站，不是同一门框",
+    "没有逆光；侧脸只有不到 2 s",
+    "黑场当间隔会引入 YuNet 假脸，已改用空镜"
+  ]
+}

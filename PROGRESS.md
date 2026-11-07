@@ -1,5 +1,23 @@
 # 当前进度与续接入口
 
+## 第十五轮：两个 P0 修复 + 现场能力三件套，板端全同步（2026-11-07 晚）
+
+- **帧级均匀保护**（`detection.blank_std=2.0`）：近黑/被遮帧在检测前被拦掉。板端实测：全黑 10 帧 → 0 事件（修复前是 1 条假陌生人）；黑/真/黑混排 30 帧 → 空白 10 + 事件 1（真帧已知人脸 conf 0.89）；真实素材帧 std 最低 **17.66**、中位 37.7~46.1，阈值 2.0 有 8.8 倍余量。
+- **WS 出口有界**（`server.timeout=1.0 / send_timeout=0.5 / max_reconnect_sec=60`，退避 3→6→12…s）：同一段素材 12 s 三跑 —— 无出口 14.26 fps、端口拒绝 14.40（1.01×）、**半死对端（accept 后不应答）13.11（0.92×，最大帧间隔 1070 ms = 一次握手超时，之后退避不再重复探测）**。原来对端"半死"会把主循环永久挂死。
+- **现场能力**：`scripts/camera_watch.py`（SSH 纯终端每秒一行，板上实跑 fps 18.4~19.8 / 人脸 0 空房间）、`scripts/enroll_faces.py --auto`（无头采集+质量门逐张打印，本机素材 3/3 采纳、板上空房间走到"未采纳" exit 1 且相机正常释放）。
+- **部署/engine**：`scripts/deploy_board.ps1`（tar+scp → 板端 tar 哈希 → 解包 → sha256 清单 → check_backend → run_tests；**99 文件 / 35.25 MB / sha256 99-99 一致 / 352 项 OK**，幂等）+ `scripts/ensure_engines.py`（`--check` exit 0，0.3 s；`/tmp` 副本真重建 150.6 s，生产 engine 哈希不变）。
+- 测试 **352 项**（本机 + 板端全过，板端 2 skipped）；`test_py36_compat` 的 BOARD_TARGETS 已补 `camera_watch.py`/`ensure_engines.py`。
+- 文档：[P2摄像头打通与公开素材复评](docs/P2摄像头打通与公开素材复评-2026-11-07.md)（第一~六节）、[无头注册与终端自检](docs/无头注册与终端自检.md)、[部署上板与engine校验](docs/部署上板与engine校验.md)；证据 [reliability-fixes-2026-11-07.json](docs/data/reliability-fixes-2026-11-07.json)。
+- **下次入口**：① 真实门口素材（用户之后给）→ 重标定 tau/margin/质量门；② 真人端到端时延（人站镜头前 10 s，配合 `camera_watch --jsonl`）；③ 已知人脸 10 分钟到访窗口（业务层，未动）；④ 关联层抑制日志在 `track_bound` 路径把 own/other 打"—"；⑤ SFace engine 重建分支未实跑；⑥ 换板/升级 JetPack 后先 `python3 scripts/ensure_engines.py --check`。
+
+## P2 摄像头打通 + 公开素材复评：1280×720 6.2→17.8 fps，关联层三判据全过（2026-11-07 第十四轮）
+
+- 摄像头接上了（`/dev/video0` UVC，`ssh jetson@10.77.156.4`，昨天记的 `192.168.3.154` 已不通）。生产配置 `backend: auto` + 不设 FOURCC 会被 V4L2 协商成 YUYV（USB2 采集 9.95 fps，管线 **6.2 fps**）；改 `backend: v4l2` + `fourcc: MJPG` + `fps: 30` 后 **17.6–17.8 fps**（20 s ×2，推理 26.0 ms，丢帧 0），`check_backend.py --profile board` 退出码 0。
+- 代码：`vision/config.py` 加 `camera.fourcc/fps`（默认 `""`/`0` = 不干预）；`vision/camera.py` 打开顺序改为 FOURCC→FPS→分辨率→BUFFERSIZE，并新增「预热帧全失败就抛 `SourceError` 并提示改 v4l2」（`auto` 在该 L4T OpenCV 4.1.1 会落到 GStreamer 后端，设 MJPG 后连读 50 帧失败）。单测 319→**330**（本机与板端全过，板端 2 skipped）。说明/命令见 [P2摄像头打通与公开素材复评](docs/P2摄像头打通与公开素材复评-2026-11-07.md)。
+- 素材：真实门口素材仍采不到，改用 8 条 Coverr 免费片（1920×1080 H.264，`datasets/doorway-20261107/`，gitignored，带 manifest/LICENSE/预览帧）。板上生产路径复评一致：同一人出画再回 **1 条**（抑制 1）、不同人先后 **2 条**（0 合并）、两人并排 **2 条**；注册 A 后换姿态再认 **is_known conf 0.849**，B 素材 **conf 0.114** 未错认。证据 [material-association-2026-11-07.json](docs/data/material-association-2026-11-07.json)。
+- **新坑（当晚已修，见上节）**：全黑帧会让 YuNet(2022, `yunet_trt320.onnx`) 输出 score **0.8862**、bbox 比画面还大的假脸（`overlap` 分支输出 1.0688，被 decode clip 成 1）；暗帧(16) 也过 0.6 门限 → 摄像头被遮/夜间无红外/流掉线会误报陌生人。CPU dnn 与 TRT 结果一致，不是 engine 问题。证据 [detector-black-frame-fp-2026-11-07.json](docs/data/detector-black-frame-fp-2026-11-07.json)。
+- 下次入口：**先定近黑帧策略**（建议帧级均匀性保护 + 检测框合理性兜底），再修 WS 发送失败阻塞主循环；现场注册仍缺无头路径（`enroll_faces.py --camera` 依赖 `cv2.imshow`）；真实门口素材、真人端到端时延仍未验。板端工作目录不是 git，本轮已手动同步 `vision/`（含新 `vision/tests/`）与 6 个 scripts，**没有版本校验**。
+
 ## P2.5 关联层接线完成：自然姿态 12 → 3 条，出画再回 5 → 3 条（2026-11-07 第十三轮）
 
 - 决定一 **B**（本轮接关联层）、决定二 **D**（`auto` + 可观测）已落地：`VisionService` 每帧把 `embedding`+`rms_norm` 喂给 `AnonymousAssociator`，tracker 回填 `track_id`，出事件时按会话去重（已报过就抑制，计入 `stats.suppressed`）；已知人脸不变；v1 消息协议未动。`board.yaml` 打开关联层（`enabled: true`），`base/sim` 仍是关。
@@ -152,3 +170,4 @@
 下一次先读本页与最新交接，再看自然姿态失败夹具和两份最新验收报告。先补独立正负例（换人/相邻双人/原人恢复/歧义），评估质量筛选与保守参考策略，再冻结适配器与门槛；不要仅延长TTL或减少事件数。
 
 修复前历史保留在[前次交接](memory/session-logs/2026-11-01-Jetson可靠性修复与公开视频回归.md)及对应docs验收文件；历史2过1败不再作为当前连续确认结果。
+

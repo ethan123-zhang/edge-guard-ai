@@ -1,0 +1,180 @@
+{
+  "date": "2026-11-07",
+  "board": "Jetson Nano B01, L4T R32.7.3, Python 3.6.9, cv2 4.1.1, TensorRT 8.2.1.8",
+  "source": "reliability_board_probe.py（板端，生产 VisionService + TRT engine）",
+  "fix_1_blank_frame_guard": {
+    "config": "detection.blank_std = 2.0（0=关闭）",
+    "rule": "整帧缩到 160 宽后灰度标准差 < 2.0 → 跳过检测/识别，只喂 tracker 空列表；stats.blank 计数 + 限频日志",
+    "why": "纯黑帧 YuNet(2022) 输出 score=0.8862、bbox 比画面还大；暗帧(16) 0.6732；真实素材帧标准差最低 17.66",
+    "real_material_frame_std": {
+      "per_clip": [
+        {
+          "clip": "woman-enters-a-cafe-9961.mp4",
+          "samples": 27,
+          "min": 17.66,
+          "median": 38.88,
+          "max": 50.73
+        },
+        {
+          "clip": "traveler-texting-in-hotel-hallway.mp4",
+          "samples": 29,
+          "min": 31.94,
+          "median": 40.0,
+          "max": 42.93
+        },
+        {
+          "clip": "teamwork-in-the-office-7943.mp4",
+          "samples": 35,
+          "min": 36.01,
+          "median": 37.66,
+          "max": 39.04
+        },
+        {
+          "clip": "a-cheerful-young-woman-enters-the-office-5506.mp4",
+          "samples": 24,
+          "min": 39.58,
+          "median": 46.05,
+          "max": 49.0
+        }
+      ],
+      "overall_min": 17.66
+    },
+    "cases": [
+      {
+        "id": "all_black",
+        "frames_in": 10,
+        "frames": 10,
+        "blank": 10,
+        "events": 0,
+        "event_list": [],
+        "mode": "onnx",
+        "blank_logs": [
+          "[vision] 空白帧保护：画面近均匀，跳过检测（累计 1 帧）",
+          "[vision] 空白帧保护：画面近均匀，跳过检测（累计 2 帧）",
+          "[vision] 空白帧保护：画面近均匀，跳过检测（累计 3 帧）"
+        ]
+      },
+      {
+        "id": "mixed_black_real_black",
+        "frames_in": 30,
+        "frames": 30,
+        "blank": 10,
+        "events": 1,
+        "event_list": [
+          {
+            "ts": 1794055000275,
+            "frame_ts": 1794055000216,
+            "latency_ms": 59,
+            "face_id": "p_test_a",
+            "is_known": true,
+            "confidence": 0.89,
+            "bbox": [
+              688,
+              212,
+              254,
+              220
+            ]
+          }
+        ],
+        "mode": "onnx",
+        "blank_logs": [
+          "[vision] 空白帧保护：画面近均匀，跳过检测（累计 1 帧）",
+          "[vision] 空白帧保护：画面近均匀，跳过检测（累计 2 帧）",
+          "[vision] 空白帧保护：画面近均匀，跳过检测（累计 3 帧）"
+        ]
+      }
+    ],
+    "verdict": [
+      "全黑 10 帧：空白 10、事件 0（修复前会是 1 条假陌生人事件）",
+      "黑/真/黑 混排 30 帧：空白 10、事件 1（真帧的已知人脸 conf 0.89，坐标正常 254x220）",
+      "真实素材帧标准差 min 17.66 / median 37.7~46.1 → 阈值 2.0 有 8.8 倍余量，不会误伤"
+    ]
+  },
+  "fix_2_ws_bounded": {
+    "config": "server.timeout=1.0 / send_timeout=0.5 / max_reconnect_sec=60（退避 3→6→12…s）",
+    "why": "握手读原先 settimeout(None)、sendall 无超时：对端 accept 了不应答 / 不读时主循环被挂死",
+    "cases": [
+      {
+        "id": "baseline_null_sink",
+        "frames": 172,
+        "fps": 14.26,
+        "events": 1,
+        "sent": 1,
+        "failed": 0,
+        "max_gap_ms": 86.3,
+        "p90_gap_ms": 72.7,
+        "connect_failures": null,
+        "last_error": null,
+        "sink": "null",
+        "ws_logs": []
+      },
+      {
+        "id": "refused_peer",
+        "frames": 173,
+        "fps": 14.4,
+        "events": 1,
+        "sent": 0,
+        "failed": 1,
+        "max_gap_ms": 79.8,
+        "p90_gap_ms": 70.5,
+        "connect_failures": 1,
+        "last_error": "连不上：[Errno 111] Connection refused",
+        "sink": "ws",
+        "ws_logs": [
+          "[vision] 事件发送失败（对端没起？），本地计数 = 1",
+          "[vision] 上报 p_test_a · TestA · conf=0.813 · 无截图（累计发送失败 1）"
+        ],
+        "fps_ratio_vs_baseline": 1.01
+      },
+      {
+        "id": "stalled_peer",
+        "frames": 158,
+        "fps": 13.11,
+        "events": 1,
+        "sent": 0,
+        "failed": 1,
+        "max_gap_ms": 1070.2,
+        "p90_gap_ms": 70.6,
+        "connect_failures": 1,
+        "last_error": "握手失败：timed out",
+        "sink": "ws",
+        "ws_logs": [
+          "[vision] 事件发送失败（对端没起？），本地计数 = 1",
+          "[vision] 上报 p_test_a · TestA · conf=0.813 · 无截图（累计发送失败 1）"
+        ],
+        "fps_ratio_vs_baseline": 0.919
+      }
+    ],
+    "verdict": [
+      "端口拒绝：fps 比 1.01（与无出口基线持平），1 次失败，max_gap 80 ms",
+      "半死对端（accept 后不应答）：fps 比 0.919，只有 1 次失败，max_gap 1070 ms（= 一次握手超时），之后指数退避不再重复探测",
+      "事件照常计入 failed，日志给出'连不上/握手失败'中文原因，不再表现为'没再发出去'"
+    ]
+  },
+  "regression_after_fixes": {
+    "board_tests": "352 项 OK（2 skipped）",
+    "material_eval": {
+      "seq_same_twice": {
+        "events": 1,
+        "suppressed": 1
+      },
+      "seq_diff_people": {
+        "events": 2,
+        "suppressed": 0
+      },
+      "seq_two_people": {
+        "events": 2,
+        "suppressed": 0
+      },
+      "known_revisit_A": {
+        "events": 1,
+        "known_hits": 1
+      },
+      "unknown_B": {
+        "events": 1,
+        "known_hits": 0
+      }
+    },
+    "note": "帧级保护没有改变素材复评的任何一条判定；关联层三判据与再认仍全过"
+  }
+}

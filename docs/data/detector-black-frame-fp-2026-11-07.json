@@ -1,0 +1,105 @@
+{
+  "date": "2026-11-07",
+  "finding": "近黑/全黑帧会让 YuNet(2022, yunet_trt320.onnx) 产出高置信假脸",
+  "evidence": {
+    "probe_script": "logs/probes/black_frame_probe.py（生产检测器，板端）",
+    "uniform_frames": [
+      {
+        "case": "black",
+        "value": 0,
+        "n_faces": 1,
+        "faces": [
+          {
+            "bbox": [
+              50,
+              -7,
+              1144,
+              746
+            ],
+            "score": 0.8862,
+            "size": 746
+          }
+        ]
+      },
+      {
+        "case": "dark16",
+        "value": 16,
+        "n_faces": 1,
+        "faces": [
+          {
+            "bbox": [
+              76,
+              -8,
+              1133,
+              742
+            ],
+            "score": 0.6732,
+            "size": 742
+          }
+        ]
+      },
+      {
+        "case": "gray64",
+        "value": 64,
+        "n_faces": 0,
+        "faces": []
+      },
+      {
+        "case": "gray128",
+        "value": 128,
+        "n_faces": 0,
+        "faces": []
+      },
+      {
+        "case": "gray200",
+        "value": 200,
+        "n_faces": 0,
+        "faces": []
+      },
+      {
+        "case": "white",
+        "value": 255,
+        "n_faces": 0,
+        "faces": []
+      }
+    ],
+    "raw_output_black": {
+      "shape": [
+        5875,
+        14,
+        2,
+        1
+      ],
+      "max_score": 0.8862,
+      "n_above_0.6": 4,
+      "n_above_0.3": 16,
+      "top_prior_index": 5838,
+      "top_conf": [
+        0.2147,
+        0.7853
+      ],
+      "top_overlap": 1.0688
+    },
+    "raw_output_dark16": {
+      "max_score": 0.6732,
+      "n_above_0.6": 1,
+      "top_overlap": 0.9687
+    },
+    "raw_output_gray64": {
+      "max_score": 0.5213,
+      "n_above_0.6": 0
+    },
+    "cpu_vs_trt": "CPU dnn 与 TensorRT 结果完全一致（bbox 与 score 相同）→ 不是 engine 问题",
+    "cross_check_pc": "Windows cv2 4.13 FaceDetectorYN + face_detection_yunet_2023mar 对同一批纯色帧：0 张脸（模型版本不同，不能据此判定解码错误）"
+  },
+  "impact": [
+    "摄像头被遮挡 / 夜间无红外 / 视频流掉线出黑帧 → 会误报一条陌生人事件",
+    "本轮用黑场拼'人离开'序列时多出假事件，事件计数被污染（已改用空镜）",
+    "decode 对 overlap 做了 clip(0,1)，所以 score=sqrt(conf*1.0)；根因在模型对退化输入的输出"
+  ],
+  "candidate_fixes": [
+    "帧级保护：灰度标准差低于阈值（近均匀帧）跳过检测并单独计数/上报相机故障",
+    "检测框合理性：框超出画面或占比过大直接丢弃（可识别性也为 0）",
+    "换 2023 模型的可导入(低 opset)副本并重建 engine；需要重新做 parity 与板上回归"
+  ]
+}
