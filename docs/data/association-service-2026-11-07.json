@@ -1,0 +1,66 @@
+{
+  "video": "head-pose-face-detection-female-and-male.mp4",
+  "fps": 12.0,
+  "gap_frames": [
+    800,
+    836
+  ],
+  "detector": "yunet-onnx(tensorrt(yunet_fp16.engine), score>=0.60)",
+  "recognizer": "sface-onnx(tensorrt(sface_batch_fp16.engine), batch<=8)",
+  "runs": [
+    {
+      "label": "steady_association_off",
+      "association_enabled": false,
+      "events": 3,
+      "unknown_events": 3,
+      "suppressed": 0,
+      "sessions": 0,
+      "event_times_ms": [
+        167,
+        167,
+        63667
+      ]
+    },
+    {
+      "label": "steady_association_on",
+      "association_enabled": true,
+      "events": 3,
+      "unknown_events": 3,
+      "suppressed": 0,
+      "sessions": 3,
+      "event_times_ms": [
+        167,
+        167,
+        63667
+      ]
+    },
+    {
+      "label": "gap_association_off",
+      "association_enabled": false,
+      "events": 5,
+      "unknown_events": 5,
+      "suppressed": 0,
+      "sessions": 0,
+      "event_times_ms": [
+        167,
+        167,
+        63667,
+        69833,
+        69833
+      ]
+    },
+    {
+      "label": "gap_association_on",
+      "association_enabled": true,
+      "events": 3,
+      "unknown_events": 3,
+      "suppressed": 2,
+      "sessions": 3,
+      "event_times_ms": [
+        167,
+        167,
+        63667
+      ]
+    }
+  ]
+}

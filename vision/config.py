@@ -250,6 +250,16 @@ def validate(cfg):
         _need(1 <= int(runtime.get("recognizer_batch", 8)) <= 8,
               "runtime.recognizer_batch 必须在 1~8 之间（SFace engine 的 profile 上限是 8）")
 
+    assoc = cfg.get("association") or {}
+    _need(isinstance(assoc.get("enabled", False), bool),
+          "association.enabled 必须是布尔值 true/false，当前 %r"
+          % (assoc.get("enabled"),))
+    _need(0.0 < float(assoc.get("tau", 0.45)) <= 1.0,
+          "association.tau 必须在 (0, 1] 之间，当前 %r" % (assoc.get("tau"),))
+    _need(float(assoc.get("margin", 0.10)) >= 0.0, "association.margin 不能为负")
+    _need(float(assoc.get("quality_max_rms", 0.10)) >= 0.0,
+          "association.quality_max_rms 不能为负")
+
 
 def resolve_vision(rel_path):
     """配置里的相对路径以 `vision/` 为根（模型、人脸库都在这里）。"""

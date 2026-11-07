@@ -44,15 +44,24 @@ def face_event(face_id, is_known, name, confidence, bbox=None, frame_ts=None, ts
     return msg
 
 
-def heartbeat(fps, frame_drop=0, ts=None):
-    """`vision_heartbeat`（docs/02 §3.2）。对话节点 15 秒收不到就报"视觉节点离线"。"""
-    return {
+def heartbeat(fps, frame_drop=0, ts=None, backend=None):
+    """`vision_heartbeat`（docs/02 §3.2）。对话节点 15 秒收不到就报"视觉节点离线"。
+
+    `backend` 是本节点实际在用的检测后端（如 `yunet-onnx/tensorrt`）。加这个字段是
+    因为板上 `runtime.backend: auto` 在 engine 不可用时会**静默退到 CPU dnn**
+    （`fps` 从 17 掉到 3.7，但只有日志写明）—— 值班看心跳就知道在跑 TensorRT 还是
+    CPU，不用登板子翻日志。字段可选，老消费端忽略即可。
+    """
+    msg = {
         "type": "vision_heartbeat",
         "msg_id": new_msg_id(),
         "ts": now_ms() if ts is None else int(ts),
         "fps": round(float(fps), 1),
         "frame_drop": int(frame_drop),
     }
+    if backend:
+        msg["backend"] = str(backend)
+    return msg
 
 
 def _clamp01(value):

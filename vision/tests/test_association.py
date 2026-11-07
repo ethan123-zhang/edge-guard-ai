@@ -123,6 +123,28 @@ class TestOneToOneOccupancy(unittest.TestCase):
         self.assertNotEqual(second.session_id, first.session_id)
         self.assertEqual(assoc.session_count, 2)
 
+    def test_handover_when_the_occupying_track_left_the_frame(self):
+        """换轨：占位轨道这一帧不在场 → 外观相同就交接，不新建重复会话。
+
+        2026-11-07 板上 287 点回放的失败模式：点位框抖动让 tracker 重建轨道，
+        旧轨道 TTL 内还挂着会话，新轨道被当成"另一个人抢"→ 新建重复会话 →
+        之后同一人会同时像两条会话（own 0.888 / other 0.856）→ 事件数反弹。
+        """
+        assoc = AnonymousAssociator(enabled=True)
+        first = assoc.observe(1, vec(0), 0.02, 1000)
+        second = assoc.observe(2, vec(0), 0.02, 1100, tracked_ids={2})
+        self.assertTrue(second.associated)
+        self.assertEqual(second.reason, "associated")
+        self.assertEqual(second.session_id, first.session_id)
+        self.assertEqual(assoc.session_count, 1)
+
+    def test_two_present_tracks_still_refuse_even_with_tracked_ids(self):
+        assoc = AnonymousAssociator(enabled=True)
+        assoc.observe(1, vec(0), 0.02, 1000)
+        second = assoc.observe(2, vec(0), 0.02, 1100, tracked_ids={1, 2})
+        self.assertFalse(second.associated)
+        self.assertEqual(second.reason, "session_occupied")
+
     def test_same_track_keeps_its_session_without_redeciding(self):
         assoc = AnonymousAssociator(enabled=True)
         first = assoc.observe(1, vec(0), 0.02, 1000)
@@ -130,6 +152,20 @@ class TestOneToOneOccupancy(unittest.TestCase):
         self.assertTrue(again.associated)
         self.assertEqual(again.reason, "track_bound")
         self.assertEqual(again.session_id, first.session_id)
+        self.assertEqual(assoc.session_count, 1)
+
+    def test_session_survives_continuous_observation_past_the_ttl(self):
+        """人在门口站超过 2 分钟不能把会话"站没了"（TTL 按最后一次证据算）。
+
+        2026-11-07 板上发现：`track_bound` 分支没刷新 `last_ts`，连续观察 120s 后
+        会话会被 prune，下一条证据变成 below_tau → 新建重复会话 → 多报一条。
+        """
+        assoc = AnonymousAssociator(enabled=True, session_ttl_sec=120.0)
+        first = assoc.observe(1, vec(0), 0.02, 1000)
+        for ts in range(2000, 200001, 1000):        # 每秒一条（在轨道 TTL 内），跨过 120s 会话 TTL
+            result = assoc.observe(1, vec(0), 0.02, ts)
+            self.assertEqual(result.reason, "track_bound")
+            self.assertEqual(result.session_id, first.session_id)
         self.assertEqual(assoc.session_count, 1)
 
 

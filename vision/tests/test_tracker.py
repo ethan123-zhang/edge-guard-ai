@@ -273,5 +273,38 @@ class TestTrackTtlBoundary(unittest.TestCase):
         self.assertTrue(emitted[0].face_id.startswith("unk_2501"))
 
 
+class TestTrackIdAnnotation(unittest.TestCase):
+    """tracker 要把 track_id 回填进 face（关联层按轨道收外观证据）。"""
+
+    def test_new_track_annotates_face(self):
+        tracker = FaceTracker(confirm_frames=1)
+        item = face()
+        tracker.update([item], 1000)
+        self.assertEqual(item["track_id"], 1)
+
+    def test_matched_track_keeps_the_same_id(self):
+        tracker = FaceTracker(confirm_frames=1)
+        first = face()
+        tracker.update([first], 1000)
+        second = face(bbox=(102, 102, 80, 80))
+        tracker.update([second], 1500)
+        self.assertEqual(second["track_id"], first["track_id"])
+
+    def test_event_track_id_matches_the_face(self):
+        tracker = FaceTracker(confirm_frames=1)
+        item = face()
+        emitted = tracker.update([item], 1000)
+        self.assertEqual(len(emitted), 1)
+        self.assertEqual(emitted[0].track_id, item["track_id"])
+
+    def test_extra_keys_on_face_are_ignored(self):
+        """service 会往 face 里塞 embedding / rms_norm，tracker 不该受影响。"""
+        tracker = FaceTracker(confirm_frames=1)
+        item = face()
+        item["embedding"] = [0.0] * 128
+        item["rms_norm"] = 0.05
+        self.assertEqual(len(tracker.update([item], 1000)), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

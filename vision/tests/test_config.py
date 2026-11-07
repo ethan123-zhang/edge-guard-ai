@@ -166,6 +166,40 @@ class TestBoardProfileP1(unittest.TestCase):
         self.assertEqual(cfg["runtime"]["detector_engine"], "")
 
 
+class TestAssociationProfile(unittest.TestCase):
+    """关联层默认关、板上开（2026-11-07 P2.5）；质量门按板上实测重标定过。"""
+
+    def test_defaults_are_off(self):
+        cfg = config.DEFAULTS["association"]
+        self.assertFalse(cfg["enabled"])
+        self.assertAlmostEqual(cfg["tau"], 0.45)
+        self.assertAlmostEqual(cfg["margin"], 0.10)
+
+    def test_sim_profile_keeps_it_off(self):
+        self.assertFalse(config.load("sim")["association"]["enabled"])
+
+    def test_board_profile_enables_it_with_the_recalibrated_gate(self):
+        assoc = config.load("board")["association"]
+        self.assertTrue(assoc["enabled"], "板上这次就是要接关联层")
+        self.assertGreater(assoc["quality_max_rms"], 0.10,
+                           "320 输入把关键点量化了，照抄 0.10 只入册 2.5%")
+        self.assertAlmostEqual(assoc["quality_max_rms"], 0.16)
+
+    def test_validate_rejects_bad_association_values(self):
+        for patch, needle in (
+            ({"tau": 1.5}, "association.tau"),
+            ({"margin": -0.1}, "association.margin"),
+            ({"quality_max_rms": -0.1}, "association.quality_max_rms"),
+            ({"enabled": "yes"}, "association.enabled"),
+        ):
+            cfg = config.load("sim")
+            cfg["association"] = dict(config.DEFAULTS["association"])
+            cfg["association"].update(patch)
+            with self.assertRaises(config.ConfigError) as ctx:
+                config.validate(cfg)
+            self.assertIn(needle, str(ctx.exception))
+
+
 class TestPaths(unittest.TestCase):
     def test_models_and_gallery_live_under_vision(self):
         path = config.resolve_vision("models/x.onnx").replace("\\", "/")

@@ -124,6 +124,8 @@ class FaceTracker(object):
         for track, face in matched:
             track.bbox = tuple(face["bbox"])
             track.last_ts = frame_ts
+            # 回填轨道 id：关联层要按「这一帧这张脸属于哪条轨道」收证据
+            face["track_id"] = track.id
             self._vote(track, face)
 
         # 本帧没匹配上的旧轨道：清空当前连续段（保留 track_id / 未知身份 ID /
@@ -140,6 +142,7 @@ class FaceTracker(object):
                 self._new_unknown_id(frame_ts),
             )
             self._next_track_id += 1
+            face["track_id"] = track.id
             self._vote(track, face)
             self._tracks.append(track)
 

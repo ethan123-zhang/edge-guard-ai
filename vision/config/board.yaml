@@ -28,6 +28,23 @@ recognition:
   # CPU 兜底时 dnn 直接用它；识别一次只喂 1 张，动态 batch 模型也能吃。
   model: /home/jetson/sentinel-quality-20261106/sface_dynamic_batch.onnx
 
+# 两层去重的第 2 层：匿名会话关联（2026-11-07 接线，板上实测后开的）
+# 合同：docs/跨轨关联与两层去重合同-2026-11-01.md（证据充分且唯一才复用会话）
+association:
+  enabled: true
+  # tau/margin 沿用离线研究（LFW 500 异对 FAR=0）；板上真素材复测：同类余弦
+  # min 0.461 / median 0.846，异类 max 0.330，两个阈值都有余量。
+  tau: 0.45
+  margin: 0.10
+  # 质量门要重标定：离线研究的 0.10 是按 1:1 关键点精度算的，板上 YuNet 输入固定
+  # 320×320，5 个点被量化到 ~2.4 px 一格再放大回 768 宽，残差整体被抬高约 1.5×。
+  # 板上实测（40 帧 79 张脸）：rms_norm p10 0.111 / median 0.145 / p90 0.287。
+  # 取 0.16：入册率 2.5%→58%，此时异类余弦上界仍只有 0.209（< tau-0.24）。
+  # 证据 docs/data/quality-gate-2026-11-07.json。
+  quality_max_rms: 0.16
+  session_ttl_sec: 120.0     # 2 分钟内的再次出现算同一次在场
+  track_ttl_sec: 2.0
+
 runtime:
   max_fps: 0             # 板端要真实耗时基线，不人为限帧
   headless: true

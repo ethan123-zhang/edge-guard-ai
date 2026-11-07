@@ -26,6 +26,8 @@ BOARD_TARGETS = [
 BOARD_TARGETS += [
     os.path.join(PROJECT_DIR, "scripts", "vision_sim.py"),
     os.path.join(PROJECT_DIR, "scripts", "vision_selftest.py"),
+    os.path.join(PROJECT_DIR, "scripts", "enroll_faces.py"),
+    os.path.join(PROJECT_DIR, "scripts", "check_backend.py"),
 ]
 
 

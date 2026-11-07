@@ -57,3 +57,23 @@ def residual(points):
     predicted = (matrix[:, :2].dot(source.T) + matrix[:, 2:3]).T
     delta = predicted - ALIGN_TARGET
     return float(np.sqrt(np.mean(np.sum(delta * delta, axis=1))))
+
+
+def eye_distance(points):
+    """两眼间距（像素）。质量门的分母；`points` 顺序是 YuNet 的「右眼, 左眼」，取前两点。"""
+    source = np.asarray(points, dtype=np.float64).reshape(5, 2)
+    return float(np.linalg.norm(source[1] - source[0]))
+
+
+def quality(points):
+    """关联层质量门用的无量纲指标：对齐残差 ÷ 眼距（`align_rms_norm`）。
+
+    越小越可信：只有 `<= quality_max_rms`（默认 0.10）的脸才会被写进匿名会话的参考库。
+    公式与 2026-11-06 的质量研究逐字一致（`logs/video-validation/quality-study-20261106.py`
+    的 `align_rms_norm = rms / max(eye_px, 1e-6)`），0.10 这道门才有那批 LFW 证据。
+    眼距接近 0 的检测是坏样本，返回 `None`（等于入不了册），而不是给个很大的数。
+    """
+    distance = eye_distance(points)
+    if distance <= 1e-3:
+        return None
+    return residual(points) / distance

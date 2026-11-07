@@ -64,6 +64,15 @@ class TestCheck(unittest.TestCase):
         self.assertEqual(events.check(msg), [])
         self.assertEqual(msg["fps"], 12.3)
 
+    def test_heartbeat_without_backend_keeps_the_old_shape(self):
+        self.assertNotIn("backend", events.heartbeat(9.0, 0))
+
+    def test_heartbeat_carries_the_real_backend(self):
+        """值班靠这个字段判断是不是静默退到了 CPU dnn（17.6 → 3.7 fps）。"""
+        msg = events.heartbeat(3.7, 0, backend="yunet-onnx/dnn")
+        self.assertEqual(msg["backend"], "yunet-onnx/dnn")
+        self.assertEqual(events.check(msg), [], "多一个字段不能破坏协议校验")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,14 @@
 # 当前进度与续接入口
 
+## P2.5 关联层接线完成：自然姿态 12 → 3 条，出画再回 5 → 3 条（2026-11-07 第十三轮）
+
+- 决定一 **B**（本轮接关联层）、决定二 **D**（`auto` + 可观测）已落地：`VisionService` 每帧把 `embedding`+`rms_norm` 喂给 `AnonymousAssociator`，tracker 回填 `track_id`，出事件时按会话去重（已报过就抑制，计入 `stats.suppressed`）；已知人脸不变；v1 消息协议未动。`board.yaml` 打开关联层（`enabled: true`），`base/sim` 仍是关。
+- **四个板上量出来的修正**：① 质量门按 320 输入重标定 `0.10 → 0.16`（入册率 2.5%→58%，异类余弦上界仍 0.209 ≪ tau 0.45）；② `observe(..., tracked_ids=)` 让换轨能交接（否则框抖动把同一人复制成两条会话，own 0.888/other 0.856 → 判歧义 → 事件反弹）；③ 修 `track_bound` 不刷新 `last_ts` 的 bug（连续站 120 s 会把会话判过期、重报一条）；④ 同帧重复检出（幽灵框 IoU>0.5）先去重。
+- **验收**（板端，TRT）：287 点夹具（几何来自夹具 + 真实外观证据，463/463 框匹配）关联层关 **12** 条 → 开 **3** 条（抑制 9），剩 1 条是 `below_tau` own 0.38 的保守重报；生产几何整段 143 s 视频：稳定在场 3→3、挖 3 s 空档 **5→3（抑制 2）**。开销 **+1.23 ms/帧**（56.3 ms 帧的 2.2%）；`--no-server` 下开关关联层 15.8/16.0 fps。
+- **决定二 D**：`scripts/check_backend.py`（`--expect tensorrt` 退出码 0，`--expect dnn` 退出码 1）+ 心跳新增 `backend: "yunet-onnx/tensorrt"` 字段，把 `auto` 的静默降级变成可断言、可观测；单测 `test_check_backend.py` 钉住退出码。
+- 单测 **319 项全过**（+36）。顺带发现：**WS 连不上时发送失败会阻塞主循环**（同一段视频 8.2 vs 16.5 fps），P2 联调要盯。
+- 下次入口：P2 板端全量回归（**要先插 USB 摄像头**：实时 fps/端到端时延、真机注册再认、真实门口素材复评 `tau`/质量门），步骤见 [P2.5完成与P2入口](docs/handoffs/2026-11-07-P2.5完成与P2入口.md)；说明 [P2.5-关联层接线](docs/P2.5-关联层接线-2026-11-07.md)，证据 `docs/data/{quality-gate,association-replay,association-service,association-cost}-2026-11-07.json`。
+
 ## P1 裸 ONNX 管线接线完成：板上 3.69 → 17.65 fps（2026-11-07 第十二轮）
 
 - 新增 `vision/onnx_pipeline.py`：`DnnRunner`/`TrtRunner`、`OnnxYunetDetector`（320→原图缩放、留 `raw_row`）、`OnnxSfaceRecognizer.embed_batch`、`create_pipeline`（逐组件回退+预热）、`create_components`（`legacy/auto/cpu/trt` 统一入口）；配 `vision/align.py` 五点对齐（S1）。

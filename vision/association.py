@@ -135,11 +135,14 @@ class AnonymousAssociator(object):
 
     # ---------------------------------------------------------------- 主入口
 
-    def observe(self, track_id, embedding, rms_norm, frame_ts):
+    def observe(self, track_id, embedding, rms_norm, frame_ts, tracked_ids=None):
         """喂一条证据（来自某个已确认轨道），返回关联判定。
 
         `track_id`：空间轨道 id；`embedding`：L2 归一化前后的 128 维特征都可；
         `rms_norm`：该脸的五点对齐残差 ÷ 眼距；没有质量指标时传 None。
+        `tracked_ids`：**这一帧在场**的轨道 id 集合。给了它，就能区分「两个人同时在」
+        和「换轨交接」：前者不许共享会话，后者（旧轨道这一帧已经不在场）允许交接。
+        不给则退回纯 TTL 判据（老行为，单测/离线回放用）。
         """
         frame_ts = int(frame_ts)
         if not self.enabled:
@@ -153,6 +156,8 @@ class AnonymousAssociator(object):
         bound = self._by_track.get(track_id)
         if bound is not None and (frame_ts - bound.track_ts) <= self.track_ttl_ms:
             bound.track_ts = frame_ts
+            # 会话寿命按"最后一次看到证据"算：连续站着的人不该被 TTL 判过期
+            bound.last_ts = frame_ts
             self._enroll(bound, vec, rms_norm)
             return AssociationResult(bound.id, True, "track_bound")
 
@@ -180,7 +185,7 @@ class AnonymousAssociator(object):
         if other_best is not None and (best_score - other_best) < self.margin:
             return self._new_session(track_id, vec, rms_norm, frame_ts, "ambiguous_margin",
                                      best_score, other_best)
-        if self._is_occupied_by_other(best, track_id, frame_ts):
+        if self._is_occupied_by_other(best, track_id, frame_ts, tracked_ids):
             return self._new_session(track_id, vec, rms_norm, frame_ts, "session_occupied",
                                      best_score, other_best)
 
@@ -199,8 +204,17 @@ class AnonymousAssociator(object):
 
     # ---------------------------------------------------------------- 内部
 
-    def _is_occupied_by_other(self, session, track_id, frame_ts):
+    def _is_occupied_by_other(self, session, track_id, frame_ts, tracked_ids=None):
+        """会话是否被另一条**还在活跃**的轨道占着（一人一轨，不许两人共享）。
+
+        2026-11-07 板上回放补充：点位框抖动会让 tracker 重建轨道（换轨），旧轨道在
+        TTL 内还"活着"但不匹配任何检测。纯 TTL 判据会把这种情况当成"另一个人来抢" →
+        新建重复会话 → 后续相似度歧义 → 事件数反弹。给了 `tracked_ids` 时，只要占位
+        轨道**这一帧不在场**，就当作换轨交接，允许复用同一条会话。
+        """
         if session.track_id is None or session.track_id == int(track_id):
+            return False
+        if tracked_ids is not None and int(session.track_id) not in tracked_ids:
             return False
         return (frame_ts - session.track_ts) <= self.track_ttl_ms
 

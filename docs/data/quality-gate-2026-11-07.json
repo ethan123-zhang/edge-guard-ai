@@ -1,0 +1,127 @@
+{
+  "opencv": "4.1.1",
+  "frames": 40,
+  "faces": 79,
+  "identities_from_frame0": 2,
+  "quality": {
+    "rms_norm": {
+      "count": 79,
+      "min": 0.0797,
+      "p10": 0.1109,
+      "median": 0.1449,
+      "p90": 0.2871,
+      "max": 1.4873
+    },
+    "threshold": 0.1,
+    "pass_ratio": 0.0253,
+    "max_passing": 0.0977
+  },
+  "similarity": {
+    "tau": 0.45,
+    "margin": 0.1,
+    "same_identity_cosine": {
+      "count": 70,
+      "min": 0.461,
+      "p10": 0.5998,
+      "median": 0.8458,
+      "p90": 0.9328,
+      "max": 0.9546
+    },
+    "cross_identity_cosine": {
+      "count": 70,
+      "min": 0.004,
+      "p10": 0.0465,
+      "median": 0.1059,
+      "p90": 0.1761,
+      "max": 0.3304
+    },
+    "below_tau_faces": 7,
+    "margin_refused_faces": 0
+  },
+  "quality_sweep": [
+    {
+      "quality_max_rms": 0.1,
+      "enrolled_faces": 2,
+      "enrolled_ratio": 0.0253,
+      "same_cosine": {
+        "count": 2,
+        "min": 0.8513,
+        "p10": 0.8553,
+        "median": 0.8716,
+        "p90": 0.8879,
+        "max": 0.8919
+      },
+      "cross_cosine_max": 0.1626
+    },
+    {
+      "quality_max_rms": 0.12,
+      "enrolled_faces": 12,
+      "enrolled_ratio": 0.1519,
+      "same_cosine": {
+        "count": 11,
+        "min": 0.5989,
+        "p10": 0.6433,
+        "median": 0.8513,
+        "p90": 0.8919,
+        "max": 0.9386
+      },
+      "cross_cosine_max": 0.1809
+    },
+    {
+      "quality_max_rms": 0.14,
+      "enrolled_faces": 33,
+      "enrolled_ratio": 0.4177,
+      "same_cosine": {
+        "count": 31,
+        "min": 0.5281,
+        "p10": 0.6452,
+        "median": 0.8772,
+        "p90": 0.9401,
+        "max": 0.9546
+      },
+      "cross_cosine_max": 0.2089
+    },
+    {
+      "quality_max_rms": 0.16,
+      "enrolled_faces": 46,
+      "enrolled_ratio": 0.5823,
+      "same_cosine": {
+        "count": 43,
+        "min": 0.5281,
+        "p10": 0.6977,
+        "median": 0.8768,
+        "p90": 0.9398,
+        "max": 0.9546
+      },
+      "cross_cosine_max": 0.2089
+    },
+    {
+      "quality_max_rms": 0.2,
+      "enrolled_faces": 59,
+      "enrolled_ratio": 0.7468,
+      "same_cosine": {
+        "count": 54,
+        "min": 0.496,
+        "p10": 0.6439,
+        "median": 0.8736,
+        "p90": 0.9377,
+        "max": 0.9546
+      },
+      "cross_cosine_max": 0.3304
+    },
+    {
+      "quality_max_rms": 1.0,
+      "enrolled_faces": 77,
+      "enrolled_ratio": 0.9747,
+      "same_cosine": {
+        "count": 68,
+        "min": 0.461,
+        "p10": 0.6043,
+        "median": 0.8516,
+        "p90": 0.9334,
+        "max": 0.9546
+      },
+      "cross_cosine_max": 0.3304
+    }
+  ]
+}

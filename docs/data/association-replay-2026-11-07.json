@@ -1,0 +1,400 @@
+{
+  "fixture": "natural_pose_visit_trace.json",
+  "fixture_sha256": "650166430c4bf9ddc470ac17a86d1fcbd6d76c64e60ed73675fdc6b3e3d3af38",
+  "video": "head-pose-face-detection-female-and-male.mp4",
+  "video_shape": [
+    768,
+    432
+  ],
+  "fps": 12.0,
+  "expected_events": 2,
+  "quality_max_rms": 0.16,
+  "detector": "yunet-onnx(tensorrt(yunet_fp16.engine), score>=0.60)",
+  "recognizer": "sface-onnx(tensorrt(sface_batch_fp16.engine), batch<=8)",
+  "appearance_matched_boxes": 463,
+  "appearance_total_boxes": 463,
+  "runs": [
+    {
+      "label": "association_off",
+      "association_enabled": false,
+      "events": 12,
+      "expected_events": 2,
+      "suppressed": 0,
+      "sessions": 0,
+      "unknown_events": 12,
+      "event_times_ms": [
+        1000,
+        1000,
+        12500,
+        13000,
+        25000,
+        25000,
+        62500,
+        64500,
+        65000,
+        129000,
+        141500,
+        141500
+      ],
+      "trace": [
+        {
+          "t_ms": 1000,
+          "track_id": 1,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 1000,
+          "track_id": 2,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 12500,
+          "track_id": 4,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 13000,
+          "track_id": 3,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 25000,
+          "track_id": 5,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 25000,
+          "track_id": 6,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 62500,
+          "track_id": 9,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 64500,
+          "track_id": 10,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 65000,
+          "track_id": 11,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 129000,
+          "track_id": 13,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 141500,
+          "track_id": 14,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        },
+        {
+          "t_ms": 141500,
+          "track_id": 15,
+          "reason": null,
+          "own": null,
+          "other": null,
+          "session_refs": 0,
+          "reported": true
+        }
+      ],
+      "decisions": []
+    },
+    {
+      "label": "association_on",
+      "association_enabled": true,
+      "events": 5,
+      "expected_events": 2,
+      "suppressed": 7,
+      "sessions": 6,
+      "unknown_events": 5,
+      "event_times_ms": [
+        1000,
+        1000,
+        62500,
+        65000,
+        141500
+      ],
+      "trace": [
+        {
+          "t_ms": 1000,
+          "track_id": 1,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 1,
+          "reported": true
+        },
+        {
+          "t_ms": 1000,
+          "track_id": 2,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 3,
+          "reported": true
+        },
+        {
+          "t_ms": 12500,
+          "track_id": 4,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 8,
+          "reported": false
+        },
+        {
+          "t_ms": 13000,
+          "track_id": 3,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 8,
+          "reported": false
+        },
+        {
+          "t_ms": 25000,
+          "track_id": 5,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 8,
+          "reported": false
+        },
+        {
+          "t_ms": 25000,
+          "track_id": 6,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 8,
+          "reported": false
+        },
+        {
+          "t_ms": 62500,
+          "track_id": 9,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 1,
+          "reported": true
+        },
+        {
+          "t_ms": 64500,
+          "track_id": 10,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 8,
+          "reported": false
+        },
+        {
+          "t_ms": 65000,
+          "track_id": 11,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 3,
+          "reported": true
+        },
+        {
+          "t_ms": 129000,
+          "track_id": 13,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 8,
+          "reported": false
+        },
+        {
+          "t_ms": 141500,
+          "track_id": 14,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 1,
+          "reported": true
+        },
+        {
+          "t_ms": 141500,
+          "track_id": 15,
+          "reason": "track_bound",
+          "own": null,
+          "other": null,
+          "session_refs": 8,
+          "reported": false
+        }
+      ],
+      "decisions": [
+        {
+          "t_ms": 0,
+          "track_id": 1,
+          "reason": "new_session",
+          "own": null,
+          "other": null,
+          "rms_norm": 0.114
+        },
+        {
+          "t_ms": 0,
+          "track_id": 2,
+          "reason": "below_tau",
+          "own": 0.069,
+          "other": null,
+          "rms_norm": 0.129
+        },
+        {
+          "t_ms": 11000,
+          "track_id": 3,
+          "reason": "associated",
+          "own": 0.887,
+          "other": 0.198,
+          "rms_norm": 0.164
+        },
+        {
+          "t_ms": 11500,
+          "track_id": 4,
+          "reason": "associated",
+          "own": 0.901,
+          "other": 0.194,
+          "rms_norm": 0.112
+        },
+        {
+          "t_ms": 24000,
+          "track_id": 5,
+          "reason": "associated",
+          "own": 0.81,
+          "other": 0.177,
+          "rms_norm": 0.089
+        },
+        {
+          "t_ms": 24000,
+          "track_id": 6,
+          "reason": "associated",
+          "own": 0.86,
+          "other": 0.214,
+          "rms_norm": 0.16
+        },
+        {
+          "t_ms": 56000,
+          "track_id": 7,
+          "reason": "session_occupied",
+          "own": 0.938,
+          "other": 0.216,
+          "rms_norm": 0.119
+        },
+        {
+          "t_ms": 56500,
+          "track_id": 8,
+          "reason": "below_tau",
+          "own": 0.38,
+          "other": 0.107,
+          "rms_norm": 0.159
+        },
+        {
+          "t_ms": 61500,
+          "track_id": 9,
+          "reason": "associated",
+          "own": 0.628,
+          "other": 0.19,
+          "rms_norm": 0.183
+        },
+        {
+          "t_ms": 63500,
+          "track_id": 10,
+          "reason": "associated",
+          "own": 0.696,
+          "other": 0.385,
+          "rms_norm": 0.084
+        },
+        {
+          "t_ms": 64000,
+          "track_id": 11,
+          "reason": "ambiguous_margin",
+          "own": 0.888,
+          "other": 0.856,
+          "rms_norm": 0.112
+        },
+        {
+          "t_ms": 123000,
+          "track_id": 12,
+          "reason": "associated",
+          "own": 0.741,
+          "other": 0.296,
+          "rms_norm": 0.138
+        },
+        {
+          "t_ms": 128000,
+          "track_id": 13,
+          "reason": "associated",
+          "own": 0.862,
+          "other": 0.374,
+          "rms_norm": 0.093
+        },
+        {
+          "t_ms": 140500,
+          "track_id": 14,
+          "reason": "ambiguous_margin",
+          "own": 0.766,
+          "other": 0.764,
+          "rms_norm": 0.343
+        },
+        {
+          "t_ms": 140500,
+          "track_id": 15,
+          "reason": "associated",
+          "own": 0.728,
+          "other": 0.366,
+          "rms_norm": 0.273
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "board": "jetson-nano L4T R32.6.1",
+  "opencv": null,
+  "frames_per_run": 300,
+  "detections_per_frame": 2,
+  "association_off_ms_per_frame": 1.919,
+  "association_on_ms_per_frame": 3.145,
+  "delta_ms_per_frame": 1.226,
+  "reference_trt_frame_ms": 56.3,
+  "delta_percent_of_frame": 2.2,
+  "note": "Fixed detections + embeddings, no inference in the loop: the delta is tracker+association+event logic only."
+}

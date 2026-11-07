@@ -142,6 +142,8 @@ class OnnxYunetDetector(object):
         self._score_threshold = float(score_threshold)
         self._min_face_px = int(min_face_px)
         self._input_size = (int(input_size[0]), int(input_size[1]))
+        # 心跳里要报「实际在跑什么」：tensorrt / dnn
+        self.accelerator = runner.kind
 
     def detect(self, frame):
         height, width = frame.shape[:2]
@@ -176,6 +178,7 @@ class OnnxSfaceRecognizer(object):
 
     def __init__(self, runner, batch_limit=DEFAULT_BATCH):
         self._runner = runner
+        self.accelerator = runner.kind
         # runner 说一次能吃几张就吃几张：CPU dnn 只会点头 1 张（4.1.1 批量会把特征塌成
         # 同一个），TensorRT 才允许到 8。调用方的 `recognizer_batch` 只能往下钳。
         limit = getattr(runner, "max_batch", 1)

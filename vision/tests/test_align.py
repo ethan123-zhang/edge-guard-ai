@@ -147,5 +147,37 @@ class TestAgainstOpenCvAlignCrop(unittest.TestCase):
         self.assertLess(diff, 1.0, "与原生 alignCrop 平均像素差 %.3f" % diff)
 
 
+class TestQuality(unittest.TestCase):
+    """关联层的质量门指标：对齐残差 ÷ 眼距（越小越好，<=0.10 才入册）。"""
+
+    def test_perfect_template_scores_zero(self):
+        self.assertAlmostEqual(align.quality(align.ALIGN_TARGET), 0.0, places=6)
+
+    def test_is_residual_over_eye_distance(self):
+        points = align.ALIGN_TARGET * 80.0 + np.array([200.0, 120.0])
+        weird = points.copy()
+        weird[4] += np.array([40.0, 0.0])      # 只把嘴角拽歪：不是相似变换
+        expected = align.residual(weird) / align.eye_distance(weird)
+        self.assertAlmostEqual(align.quality(weird), expected, places=9)
+        self.assertGreater(align.quality(weird), align.quality(points))
+
+    def test_eye_distance_uses_first_two_points(self):
+        points = align.ALIGN_TARGET.copy()
+        self.assertAlmostEqual(align.eye_distance(points),
+                               float(np.linalg.norm(points[1] - points[0])), places=9)
+
+    def test_degenerate_eye_distance_is_none_not_huge(self):
+        points = align.ALIGN_TARGET.copy()
+        points[1] = points[0]                  # 两眼重合 = 坏检测
+        self.assertIsNone(align.quality(points))
+
+    def test_matches_the_offline_study_formula(self):
+        """2026-11-06 质量研究用的是 rms / max(eye_px, 1e-6)，这里必须逐字一致。"""
+        points = FAKE_FACE.copy()
+        expected = (align.residual(points) /
+                    max(float(np.linalg.norm(points[1] - points[0])), 1e-6))
+        self.assertAlmostEqual(align.quality(points), expected, places=12)
+
+
 if __name__ == "__main__":
     unittest.main()

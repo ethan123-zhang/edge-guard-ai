@@ -2,16 +2,27 @@
 
 `Sink` 是唯一的出口：`WsSink` 发给对话节点，`JsonlSink` 落文件（联调用），
 `NullSink` 什么都不做（压测/单测）。这样主循环本身完全不依赖网络。
+
+**两层去重**（契约见 `docs/跨轨关联与两层去重合同-2026-11-01.md`）：
+1. 空间轨道层（`vision/tracker.py`）：一条轨道只报一次；
+2. 匿名会话层（`vision/association.py`）：轨道断了又回来（同一个人出画再入画、
+   走路抖动丢检），只要外观证据够好且唯一，就并回同一个会话 —— **该会话报过就不再报**。
+已知人脸不走第 2 层：身份去重是业务层（10 分钟到访）的事，不是视觉层该做的。
 """
 import json
 import os
 import time
 
 import cv2
+import numpy as np
 
-from vision import config, events
+from vision import align, association, config, events
 from vision.imageio import imwrite
+from vision.tracker import iou
 from vision.ws_client import WebSocketClient, WsClientError
+
+# 同一帧两个框 IoU 超过这个值就认为是同一张脸被重复检出（去重见 `_dedupe_detections`）
+DEDUPE_IOU = 0.5
 
 
 # ---------------------------------------------------------------- Sink
@@ -103,6 +114,7 @@ class Stats(object):
         self.sent = 0
         self.failed = 0
         self.dropped = 0
+        self.suppressed = 0     # 关联层判为「同一会话已报过」而没发的条数
         self.fps = 0.0
         self.infer_ms = 0.0
         self.started_at = time.time()
@@ -110,9 +122,10 @@ class Stats(object):
     def summary(self):
         elapsed = max(1e-6, time.time() - self.started_at)
         return ("帧 %d（%.1f fps）· 上报 %d 条（成功 %d / 失败 %d）· "
-                "单帧推理 %.1f ms · 丢帧 %d" % (
+                "单帧推理 %.1f ms · 丢帧 %d · 关联去重 %d" % (
                     self.frames, self.frames / elapsed, self.events,
                     self.sent, self.failed, self.infer_ms, self.dropped,
+                    self.suppressed,
                 ))
 
 
@@ -139,8 +152,65 @@ class VisionService(object):
         self._print_events = bool(cfg["output"]["print_events"])
         self._roi = self._roi_rect_from_cfg(cfg["roi"])
         self._snapshot_saved = 0
+        self.associator = self._build_associator(cfg.get("association") or {})
+        self._reported_sessions = set()
+        self.backend_label = self._backend_label()
+
+    # ---------------------------------------------------------------- 关联层
+
+    @staticmethod
+    def _build_associator(assoc_cfg):
+        """按配置造匿名关联器；`enabled` 为假时它自己会原样放行（行为不变）。"""
+        return association.AnonymousAssociator(
+            enabled=bool(assoc_cfg.get("enabled", False)),
+            tau=float(assoc_cfg.get("tau", association.DEFAULT_TAU)),
+            margin=float(assoc_cfg.get("margin", association.DEFAULT_MARGIN)),
+            quality_max_rms=float(assoc_cfg.get("quality_max_rms",
+                                                association.DEFAULT_QUALITY_MAX_RMS)),
+            session_ttl_sec=float(assoc_cfg.get("session_ttl_sec",
+                                                association.DEFAULT_SESSION_TTL_SEC)),
+            track_ttl_sec=float(assoc_cfg.get("track_ttl_sec",
+                                              association.DEFAULT_TRACK_TTL_SEC)),
+            max_sessions=int(assoc_cfg.get("max_sessions",
+                                           association.DEFAULT_MAX_SESSIONS)),
+            max_refs=int(assoc_cfg.get("max_refs", association.DEFAULT_MAX_REFS)),
+        )
+
+    @staticmethod
+    def _quality_of(detection):
+        """这张脸的质量指标（对齐残差 ÷ 眼距）；没有关键点（Haar）就是 None。"""
+        points = getattr(detection, "landmarks", None)
+        if not points:
+            return None
+        try:
+            return align.quality(np.asarray(points, dtype=np.float64).reshape(5, 2))
+        except (TypeError, ValueError):
+            return None
+
+    def _should_report(self, event, assoc_results):
+        """未知人脸过一层匿名会话去重；返回 False 表示这次不该再报。"""
+        if event.is_known or not self.associator.enabled:
+            return True
+        result = assoc_results.get(event.track_id)
+        if result is None or result.session_id is None:
+            # 没有轨道 / disabled / invalid_evidence：没证据就不猜，照旧上报
+            return True
+        if result.associated and result.session_id in self._reported_sessions:
+            self.log("[vision] 关联层：轨道 %s 并入会话 %s（同类 %s / 异类 %s）→ 不重复上报"
+                     % (event.track_id, result.session_id,
+                        "%.2f" % result.own_best if result.own_best is not None else "—",
+                        "%.2f" % result.other_best if result.other_best is not None else "—"))
+            return False
+        self._reported_sessions.add(result.session_id)
+        return True
 
     # ---------------------------------------------------------------- 配置派生
+
+    def _backend_label(self):
+        """写进心跳的「实际后端」，例如 `yunet-onnx/tensorrt`、`haar`。"""
+        name = str(getattr(self.detector, "backend", "?"))
+        accelerator = getattr(self.detector, "accelerator", None)
+        return "%s/%s" % (name, accelerator) if accelerator else name
 
     @staticmethod
     def _roi_rect_from_cfg(roi_cfg):
@@ -180,8 +250,14 @@ class VisionService(object):
         self.log("[vision] 视频源：%s" % self.source.describe())
         self.log("[vision] 检测器：%s" % self.detector.describe())
         self.log("[vision] 识别器：%s" % self.recognizer.describe())
+        self.log("[vision] 实际后端：%s（心跳里会带这个字段）" % self.backend_label)
         self.log("[vision] 人脸库：%d 人" % len(self.gallery))
         self.log("[vision] 事件出口：%s" % getattr(self.sink, "name", "?"))
+        self.log("[vision] 关联层：%s" % (
+            "开（tau=%.2f, margin=%.2f, 质量门 rms<=%.2f）"
+            % (self.associator.tau, self.associator.margin,
+               self.associator.quality_max_rms)
+            if self.associator.enabled else "关（同一个人出画再回来会重报）"))
 
         fps_window_start = time.time()
         fps_window_frames = 0
@@ -225,7 +301,8 @@ class VisionService(object):
 
                 if server_enabled and (now - self._last_hb) >= heartbeat_sec:
                     self._last_hb = now
-                    self._emit(events.heartbeat(self.stats.fps, self.stats.dropped))
+                    self._emit(events.heartbeat(self.stats.fps, self.stats.dropped,
+                                                backend=self.backend_label))
 
                 if on_frame is not None:
                     on_frame(annotated, detections, self.stats)
@@ -241,6 +318,22 @@ class VisionService(object):
 
     # ---------------------------------------------------------------- 单帧处理
 
+    @staticmethod
+    def _dedupe_detections(detections, iou_threshold=DEDUPE_IOU):
+        """同一张脸被检出两次（幽灵框 / NMS 残留）时只留分数最高的那个。
+
+        为什么要管：幽灵框会以"另一条轨道"的身份拿到同一张脸的特征，把匿名会话复制成
+        两份；之后同一个人会同时像两条会话（own / other 都 0.85+），关联层只能判歧义、
+        再新建会话 —— 事件数就弹回去了（2026-11-07 板上 287 点回放实测）。
+        两个人真正的脸挨不到 IoU 0.5（并排通常在 0.2 以下）。
+        """
+        kept = []
+        for detection in sorted(detections, key=lambda item: item.score, reverse=True):
+            if any(iou(detection.bbox, other.bbox) > iou_threshold for other in kept):
+                continue
+            kept.append(detection)
+        return kept
+
     def _process_frame(self, frame, frame_ts):
         height, width = frame.shape[:2]
         cx, cy, cw, ch = self._crop_rect(frame.shape)
@@ -250,6 +343,7 @@ class VisionService(object):
         # （一张脸一次前向在板上是浪费），旧识别器则自动退化成逐张。
         dets = [det for det in self.detector.detect(crop)
                 if det.size >= self._min_face_px]
+        dets = self._dedupe_detections(dets)
         embeddings = self._embeddings(crop, dets)
 
         detections = []
@@ -264,9 +358,31 @@ class VisionService(object):
                 "face_id": face_id,
                 "name": name,
                 "score": score,
+                # 关联层要的证据：特征 + 质量。tracker 只认 bbox/face_id/name/score，
+                # 多出的键它不看；轨道匹配完它会把 track_id 回填进来。
+                "embedding": embedding,
+                "rms_norm": self._quality_of(det),
             })
 
-        for event in self.tracker.update(faces, frame_ts):
+        events_this_frame = self.tracker.update(faces, frame_ts)
+        # 每帧都喂证据（不是只在发事件时喂）：参考库要靠整个在场的多帧建立，
+        # 只在确认那一帧喂一次，质量不好的那一次会让会话永远匹配不上。
+        assoc_results = {}
+        if self.associator.enabled:
+            tracked_ids = set(face.get("track_id") for face in faces
+                              if face.get("track_id") is not None)
+            for face in faces:
+                track_id = face.get("track_id")
+                if track_id is None:
+                    continue
+                assoc_results[track_id] = self.associator.observe(
+                    track_id, face.get("embedding"), face.get("rms_norm"), frame_ts,
+                    tracked_ids=tracked_ids)
+
+        for event in events_this_frame:
+            if not self._should_report(event, assoc_results):
+                self.stats.suppressed += 1
+                continue
             self._report(event, frame)
 
         return frame, detections
