@@ -36,6 +36,8 @@ BOARD_TARGETS += [
     # 素材录制是 PC 侧交互脚本（需要显示器），但 scripts/ 会整体同步到板端，
     # 所以照样过 3.6 语法闸门，避免板上出现一个连解析都失败的 .py
     os.path.join(PROJECT_DIR, "scripts", "record_camera.py"),
+    # 素材评估（PC 侧跑）：scripts/ 整体同步到板端，同样要过 3.6 语法闸门
+    os.path.join(PROJECT_DIR, "scripts", "scenario_eval.py"),
 ]
 
 
