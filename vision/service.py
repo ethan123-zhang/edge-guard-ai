@@ -164,6 +164,16 @@ class VisionService(object):
         self._snapshot_saved = 0
         self.associator = self._build_associator(cfg.get("association") or {})
         self._reported_sessions = set()
+        # 上报前的质量证据门（关联层开着才生效）：2026-11-08 真素材实测，
+        # 出画/转身那几帧五点对齐残差 0.21–0.80（甚至 25），框还能检出但特征与参考
+        # 差 0.2–0.4，于是每帧新建一条幽灵会话、一次出画多报 3 条"新访客"。
+        # 规则：一条轨道至少有一帧过质量门的证据，才允许上报；纯侧脸/残影不产生访客。
+        assoc_cfg = cfg.get("association") or {}
+        self._quality_max_rms = float(assoc_cfg.get(
+            "quality_max_rms", association.DEFAULT_QUALITY_MAX_RMS))
+        self._require_quality = (bool(assoc_cfg.get("require_quality_evidence", True))
+                                 and self.associator.enabled)
+        self._good_quality_tracks = {}   # track_id -> 最后一帧合格证据的时刻
         self.backend_label = self._backend_label()
 
     # ---------------------------------------------------------------- 关联层
@@ -184,6 +194,7 @@ class VisionService(object):
             max_sessions=int(assoc_cfg.get("max_sessions",
                                            association.DEFAULT_MAX_SESSIONS)),
             max_refs=int(assoc_cfg.get("max_refs", association.DEFAULT_MAX_REFS)),
+            weak_obs=int(assoc_cfg.get("weak_obs", association.DEFAULT_WEAK_OBS)),
         )
 
     @staticmethod
@@ -197,10 +208,31 @@ class VisionService(object):
         except (TypeError, ValueError):
             return None
 
+    def _track_good_quality(self, faces, frame_ts):
+        """记下这一帧哪些轨道拿到了合格证据（上报门要用）。"""
+        for face in faces:
+            track_id = face.get("track_id")
+            if track_id is None:
+                continue
+            rms = face.get("rms_norm")
+            if rms is None or rms <= self._quality_max_rms:
+                self._good_quality_tracks[int(track_id)] = int(frame_ts)
+        if len(self._good_quality_tracks) > 2048:
+            cutoff = int(frame_ts) - 120000
+            for track_id in list(self._good_quality_tracks.keys()):
+                if self._good_quality_tracks[track_id] < cutoff:
+                    self._good_quality_tracks.pop(track_id, None)
+
     def _should_report(self, event, assoc_results):
         """未知人脸过一层匿名会话去重；返回 False 表示这次不该再报。"""
         if event.is_known or not self.associator.enabled:
             return True
+        if (self._require_quality
+                and int(event.track_id) not in self._good_quality_tracks):
+            # 全程没有一帧过质量门：出画/转身的残影轨道，不产生"新访客"
+            self.log("[vision] 上报：轨道 %s 全程没有合格证据（残影/侧脸）→ 不报"
+                     % event.track_id)
+            return False
         result = assoc_results.get(event.track_id)
         if result is None or result.session_id is None:
             # 没有轨道 / disabled / invalid_evidence：没证据就不猜，照旧上报
@@ -392,6 +424,7 @@ class VisionService(object):
         if self.associator.enabled:
             tracked_ids = set(face.get("track_id") for face in faces
                               if face.get("track_id") is not None)
+            self._track_good_quality(faces, frame_ts)
             for face in faces:
                 track_id = face.get("track_id")
                 if track_id is None:

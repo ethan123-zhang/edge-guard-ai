@@ -418,6 +418,7 @@ class TestAssociationWiring(unittest.TestCase):
                                 confidence=0.5, bbox=(1, 2, 3, 4), frame_ts=1000,
                                 track_id=7)
         service._reported_sessions.add(3)
+        service._good_quality_tracks[7] = 1000   # 这条轨道本帧之前有过合格证据
         self.assertFalse(service._should_report(
             event, {7: AssociationResult(3, True, "track_bound")}))
         joined = "\n".join(logs)
@@ -441,16 +442,22 @@ class TestAssociationWiring(unittest.TestCase):
         self.assertEqual(len(sink.of_type("face_event")), 2, "不是同一个人就要各报各的")
         self.assertEqual(service.stats.suppressed, 0)
 
-    def test_bad_quality_evidence_never_merges(self):
-        """质量不过门就不入册 —— 宁可重报，也不能把两个人合成一个会话。"""
+    def test_bad_quality_evidence_is_never_reported_as_a_visitor(self):
+        """全程不过质量门 → 不报。出画/转身的残影不能算一个"新访客"。
+
+        2026-11-08 真素材复评（`datasets/scenarios/real-20261108/`）：A 出画那 1.5 秒
+        五点残差 0.21–0.80（甚至 25），框还检出、特征与参考只差 0.2–0.4，旧逻辑每帧
+        新建一条幽灵会话 → 一次出画多报 3 条新访客（sc01 会话从 2 条涨到 8 条）。
+        质量门本来就是"证据不达标不采信"，这里把它前移到上报口。
+        """
         detector = ScriptedDetector()
         service, sink = build_assoc_service(
             self._tmp.name, ConstantRecognizer([0.0, 1.0, 0.0]), detector,
             {"enabled": True})
         bad = face_with_landmarks(distort=200.0)
         self._visit_twice(service, detector, first=bad, second=bad)
-        self.assertEqual(len(sink.of_type("face_event")), 2)
-        self.assertEqual(service.stats.suppressed, 0)
+        self.assertEqual(len(sink.of_type("face_event")), 0)
+        self.assertEqual(service.stats.suppressed, 2)
 
     def test_disabled_association_keeps_the_old_behaviour(self):
         detector = ScriptedDetector()

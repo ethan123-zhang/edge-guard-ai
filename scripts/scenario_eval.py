@@ -407,8 +407,9 @@ def main(argv=None):
     parser.add_argument("--annotations", default=None, help="标注 JSON（默认同名）")
     parser.add_argument("--profile", default="sim", help="配置档（默认 sim）")
     parser.add_argument("--backend", default="cpu", help="runtime.backend（默认 cpu）")
-    parser.add_argument("--stride", type=int, default=3,
-                        help="每几帧处理一次（默认 3；越小越接近生产时序）")
+    parser.add_argument("--stride", type=int, default=1,
+                        help="每几帧处理一次（默认 1 = 与生产同帧率；调大只影响耗时，"
+                             "但会让 tracker 因帧间隔变大更容易换轨）")
     parser.add_argument("--tau", type=float, default=None, help="覆盖相似度门限")
     parser.add_argument("--margin", type=float, default=None, help="覆盖边距")
     parser.add_argument("--quality-max-rms", type=float, default=None, help="覆盖质量门")

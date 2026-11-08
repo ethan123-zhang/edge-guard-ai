@@ -13,6 +13,11 @@
 本模块刻意**不依赖 cv2 / numpy**：输入是普通 list / tuple，输出是
 `AssociationResult`，所以关联逻辑能在没有 OpenCV 的环境里被单测钉死。
 也不保存人脸图像、身份库或永久人员键；特征只驻留内存，随会话过期。
+
+2026-11-08 真素材复评（`docs/真实素材关联复评-2026-11-08.md`）加了一条
+**候选挂起**语义：弱证据（低于 tau / 歧义 / 会话被占）第一次只返回
+`pending_evidence` 不建会话，同一轨道连续 `weak_obs` 帧仍弱才落成新会话。
+原因见 `DEFAULT_WEAK_OBS` 的注释。
 """
 import math
 
@@ -23,6 +28,10 @@ DEFAULT_SESSION_TTL_SEC = 120.0
 DEFAULT_TRACK_TTL_SEC = 2.0
 DEFAULT_MAX_SESSIONS = 64
 DEFAULT_MAX_REFS = 8
+# 弱证据（低于 tau / 歧义 / 会话被占）要连续观察到几次才建会话。
+# 一次就走位/侧脸的单帧证据多半是"同一个人出画"的残影，建会话会让之后的正脸
+# 全灌进这条重复会话，同一个人被拆成两条会话互相比拼 → 重报（2026-11-08 sc01 实测）。
+DEFAULT_WEAK_OBS = 2
 
 # 余弦计算的最小范数：低于它的向量视为无效证据（零向量 / 损坏特征）
 _MIN_NORM = 1e-9
@@ -107,7 +116,8 @@ class AnonymousAssociator(object):
                  session_ttl_sec=DEFAULT_SESSION_TTL_SEC,
                  track_ttl_sec=DEFAULT_TRACK_TTL_SEC,
                  max_sessions=DEFAULT_MAX_SESSIONS,
-                 max_refs=DEFAULT_MAX_REFS):
+                 max_refs=DEFAULT_MAX_REFS,
+                 weak_obs=DEFAULT_WEAK_OBS):
         tau = float(tau)
         margin = float(margin)
         if not (0.0 < tau <= 1.0):
@@ -120,6 +130,8 @@ class AnonymousAssociator(object):
             raise ValueError("session_ttl_sec / track_ttl_sec 必须为正")
         if int(max_sessions) < 1 or int(max_refs) < 1:
             raise ValueError("max_sessions / max_refs 至少为 1")
+        if int(weak_obs) < 1:
+            raise ValueError("weak_obs 至少为 1")
 
         self.enabled = bool(enabled)
         self.tau = tau
@@ -129,8 +141,10 @@ class AnonymousAssociator(object):
         self.track_ttl_ms = int(float(track_ttl_sec) * 1000)
         self.max_sessions = int(max_sessions)
         self.max_refs = int(max_refs)
+        self.weak_obs = int(weak_obs)
         self._sessions = {}        # session_id -> _Session
         self._by_track = {}        # track_id -> _Session（轨道当前绑定）
+        self._pending = {}         # track_id -> {"count": n, "frame_ts": ts}
         self._next_session_id = 1
 
     # ---------------------------------------------------------------- 主入口
@@ -159,6 +173,7 @@ class AnonymousAssociator(object):
             # 会话寿命按"最后一次看到证据"算：连续站着的人不该被 TTL 判过期
             bound.last_ts = frame_ts
             self._enroll(bound, vec, rms_norm)
+            self._pending.pop(int(track_id), None)
             return AssociationResult(bound.id, True, "track_bound")
 
         # 找最像的会话，同时记录第二像的（用于"唯一性"判断）
@@ -177,16 +192,33 @@ class AnonymousAssociator(object):
                 other_score = score
         other_best = other_score
 
+        weak_reason = None
         if best is None:
+            # 没有任何可比的会话：不存在"像谁"的歧义，直接建
+            self._pending.pop(int(track_id), None)
             return self._new_session(track_id, vec, rms_norm, frame_ts, "new_session")
         if best_score < self.tau:
-            return self._new_session(track_id, vec, rms_norm, frame_ts, "below_tau",
-                                     best_score, other_best)
-        if other_best is not None and (best_score - other_best) < self.margin:
-            return self._new_session(track_id, vec, rms_norm, frame_ts, "ambiguous_margin",
-                                     best_score, other_best)
-        if self._is_occupied_by_other(best, track_id, frame_ts, tracked_ids):
-            return self._new_session(track_id, vec, rms_norm, frame_ts, "session_occupied",
+            weak_reason = "below_tau"
+        elif other_best is not None and (best_score - other_best) < self.margin:
+            weak_reason = "ambiguous_margin"
+        elif self._is_occupied_by_other(best, track_id, frame_ts, tracked_ids):
+            weak_reason = "session_occupied"
+
+        if weak_reason is not None:
+            # 弱证据先挂起：一帧就走位/侧脸的残影不建会话，否则正脸会灌进重复会话，
+            # 同一个人被拆成两条会话 → 之后互相比拼、margin 不够 → 重报。
+            pending = self._pending.get(int(track_id))
+            if pending is not None and (frame_ts - pending["frame_ts"]) <= self.track_ttl_ms:
+                pending["count"] += 1
+                pending["frame_ts"] = frame_ts
+            else:
+                pending = {"count": 1, "frame_ts": frame_ts}
+                self._pending[int(track_id)] = pending
+            if pending["count"] < self.weak_obs:
+                return AssociationResult(None, False, "pending_evidence",
+                                         best_score, other_best)
+            self._pending.pop(int(track_id), None)
+            return self._new_session(track_id, vec, rms_norm, frame_ts, weak_reason,
                                      best_score, other_best)
 
         best.track_id = int(track_id)
@@ -194,12 +226,14 @@ class AnonymousAssociator(object):
         best.last_ts = frame_ts
         self._by_track[int(track_id)] = best
         self._enroll(best, vec, rms_norm)
+        self._pending.pop(int(track_id), None)
         return AssociationResult(best.id, True, "associated", best_score, other_best)
 
     def reset(self):
         """清空所有会话与轨道绑定（测试 / 重新开始一次演示）。"""
         self._sessions = {}
         self._by_track = {}
+        self._pending = {}
         self._next_session_id = 1
 
     # ---------------------------------------------------------------- 内部
@@ -267,6 +301,9 @@ class AnonymousAssociator(object):
             session = self._by_track[track_id]
             if session.id not in self._sessions:
                 self._by_track.pop(track_id, None)
+        for track_id in list(self._pending.keys()):
+            if (frame_ts - self._pending[track_id]["frame_ts"]) > self.track_ttl_ms:
+                self._pending.pop(track_id, None)
 
     def _evict_if_needed(self):
         while len(self._sessions) > self.max_sessions:

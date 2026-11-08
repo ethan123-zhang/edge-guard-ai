@@ -19,6 +19,18 @@ def same_angle(cosine):
     return math.degrees(math.acos(cosine))
 
 
+def feed(assoc, track_id, embedding, start_ts, step=100, rms=0.02):
+    """连续喂 weak_obs 帧同一条弱证据，返回最后一帧的判定（此时应已建会话）。
+
+    2026-11-08 起：弱证据（below_tau/ambiguity/occupied）要连续观察 `weak_obs` 次
+    才建会话，单帧残影只挂 `pending_evidence`。所有"第二个人"用例都走这个助手。
+    """
+    result = None
+    for index in range(max(1, assoc.weak_obs)):
+        result = assoc.observe(track_id, embedding, rms, start_ts + index * step)
+    return result
+
+
 class TestDisabledByDefault(unittest.TestCase):
     def test_disabled_does_not_touch_state(self):
         assoc = AnonymousAssociator()
@@ -73,7 +85,7 @@ class TestReuseRequiresUniqueEvidence(unittest.TestCase):
     def test_different_face_creates_new_session(self):
         assoc = AnonymousAssociator(enabled=True)
         first = assoc.observe(1, vec(0), 0.02, 1000)
-        second = assoc.observe(2, vec(90), 0.02, 5000)
+        second = feed(assoc, 2, vec(90), 5000)
         self.assertFalse(second.associated)
         self.assertIn(second.reason, ("below_tau", "new_session"))
         self.assertNotEqual(second.session_id, first.session_id)
@@ -82,18 +94,25 @@ class TestReuseRequiresUniqueEvidence(unittest.TestCase):
     def test_below_tau_creates_new_session(self):
         assoc = AnonymousAssociator(enabled=True)
         assoc.observe(1, vec(0), 0.02, 1000)
-        # 与参考余弦 = 0.40 < tau 0.45
-        result = assoc.observe(2, vec(same_angle(0.40)), 0.02, 5000)
+        # 与参考余弦 = 0.40 < tau 0.45：第一帧只挂候选，不建会话
+        pending = assoc.observe(2, vec(same_angle(0.40)), 0.02, 5000)
+        self.assertFalse(pending.associated)
+        self.assertEqual(pending.reason, "pending_evidence")
+        self.assertIsNone(pending.session_id)
+        self.assertEqual(assoc.session_count, 1)
+        # 同一轨道再来一帧弱证据 → 才认定是"另一个人"
+        result = assoc.observe(2, vec(same_angle(0.40)), 0.02, 5100)
         self.assertFalse(result.associated)
         self.assertEqual(result.reason, "below_tau")
         self.assertAlmostEqual(result.own_best, 0.40, places=6)
+        self.assertEqual(assoc.session_count, 2)
 
     def test_exactly_delta_passes(self):
         assoc = AnonymousAssociator(enabled=True)
         # 会话 A 参考在 0°，会话 B 参考在 113.13°；查询在 53.13°
         # → 与 A 像 0.60、与 B 像 0.50，差恰好 0.10 = delta，应放行（要求 >=）
         assoc.observe(1, vec(0), 0.02, 1000)
-        assoc.observe(2, vec(53.13 + 60.0), 0.02, 5000)
+        feed(assoc, 2, vec(53.13 + 60.0), 5000)
         result = assoc.observe(3, vec(53.13), 0.02, 9000)
         self.assertTrue(result.associated)
         self.assertEqual(result.reason, "associated")
@@ -105,8 +124,11 @@ class TestReuseRequiresUniqueEvidence(unittest.TestCase):
         query = vec(36.87)                      # 与 0° 参考像 0.80
         b = vec(36.87 + 41.41)                  # 与查询像 0.75
         assoc.observe(1, vec(0), 0.02, 1000)
-        assoc.observe(2, b, 0.02, 5000)
-        result = assoc.observe(3, query, 0.02, 9000)
+        feed(assoc, 2, b, 5000)
+        pending = assoc.observe(3, query, 0.02, 9000)
+        self.assertEqual(pending.reason, "pending_evidence")
+        self.assertEqual(assoc.session_count, 2)
+        result = assoc.observe(3, query, 0.02, 9100)
         self.assertFalse(result.associated)
         self.assertEqual(result.reason, "ambiguous_margin")
         self.assertEqual(assoc.session_count, 3)
@@ -117,7 +139,10 @@ class TestOneToOneOccupancy(unittest.TestCase):
         assoc = AnonymousAssociator(enabled=True)
         first = assoc.observe(1, vec(0), 0.02, 1000)
         # 相邻双人：第二条轨道还在第一条轨道的 TTL 内，即便外观相同也不能抢会话
-        second = assoc.observe(2, vec(0), 0.02, 1100)
+        pending = assoc.observe(2, vec(0), 0.02, 1100)
+        self.assertEqual(pending.reason, "pending_evidence")
+        self.assertIsNone(pending.session_id)
+        second = assoc.observe(2, vec(0), 0.02, 1200)
         self.assertFalse(second.associated)
         self.assertEqual(second.reason, "session_occupied")
         self.assertNotEqual(second.session_id, first.session_id)
@@ -141,7 +166,8 @@ class TestOneToOneOccupancy(unittest.TestCase):
     def test_two_present_tracks_still_refuse_even_with_tracked_ids(self):
         assoc = AnonymousAssociator(enabled=True)
         assoc.observe(1, vec(0), 0.02, 1000)
-        second = assoc.observe(2, vec(0), 0.02, 1100, tracked_ids={1, 2})
+        assoc.observe(2, vec(0), 0.02, 1100, tracked_ids={1, 2})
+        second = assoc.observe(2, vec(0), 0.02, 1200, tracked_ids={1, 2})
         self.assertFalse(second.associated)
         self.assertEqual(second.reason, "session_occupied")
 
@@ -166,6 +192,47 @@ class TestOneToOneOccupancy(unittest.TestCase):
             result = assoc.observe(1, vec(0), 0.02, ts)
             self.assertEqual(result.reason, "track_bound")
             self.assertEqual(result.session_id, first.session_id)
+        self.assertEqual(assoc.session_count, 1)
+
+
+class TestPendingWeakEvidence(unittest.TestCase):
+    """2026-11-08 真素材复评：单帧侧脸/走位残影不能建会话。
+
+    sc01 实测（`datasets/scenarios/real-20261108/`）：A 出画时侧脸余弦只有 0.24–0.34，
+    旧逻辑每帧都建一条新会话，之后的 A 正脸全灌进这条重复会话，同一人被拆成两条
+    会话互相比拼 → margin 不够 → 重报（A 报 2 次、4 条会话）。
+    """
+
+    def test_single_weak_frame_does_not_create_session(self):
+        assoc = AnonymousAssociator(enabled=True)
+        assoc.observe(1, vec(0), 0.02, 1000)
+        result = assoc.observe(2, vec(same_angle(0.40)), 0.02, 1100)
+        self.assertFalse(result.associated)
+        self.assertEqual(result.reason, "pending_evidence")
+        self.assertIsNone(result.session_id)
+        self.assertAlmostEqual(result.own_best, 0.40, places=6)
+        self.assertEqual(assoc.session_count, 1)
+
+    def test_isolated_weak_frames_never_create_session(self):
+        assoc = AnonymousAssociator(enabled=True, track_ttl_sec=2.0)
+        assoc.observe(1, vec(0), 0.02, 1000)
+        # 每次都是不同轨道、间隔超过轨道 TTL：候选过期，永远凑不满 weak_obs 帧
+        for ts in (2000, 5000, 8000):
+            result = assoc.observe(2, vec(same_angle(0.40)), 0.02, ts)
+            self.assertEqual(result.reason, "pending_evidence")
+        self.assertEqual(assoc.session_count, 1)
+
+    def test_weak_frame_then_strong_match_reuses_session(self):
+        """同一轨道先侧脸（弱）再正脸（强）：应该并回原会话，不是拆成两条。"""
+        assoc = AnonymousAssociator(enabled=True)
+        first = assoc.observe(1, vec(0), 0.02, 1000)
+        weak = assoc.observe(2, vec(same_angle(0.40)), 0.02, 1100, tracked_ids={2})
+        self.assertEqual(weak.reason, "pending_evidence")
+        # 原轨道已经离开画面（tracked_ids 里没有旧轨道）→ 允许换轨交接
+        strong = assoc.observe(2, vec(same_angle(0.70)), 0.02, 1200, tracked_ids={2})
+        self.assertTrue(strong.associated)
+        self.assertEqual(strong.reason, "associated")
+        self.assertEqual(strong.session_id, first.session_id)
         self.assertEqual(assoc.session_count, 1)
 
 
@@ -215,7 +282,7 @@ class TestLifecycleLimits(unittest.TestCase):
         assoc = AnonymousAssociator(enabled=True, max_sessions=2)
         ids = []
         for index, angle in enumerate((0, 90, 180)):
-            ids.append(assoc.observe(index + 1, vec(angle), 0.02, 1000 + index * 1000).session_id)
+            ids.append(feed(assoc, index + 1, vec(angle), 1000 + index * 1000).session_id)
         self.assertEqual(assoc.session_count, 2)
         self.assertIn(ids[1], assoc.session_ids())
         self.assertIn(ids[2], assoc.session_ids())
@@ -224,9 +291,11 @@ class TestLifecycleLimits(unittest.TestCase):
     def test_reset_clears_everything(self):
         assoc = AnonymousAssociator(enabled=True)
         assoc.observe(1, vec(0), 0.02, 1000)
+        assoc.observe(2, vec(same_angle(0.40)), 0.02, 1100)   # 留一条候选
         assoc.reset()
         self.assertEqual(assoc.session_count, 0)
         self.assertEqual(assoc.session_ids(), [])
+        self.assertEqual(assoc._pending, {})
         again = assoc.observe(1, vec(0), 0.02, 1000)
         self.assertEqual(again.session_id, 1)
 

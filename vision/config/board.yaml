@@ -69,6 +69,11 @@ association:
   quality_max_rms: 0.16
   session_ttl_sec: 120.0     # 2 分钟内的再次出现算同一次在场
   track_ttl_sec: 2.0
+  # 2026-11-08 真素材复评（docs/真实素材关联复评-2026-11-08.md）新增两项：
+  # 弱证据连续 weak_obs 帧才建会话（单帧侧脸残影不再拆出重复会话）；
+  # 上报要求该轨道至少一帧过质量门（出画/转身残影不算新访客）。
+  weak_obs: 2
+  require_quality_evidence: true
 
 runtime:
   max_fps: 0             # 板端要真实耗时基线，不人为限帧

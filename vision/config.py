@@ -86,6 +86,10 @@ DEFAULTS = {
         "track_ttl_sec": 2.0,
         "max_sessions": 64,
         "max_refs": 8,
+        # 弱证据连续观察几次才建会话：一帧侧脸残影不再建出重复会话（2026-11-08 实测）
+        "weak_obs": 2,
+        # 上报前要求该轨道至少有一帧过 quality_max_rms 门：出画/转身残影不算新访客
+        "require_quality_evidence": True,
     },
     "server": {
         "enabled": True,
