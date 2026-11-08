@@ -8,6 +8,9 @@
 
 只读夹具、只写临时 SQLite；不改生产库、不联网。
 
+**只在 PC 上跑**：它依赖 `dialog/`（RK3588 侧业务层，Python 3.7+ 语法）。`deploy_board.ps1`
+会把 `scripts/` 整体同步到板端（与 `pc_*.py` 同理），但板端 Python 3.6 不会跑这个脚本。
+
 用法：
     py -3.12 scripts/visit_window_replay.py
     py -3.12 scripts/visit_window_replay.py --fixture <path> --out <json>
