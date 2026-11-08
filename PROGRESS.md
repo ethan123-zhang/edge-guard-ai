@@ -28,6 +28,9 @@
   [sface-engine-rebuild-2026-11-08.json](docs/data/sface-engine-rebuild-2026-11-08.json)。
   顺带纠正一处文档事实：**板端 engine/ONNX 在部署根目录** `~/sentinel-quality-20261106/`，
   不在 `vision/models/`（那里只放原始模型）；`board.yaml` 的路径也指向根下。
+- **文档**：[业务到访窗口](docs/业务到访窗口-2026-11-08.md)（语义/实现/验收/边界/复现）；
+  另整理 [Jetson人脸识别从CPU到GPU-技术路线与踩坑](docs/Jetson人脸识别从CPU到GPU-技术路线与踩坑.md)
+  （CPU→GPU 路线的 9 个坑与数字出处，含本次 SFace 重建耗时与证据指针）。
 - **未接线**：仓库里还没有 `dialog/` 主循环，`VisitBook` 目前只在测试与回放脚本里被调用；
   离场判定（写 `departed_at`）按合同另立协议，长期未收口的到访会被一直当成活跃。
 - **下次入口**：① 对话节点主循环（收 `face_event` → `book.arrive` → `created` 开迎宾 +
