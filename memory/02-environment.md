@@ -15,6 +15,7 @@ last_updated: 2026-10-31
 - 板端验收目录 `/home/jetson/sentinel-check-20261031-1939`；`jetson_local`为Haar+none，无网络与截图。
 - 当前证据：`docs/Jetson事件链路诊断-2026-10-31.md`。通用知识方法正文见aiVault。
 - 2026-11-06 板端复验路径：`ssh jetson@10.77.156.4`（已装本机公钥，不需要口令）；**导入 numpy/cv2 前必须 `export OPENBLAS_CORETYPE=ARMV8`**，否则 OpenBLAS 选错核型直接 `Illegal instruction`。质量研究目录 `/home/jetson/sentinel-quality-20261106/`，模型在 `~/sentinel-check-20261101-dnn-models/`，固定视频在 `~/sentinel-check-20261101-video/datasets/video-validation/`。
+- **2026-11-08 板子地址变更**：`jetson@192.168.3.154` 可用（板子重启后 IP 回到这个）；**`10.77.156.4` 已不是板子**（能 ping、SSH 在 banner 交换阶段被 reset，是别的设备占着）。`scripts/deploy_board.ps1` 的默认 `-Host` 已同步改成 `192.168.3.154`。板端一次性核对：`ls /dev/video0`、`python3 scripts/ensure_engines.py --check`、`python3 scripts/check_backend.py --profile board`（三项在 11-08 均通过：TRT 8.2.1.8/fp16，检测+识别都在 TensorRT）。
 
 > 以下段落保留旧日期画像，不代表当前U盘系统；遇到冲突以本节和最新实测报告为准。历史口令不再保留。
 

@@ -339,7 +339,8 @@ def face_with_landmarks(bbox=(100, 80, 80, 80), score=0.97, distort=0.0):
                          raw_row=raw)
 
 
-def build_assoc_service(tmpdir, recognizer, detector, assoc=None, confirm_frames=1):
+def build_assoc_service(tmpdir, recognizer, detector, assoc=None, confirm_frames=1,
+                        log=None):
     """可开关关联层的服务：其余与 build_service 一致，免得两套夹具漂移。"""
     cfg = config.load("sim")
     cfg["association"] = dict(config.DEFAULTS["association"])
@@ -357,7 +358,7 @@ def build_assoc_service(tmpdir, recognizer, detector, assoc=None, confirm_frames
     service = VisionService(
         cfg, FakeSource(), detector, recognizer, store,
         FaceTracker(confirm_frames=confirm_frames, cooldown_sec=10.0),
-        sink, log=lambda msg: None,
+        sink, log=log if log is not None else (lambda msg: None),
     )
     return service, sink
 
@@ -397,6 +398,31 @@ class TestAssociationWiring(unittest.TestCase):
         self.assertEqual(len(reported), 1, "同一次连续在场只能有一条事件")
         self.assertEqual(service.stats.suppressed, 1)
         self.assertFalse(reported[0]["is_known"])
+
+    def test_suppression_log_explains_track_bound_without_scores(self):
+        """沿轨（track_bound）没有比较分数：日志必须给理由，不能只剩「—」。
+
+        2026-11-08：现场回看时「同类 — / 异类 —」分不清是"没比"还是"比了没分数"，
+        而沿轨分支本来就只是"这条轨道还绑着同一会话"，永远不会带分数。
+        """
+        from types import SimpleNamespace
+
+        from vision.association import AssociationResult
+
+        detector = ScriptedDetector()
+        logs = []
+        service, _sink = build_assoc_service(
+            self._tmp.name, ConstantRecognizer([0.0, 1.0, 0.0]), detector,
+            {"enabled": True}, log=logs.append)
+        event = SimpleNamespace(face_id="unk_1", is_known=False, name=None,
+                                confidence=0.5, bbox=(1, 2, 3, 4), frame_ts=1000,
+                                track_id=7)
+        service._reported_sessions.add(3)
+        self.assertFalse(service._should_report(
+            event, {7: AssociationResult(3, True, "track_bound")}))
+        joined = "\n".join(logs)
+        self.assertIn("理由 track_bound", joined)
+        self.assertIn("并入会话 3", joined)
 
     def test_different_person_is_reported_again(self):
         detector = ScriptedDetector()

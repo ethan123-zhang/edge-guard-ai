@@ -55,6 +55,20 @@ CREATE INDEX IF NOT EXISTS idx_visit_arrived ON visit(arrived_at DESC);
 CREATE INDEX IF NOT EXISTS idx_visit_pending ON visit(report_status)
     WHERE report_status != 'sent';
 
+-- visit_event：face_event 与到访的对应账本（2026-11-08）。
+-- 存在的理由：① msg_id 幂等（WS 重连/重传同一条消息只处理一次，且要跨进程重启有效）；
+-- ② 事后能回答"这条到访是哪几条事件构成的"，排障不用翻日志。
+CREATE TABLE IF NOT EXISTS visit_event (
+    msg_id     TEXT PRIMARY KEY,
+    visit_id   TEXT NOT NULL,
+    face_id    TEXT NOT NULL,
+    frame_ts   INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (visit_id) REFERENCES visit(visit_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_visit_event_visit ON visit_event(visit_id);
+
 CREATE TABLE IF NOT EXISTS dialog_turn (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     visit_id   TEXT NOT NULL,
@@ -266,6 +280,52 @@ def mark_report_failed(conn: sqlite3.Connection, visit_id: str) -> None:
         "UPDATE visit SET report_status='failed' WHERE visit_id=?", (visit_id,)
     )
     conn.commit()
+
+
+# ---------------------------------------------------------------- visit_event
+
+def latest_visit_for(conn: sqlite3.Connection, face_id: str) -> Optional[Row]:
+    """这个人（这个 face_id）最近的一次到访；没有就是 None。
+
+    排序按 `arrived_at`：业务窗口也以 `arrived_at` 为锚，两者必须是同一个时间轴。
+    """
+    return conn.execute(
+        "SELECT * FROM visit WHERE face_id=?"
+        " ORDER BY arrived_at DESC, created_at DESC, visit_id DESC LIMIT 1",
+        (face_id,),
+    ).fetchone()
+
+
+def get_visit_event(conn: sqlite3.Connection, msg_id: str) -> Optional[Row]:
+    return conn.execute(
+        "SELECT * FROM visit_event WHERE msg_id=?", (msg_id,)
+    ).fetchone()
+
+
+def log_visit_event(
+    conn: sqlite3.Connection,
+    msg_id: str,
+    visit_id: str,
+    face_id: str,
+    frame_ts: int,
+    now_ms: Optional[int] = None,
+) -> None:
+    """记一条事件归属。主键是 msg_id，重复调用会抛 IntegrityError —— 调用方先查后写。"""
+    ts = now_ms if now_ms is not None else frame_ts
+    conn.execute(
+        "INSERT INTO visit_event (msg_id, visit_id, face_id, frame_ts, created_at)"
+        " VALUES (?,?,?,?,?)",
+        (msg_id, visit_id, face_id, int(frame_ts), int(ts)),
+    )
+    conn.commit()
+
+
+def events_for_visit(conn: sqlite3.Connection, visit_id: str) -> List[Row]:
+    return conn.execute(
+        "SELECT * FROM visit_event WHERE visit_id=?"
+        " ORDER BY frame_ts ASC, msg_id ASC",
+        (visit_id,),
+    ).fetchall()
 
 
 # ---------------------------------------------------------------- dialog_turn

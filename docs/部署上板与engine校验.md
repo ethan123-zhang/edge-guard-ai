@@ -1,6 +1,8 @@
 # 部署上板与 engine 校验
 
-> 板端：`jetson@10.77.156.4:~/sentinel-quality-20261106`（**不是 git 仓库**，靠手动同步）
+> 板端：`jetson@192.168.3.154:~/sentinel-quality-20261106`（**不是 git 仓库**，靠手动同步）
+> ⚠️ 板子 IP 随 DHCP 变：11-07 是 `10.77.156.4`，11-08 起是 `192.168.3.154`；**旧 IP 上现在是别的设备**
+> （能 ping、SSH 直接被 reset），别照着旧地址部署。
 > 环境：JetPack 4.6 / Python 3.6.9 / OpenCV 4.1.1 / **TensorRT 8.2.1.8**
 > 两个脚本：`scripts/ensure_engines.py`（板端跑）、`scripts/deploy_board.ps1`（Windows 跑）
 > 实测日期：2026-11-07
@@ -76,7 +78,7 @@ pwsh -File scripts\deploy_board.ps1 -Host 192.168.1.9 -WorkDir /home/jetson/othe
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
-| `-Host` | `10.77.156.4` | 板子 IP（参数名实际是 `RemoteHost`，`-Host` 是别名：`$Host` 是 PS 只读自动变量） |
+| `-Host` | `192.168.3.154` | 板子 IP（参数名实际是 `RemoteHost`，`-Host` 是别名：`$Host` 是 PS 只读自动变量）；**IP 会变，连不上先核对** |
 | `-User` | `jetson` | 板端账号 |
 | `-WorkDir` | `/home/jetson/sentinel-quality-20261106` | 板端工作目录 |
 | `-SkipTests` | 关 | 只跳过 `python3 -m vision.run_tests` |
@@ -136,6 +138,28 @@ cp yunet_fp16.engine.json /tmp/engprobe/x.engine.json
 python3 scripts/ensure_engines.py --engine /tmp/engprobe/x.engine \
     --model ~/sentinel-quality-20261106/yunet_trt320.onnx --force
 ```
+
+**SFace 重建分支实测（2026-11-08，补上一轮只验过 YuNet 的空白）**：目标 engine **不存在**
+（不是"复制改名"），走的是"无 sidecar → 内置 profile → 重建"这条分支：
+
+```bash
+mkdir -p /tmp/engprobe-sface && cp sface_dynamic_batch.onnx /tmp/engprobe-sface/
+python3 scripts/ensure_engines.py \
+    --engine /tmp/engprobe-sface/sface_batch_fp16.engine \
+    --model  /tmp/engprobe-sface/sface_dynamic_batch.onnx
+#   [warn] 没有可用 sidecar 的 input 字段，输入 profile 用内置约定：
+#          min=1x3x112x112 opt=4x3x112x112 max=8x3x112x112
+#   重建完成（耗时 483.0 s）；1/1 可用；总耗时 493 s
+```
+
+- **SFace 重建约 8 分钟**（YuNet 2.5 分钟）：动态 batch 三档 profile 让 trtexec 优化时间翻倍，
+  看起来"卡住"是正常的；别中途 Ctrl-C（`.build.tmp` 会留着，重跑脚本会先删）。
+- 新 engine 与生产 engine 在 batch 1/4/8 全部执行成功，逐行余弦最低 **0.99955**、最大绝对差
+  **0.0156**（FP16 两次构建的舍入差）；sidecar 字段与生产同构；生产 engine/sidecar 前后
+  sha256 完全未变，`--check` 仍 exit 0。证据 [sface-engine-rebuild-2026-11-08.json](data/sface-engine-rebuild-2026-11-08.json)。
+- **路径纠正**：板端 engine 与 `sface_dynamic_batch.onnx` 都在**部署根目录**
+  `~/sentinel-quality-20261106/`，`vision/models/` 里只有原始 ONNX 模型；`board.yaml` 的
+  `runtime.detector_engine / recognizer_engine` 也指向根下。写脚本/文档时别再假设 `vision/models/`。
 
 **`deploy_board.ps1` 实测**：exit 0。同步 99 个文件 / 35.25 MB（`vision/` + `scripts/`，含
 `vision/models/*.onnx`、`vision/tests/`、`vision/config/`）；`sha256 校验通过：99/99`；

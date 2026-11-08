@@ -1,0 +1,213 @@
+{
+  "schema": "sentinel-manager/visit-window-replay@1",
+  "generated_at_local": "2026-11-08T19:28:54",
+  "window_ms": 600000,
+  "window_min": 10,
+  "python": "3.12.6",
+  "natural_fixture": {
+    "path": "logs/video-validation/natural-head-full.json",
+    "event_count": 12,
+    "protocol_violations": 0,
+    "violations": [],
+    "distinct_face_ids": 12,
+    "visits_created": 12,
+    "reused": 0,
+    "per_event": [
+      {
+        "frame_ts": 1700000001000,
+        "face_id": "unk_1700000000000",
+        "visit_id": "v_20231115_0001",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000001000,
+        "face_id": "unk_1700000000000_2",
+        "visit_id": "v_20231115_0002",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000012500,
+        "face_id": "unk_1700000011500",
+        "visit_id": "v_20231115_0003",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000013000,
+        "face_id": "unk_1700000011000",
+        "visit_id": "v_20231115_0004",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000025000,
+        "face_id": "unk_1700000024000",
+        "visit_id": "v_20231115_0005",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000025000,
+        "face_id": "unk_1700000024000_2",
+        "visit_id": "v_20231115_0006",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000062500,
+        "face_id": "unk_1700000061500",
+        "visit_id": "v_20231115_0007",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000064500,
+        "face_id": "unk_1700000063500",
+        "visit_id": "v_20231115_0008",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000065000,
+        "face_id": "unk_1700000064000",
+        "visit_id": "v_20231115_0009",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000129000,
+        "face_id": "unk_1700000128000",
+        "visit_id": "v_20231115_0010",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000141500,
+        "face_id": "unk_1700000140500",
+        "visit_id": "v_20231115_0011",
+        "created": true,
+        "reason": "new_visit"
+      },
+      {
+        "frame_ts": 1700000141500,
+        "face_id": "unk_1700000140500_2",
+        "visit_id": "v_20231115_0012",
+        "created": true,
+        "reason": "new_visit"
+      }
+    ],
+    "verdict": "业务层不跨 unk_ID 归并：12 条事件 → 12 次到访（reused=0）"
+  },
+  "known_synthetic": {
+    "person": "p_10023 王阿姨",
+    "timeline": [
+      {
+        "label": "到达",
+        "frame_ts": 1735689600000,
+        "visit_id": "v_20250101_0001",
+        "created": true,
+        "reason": "new_visit",
+        "person_visit_count": 1
+      },
+      {
+        "label": "窗口内再出现",
+        "frame_ts": 1735689900000,
+        "visit_id": "v_20250101_0001",
+        "created": false,
+        "reason": "reuse_active",
+        "person_visit_count": 1
+      },
+      {
+        "label": "窗口内再出现",
+        "frame_ts": 1735690140000,
+        "visit_id": "v_20250101_0001",
+        "created": false,
+        "reason": "reuse_window",
+        "person_visit_count": 1
+      },
+      {
+        "label": "恰好 600000ms",
+        "frame_ts": 1735690200000,
+        "visit_id": "v_20250101_0002",
+        "created": true,
+        "reason": "new_visit",
+        "person_visit_count": 2
+      },
+      {
+        "label": "活跃长停留（+15min）",
+        "frame_ts": 1735691100000,
+        "visit_id": "v_20250101_0002",
+        "created": false,
+        "reason": "reuse_active",
+        "person_visit_count": 2
+      },
+      {
+        "label": "重传第一条 msg_id",
+        "frame_ts": 1735689600000,
+        "visit_id": "v_20250101_0001",
+        "created": false,
+        "reason": "replay_msg",
+        "person_visit_count": 2
+      }
+    ],
+    "checks": [
+      {
+        "label": "0ms 新建",
+        "ok": true
+      },
+      {
+        "label": "5min 并入同一次",
+        "ok": true
+      },
+      {
+        "label": "9min 并入同一次",
+        "ok": true
+      },
+      {
+        "label": "600000ms 另建（含本次计数 2）",
+        "ok": true
+      },
+      {
+        "label": "活跃长停留不拆",
+        "ok": true
+      },
+      {
+        "label": "重传不重复计数",
+        "ok": true
+      },
+      {
+        "label": "到访总数 = 2",
+        "ok": true
+      }
+    ],
+    "counts": {
+      "person_visit_count": 2,
+      "visit_rows": 2
+    },
+    "verdict": "7 项检查全过"
+  },
+  "unknown_pair": {
+    "checks": [
+      {
+        "label": "unk_1 新建",
+        "ok": true
+      },
+      {
+        "label": "unk_2 各建各的",
+        "ok": true
+      },
+      {
+        "label": "unk_1 再出现并入自己",
+        "ok": true
+      },
+      {
+        "label": "到访总数 = 2",
+        "ok": true
+      }
+    ],
+    "visits": 2,
+    "verdict": "4 项检查全过"
+  }
+}

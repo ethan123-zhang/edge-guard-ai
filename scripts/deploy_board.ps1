@@ -36,7 +36,10 @@ param(
     # PowerShell 的 $Host 是只读自动变量，所以参数名取 RemoteHost、别名 Host，
     # 命令行上照样写 -Host。
     [Alias('Host')]
-    [string]$RemoteHost = '10.77.156.4',
+    # 板子 IP 会随 DHCP 变（2026-11-07 记录的是 10.77.156.4，11-08 已变回 192.168.3.154，
+    # 且旧 IP 上现在是别的设备）。连不上就先 `arp -a` / 板端 `hostname` 核对，再 -Host 指定；
+    # 默认值只是"最近一次确认过"的地址，不是长期契约。
+    [string]$RemoteHost = '192.168.3.154',
     [string]$User = 'jetson',
     [string]$WorkDir = '/home/jetson/sentinel-quality-20261106',
     [switch]$SkipTests,

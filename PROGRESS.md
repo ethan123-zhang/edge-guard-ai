@@ -1,5 +1,42 @@
 # 当前进度与续接入口
 
+## 第十六轮：业务层 10 分钟到访窗口落地 + 板子地址修正（2026-11-08）
+
+> 说明：[业务到访窗口](docs/业务到访窗口-2026-11-08.md) · 证据：[visit-window-2026-11-08.json](docs/data/visit-window-2026-11-08.json)
+
+- **业务层到访窗口**（项目目标里最后一个没动的业务环节）：新增 `dialog/visits.py`
+  ——`VisitBook.arrive(msg)` 把 `face_event` 归并成 `visit`，返回
+  `VisitDecision(visit_id, created, reason, person_visit_count)`，`reason` ∈
+  `new_visit / reuse_active / reuse_window / replay_msg`。语义照 2026-11-01 合同：固定窗口锚在
+  `arrived_at`（599999ms 并入、600000ms 另建）、**活跃到访不因计时被拆**、`unk_*` 不跨 ID 互并、
+  `msg_id` 幂等。新增 `visit_event` 表（`msg_id` 主键）让幂等跨进程重启有效，顺带可回答
+  "这次到访由哪几条事件构成"；协议消息本身未变（v1 不加字段），`docs/02` §3.1/§6.6 已同步。
+- **验收**：`dialog.run_tests` **75 项**（本轮 +28：visits 24 + 回放 4）、`vision.run_tests`
+  **353 项**（+1）全过。回放证据 11 项断言全过：合成已知人脸时间线（0/5/9/10/25min + 重传）
+  与 `unk_1`/`unk_2` 不互并。**真实夹具** `natural-head-full.json` 12 条事件 → **12 次到访、
+  复用 0** —— 不是业务层失败，是层级边界：那 12 条是 12 个不同 `unk_*`，合同禁止业务层跨 ID 猜同人。
+- **板子地址修正**：11-08 起板子在 `jetson@192.168.3.154`；`10.77.156.4` 能 ping 但 SSH 被
+  reset（**已是别的设备**）。`scripts/deploy_board.ps1` 默认 `-Host` 与 `docs/部署上板`、
+  `memory/02-environment.md` 已同步；板端三项自检（`/dev/video0`、`ensure_engines --check`、
+  `check_backend --profile board`）全部 exit 0（TRT 8.2.1.8/fp16）。
+- **可观测性**：关联层抑制日志补 `理由`（`track_bound` 分支不再只打「同类 — / 异类 —」）。
+- **SFace engine 重建分支实跑通过**（上一轮只用 YuNet 在 `/tmp` 验过整条链路）：目标 engine
+  不存在 → 正确回退内置 profile `min1/opt4/max8 ×112×112` → trtexec 重建 **483.0 s** →
+  sidecar 自动生成且 `verify_engine` 复验通过；新 engine 与生产 engine 在 batch 1/4/8 上
+  逐行余弦最低 **0.99955**、最大绝对差 **0.0156**（FP16 两次构建的正常舍入差）；生产 engine
+  与 sidecar 前后 sha256 **完全未变**，`--check` 仍 exit 0。证据
+  [sface-engine-rebuild-2026-11-08.json](docs/data/sface-engine-rebuild-2026-11-08.json)。
+  顺带纠正一处文档事实：**板端 engine/ONNX 在部署根目录** `~/sentinel-quality-20261106/`，
+  不在 `vision/models/`（那里只放原始模型）；`board.yaml` 的路径也指向根下。
+- **未接线**：仓库里还没有 `dialog/` 主循环，`VisitBook` 目前只在测试与回放脚本里被调用；
+  离场判定（写 `departed_at`）按合同另立协议，长期未收口的到访会被一直当成活跃。
+- **下次入口**：① 对话节点主循环（收 `face_event` → `book.arrive` → `created` 开迎宾 +
+  `visit_report` 推送/补传）；② 离场判定合同（否则"活跃到访永久"这个限制会一直在）；
+  ③ 真实门口素材到位后复评视觉层 `tau/margin/质量门`（业务窗口不参与）；
+  ④ 换板/重刷后先 `python3 scripts/ensure_engines.py --check`（**YuNet 重建约 150 s、
+  SFace 约 483 s**，别以为卡死）；⑤ 板端 U 盘根分区开机报 EXT4 `ext4_mb_generate_buddy`
+  不一致（group 324/328/329）——**有文件系统损坏风险**，重要证据先备份，别只留在这块盘上。
+
 ## 第十五轮：两个 P0 修复 + 现场能力三件套，板端全同步（2026-11-07 晚）
 
 > 交接：[docs/handoffs/2026-11-07-摄像头打通与可靠性修复.md](docs/handoffs/2026-11-07-摄像头打通与可靠性修复.md)

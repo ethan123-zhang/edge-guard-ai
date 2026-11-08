@@ -24,14 +24,15 @@ class DbTestCase(unittest.TestCase):
 
 
 class TestSchema(DbTestCase):
-    def test_all_five_tables_are_created(self):
+    def test_all_tables_are_created(self):
         names = {
             r["name"]
             for r in self.conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
             )
         }
-        for expected in ("person", "visit", "dialog_turn", "event_log", "face_registry"):
+        for expected in ("person", "visit", "dialog_turn", "event_log",
+                         "face_registry", "visit_event"):
             self.assertIn(expected, names)
 
     def test_init_schema_is_idempotent(self):

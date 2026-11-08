@@ -206,8 +206,10 @@ class VisionService(object):
             # 没有轨道 / disabled / invalid_evidence：没证据就不猜，照旧上报
             return True
         if result.associated and result.session_id in self._reported_sessions:
-            self.log("[vision] 关联层：轨道 %s 并入会话 %s（同类 %s / 异类 %s）→ 不重复上报"
-                     % (event.track_id, result.session_id,
+            # 诊断日志必须写清「为什么算同一会话」：沿轨（track_bound）这一支没有比较值，
+            # 旧日志只打「同类 — / 异类 —」，现场回看时分不清是没比较还是比了没分数。
+            self.log("[vision] 关联层：轨道 %s 并入会话 %s（理由 %s；同类 %s / 异类 %s）→ 不重复上报"
+                     % (event.track_id, result.session_id, result.reason,
                         "%.2f" % result.own_best if result.own_best is not None else "—",
                         "%.2f" % result.other_best if result.other_best is not None else "—"))
             return False

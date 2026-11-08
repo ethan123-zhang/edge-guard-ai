@@ -8,9 +8,13 @@ last_updated: 2026-11-06
 
 先读memory/00-maintenance-rule.md。本页只保留状态摘要与指针；项目进度在本库，通用知识正文在aiVault。
 
-## 当前状态与续接（2026-11-06）
+## 当前状态与续接（2026-11-08）
 
-- 板端腾空间（第十轮）：Jetson 已用 **45G→22G、空闲 31G（87%→42%）**，`/home/jetson` 19G→1.1G。删了 2022–2023 出厂/亚博教程（jetson-inference/librealsense/opencv 源码/ROS ws/torch+tensorflow）与 Docker 里 3 年前 5.61G 的 ros2-base 镜像；保留 `/usr` 系统栈、pycuda+numpy、`~/sentinel-quality-20261106`、测试模型与视频。sudo-only 残留（CUDA deb 源 1.1G 等）见交接。
+- **2026-11-08 第十六轮**：业务层 10 分钟到访窗口落地 —— `dialog/visits.py`（`VisitBook.arrive`，固定窗口锚在 `arrived_at`、活跃到访不拆、`unk_*` 不互并、`msg_id` 幂等）+ `visit_event` 账本表 + `scripts/visit_window_replay.py`。验收：`dialog.run_tests` 75 项、`vision.run_tests` 353 项全过；证据 [visit-window-2026-11-08.json](docs/data/visit-window-2026-11-08.json)（合成 11 项断言全过；真实自然姿态夹具 12 条 `unk_*` 事件 → 12 次到访，**业务层不跨匿名 ID 猜同人**，属层级边界不是回归）。说明见 [业务到访窗口](docs/业务到访窗口-2026-11-08.md)。仍未接线对话节点（仓库还没有 dialog 主循环），离场判定另立合同。
+- **SFace engine 重建分支实跑通过**（2026-11-08，补上一轮只验 YuNet 的空白）：`/tmp` 里目标 engine 不存在 → 内置 profile `min1/opt4/max8×112×112` → trtexec 重建 **483 s** → sidecar 生成并复验；batch 1/4/8 与生产 engine 余弦 ≥ **0.99955**、max abs diff **0.0156**；生产 engine 前后 sha256 未变。**板端 engine/ONNX 在部署根目录 `~/sentinel-quality-20261106/`，不在 `vision/models/`**（那里只有原始模型）。证据 `docs/data/sface-engine-rebuild-2026-11-08.json`。
+- **板子地址 2026-11-08 起是 `jetson@192.168.3.154`**：`10.77.156.4` 能 ping 但 SSH 被 reset，**已被别的设备占用**；`scripts/deploy_board.ps1` 默认 `-Host` 已改成新地址。板端三项自检（video0 / ensure_engines --check / check_backend）11-08 均通过。
+- 视觉侧可观测性：关联层抑制日志补了 `理由`（`track_bound` 不再只打「同类 — / 异类 —」），新增 1 项单测。
+- 2026-11-06 记录：板端腾空间（第十轮）：Jetson 已用 **45G→22G、空闲 31G（87%→42%）**，`/home/jetson` 19G→1.1G。删了 2022–2023 出厂/亚博教程（jetson-inference/librealsense/opencv 源码/ROS ws/torch+tensorflow）与 Docker 里 3 年前 5.61G 的 ros2-base 镜像；保留 `/usr` 系统栈、pycuda+numpy、`~/sentinel-quality-20261106`、测试模型与视频。sudo-only 残留（CUDA deb 源 1.1G 等）见交接。
 - 下一轮入口（明天）：**P0 解码先验预计算**，做成 `vision/yunet_decode.py`（先验表缓存，<5 ms，40 帧 parity ≤0.0001 px），验收与命令见[板端存储清理与明日入口](docs/handoffs/2026-11-06-板端存储清理与明日入口.md)。P3 实时延迟被硬件卡住：板上无 `/dev/video*`，需先插 USB 摄像头。
 - 最新实验：[TensorRT 封装](docs/TensorRT封装-2026-11-06.md)：`vision/trt_backend.py` 做 sidecar 哈希绑定（engine/模型 sha256、TRT 版本、profile）、动态批量、不可用回退 CPU；板端 40 帧回归检出 69 vs 69、bbox 差 0.0001 px、特征余弦最小 0.999979；检测 83.8→45.9 ms、SFace 218→35.8 ms。发现旧 `decode()` 每帧重建 5875 先验 ≈31 ms，是检测段瓶颈。证据 `docs/data/trt-wrapper-regression-2026-11-06.json`。
 - 上一轮：[Jetson TensorRT 加速评估](docs/Jetson-TRT加速评估-2026-11-06.md)：板端 cv2 未编 CUDA，检测/SFace 走 CPU（84/219 ms）；TRT FP16 后 11.2/18.1 ms，单帧约 309→35 ms（8.8×），YuNet 最大差 7.5e-6、SFace 余弦 0.99999。坑：YuNet ONNX 声明 120×160 实际喂 320；pycuda 只存 int 指针会被 GC。证据 `docs/data/trt-acceleration-2026-11-06.json`。
