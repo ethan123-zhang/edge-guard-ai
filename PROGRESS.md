@@ -31,6 +31,13 @@
 - **文档**：[业务到访窗口](docs/业务到访窗口-2026-11-08.md)（语义/实现/验收/边界/复现）；
   另整理 [Jetson人脸识别从CPU到GPU-技术路线与踩坑](docs/Jetson人脸识别从CPU到GPU-技术路线与踩坑.md)
   （CPU→GPU 路线的 9 个坑与数字出处，含本次 SFace 重建耗时与证据指针）。
+- **素材录制工具**（为第 3 项真实素材复评准备）：新增 [scripts/record_camera.py](scripts/record_camera.py)
+  —— 预览窗口实时显示实测采集帧率，**T** 开录 / **C** 停 / **Q** 退出；停止后自动回读校验
+  （帧数、分辨率、可解码），坏了直接 exit 1，并写 `<视频>.capture.json`（sha256/帧数/实测 fps，
+  标标注文件直接抄）。实测：`--headless --seconds 4` → 122 帧 / 30.2 fps / 回读通过；
+  交互路径用窗口消息模拟 T→C 验证 → 85 帧 / 3.0 s / 退出码 0。**踩坑**：同一 UVC 720p/MJPG，
+  DSHOW 只给 **13.6 fps**、MSMF 才 **27.8–30 fps**（DSHOW 把 MJPG 协商成 15 fps 档），
+  脚本默认 MSMF 并按实测帧率写盘，否则回放会整体加速；+12 项单测（`vision` 353→365）。
 - **未接线**：仓库里还没有 `dialog/` 主循环，`VisitBook` 目前只在测试与回放脚本里被调用；
   离场判定（写 `departed_at`）按合同另立协议，长期未收口的到访会被一直当成活跃。
 - **下次入口**：① 对话节点主循环（收 `face_event` → `book.arrive` → `created` 开迎宾 +

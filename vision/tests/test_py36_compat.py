@@ -33,6 +33,9 @@ BOARD_TARGETS += [
     os.path.join(PROJECT_DIR, "scripts", "ensure_engines.py"),
     os.path.join(PROJECT_DIR, "scripts", "video_pipeline_probe.py"),
     os.path.join(PROJECT_DIR, "scripts", "video_stability_probe.py"),
+    # 素材录制是 PC 侧交互脚本（需要显示器），但 scripts/ 会整体同步到板端，
+    # 所以照样过 3.6 语法闸门，避免板上出现一个连解析都失败的 .py
+    os.path.join(PROJECT_DIR, "scripts", "record_camera.py"),
 ]
 
 
