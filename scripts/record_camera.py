@@ -18,8 +18,17 @@
 用法：
     py -3.12 scripts/record_camera.py                       # 预览，T 开录，C 停
     py -3.12 scripts/record_camera.py --name sc01_replacement
-    py -3.12 scripts/record_camera.py --width 1920 --height 1080
+    py -3.12 scripts/record_camera.py --list                 # 本机有哪些摄像头、各自多少帧
     py -3.12 scripts/record_camera.py --headless --seconds 5  # 无人值守自检（不弹窗）
+
+**本机摄像头索引**（2026-11-08 实测，`--list` 可复核）：`0` = 笔记本内置
+HP True Vision FHD（720p/1080p 都只有 ~26 fps），`1` = 外接 **HD USB Camera**
+（就是之前接在 Jetson 上的那颗；**720p 只有 8.7 fps，1080p 才是 30 fps**）。
+所以本脚本默认 `--camera 1 --width 1920 --height 1080`；换机器或换口先跑 `--list`。
+
+后端：默认 MSMF（同一颗外接相机在 MSMF 下 1080p 能到 30 fps，DSHOW 只给 5–10 fps）。
+Windows 的 OpenCV 不支持按设备名打开，只能用索引；`--list` 会尽量打印设备友好名
+（装了 `pygrabber` 才有，纯可选）。
 
 Python 3.6 语法（板端 test_py36_compat 会做 AST 检查）；本脚本只在有显示器的 PC 上用。
 """
@@ -206,9 +215,85 @@ def open_camera(args, log):
             "fps": float(cap.get(cv2.CAP_PROP_FPS) or 0.0),
             "frame_shape": tuple(frame.shape),
         }
+        fps_est, _last = measure_capture_fps(cap, count=24, discard=6, log=log)
+        actual["measured_fps"] = fps_est
+        if fps_est and fps_est < args.fps * 0.6:
+            log("  [warn] 实测只有 %.1f fps（请求 %.0f fps）：这颗外接相机 720p 只有 ~9 fps、"
+                "1080p 才有 30 fps；也可能 --camera 选成了笔记本内置（--list 看设备）"
+                % (fps_est, args.fps))
         return cap, actual
     raise RuntimeError("摄像头打不开：%s。换个 --camera 0/1/2 或先关掉占用摄像头的程序。"
                        % (last_error or "未知原因"))
+
+
+def camera_names(log=None):
+    """设备友好名列表（DirectShow 枚举顺序；可选依赖 pygrabber，拿不到返回 None）。"""
+    try:
+        from pygrabber.dshow_graph import FilterGraph
+    except Exception:
+        return None
+    try:
+        return list(FilterGraph().get_input_devices())
+    except Exception as exc:                      # COM 挂了也不该拖垮录制
+        if log is not None:
+            log("  [warn] pygrabber 枚举设备名失败：%s" % exc)
+        return None
+
+
+def probe_mode(index, width, height, fps, seconds=0.8, log=None):
+    """按请求模式打开一次、量 0.8 s 真实帧率；返回 `(backend, 实测 fps, 协商尺寸)` 或 None。"""
+    for name, api in backend_candidates("auto"):
+        cap = cv2.VideoCapture(index, api)
+        if not cap.isOpened():
+            cap.release()
+            continue
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        cap.set(cv2.CAP_PROP_FPS, float(fps))
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(width))
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(height))
+        for _ in range(8):
+            cap.read()
+        got_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        got_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        count = 0
+        started = time.perf_counter()
+        while time.perf_counter() - started < seconds:
+            ok, _frame = cap.read()
+            if not ok:
+                break
+            count += 1
+        elapsed = max(1e-6, time.perf_counter() - started)
+        cap.release()
+        if count > 0:
+            return name, count / elapsed, (got_w, got_h)
+    return None
+
+
+def list_cameras(args, log=None):
+    """`--list`：列出本机摄像头、设备名（可选）、1080p/720p 实测帧率。"""
+    if log is None:
+        log = _console
+    names = camera_names(log)
+    if names is None:
+        log("[list] 没装 pygrabber，无法显示设备名（pip install pygrabber 后可显示）；下面只有索引")
+    log("[list] 逐个索引试开（MSMF 优先），每次量 0.8 s 真实帧率")
+    found = False
+    for index in range(5):
+        name = names[index] if names and index < len(names) else "?"
+        row = "  index %d  %-26s" % (index, name[:26])
+        details = []
+        for width, height in ((1920, 1080), (1280, 720)):
+            got = probe_mode(index, width, height, args.fps, log=log)
+            if got is None:
+                continue
+            backend, fps, size = got
+            details.append("%s %dx%d %.1f fps" % (backend, size[0], size[1], fps))
+        if details:
+            found = True
+            log(row + "  " + " | ".join(details))
+    if not found:
+        log("[list] 一个都打不开：检查 USB 连接、是否被别的程序占用")
+    return 0
 
 
 def open_writer(path, codec, fps, size, log):
@@ -349,15 +434,20 @@ class Recorder(object):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="门口素材录制：预览 → T 开始 → C 停止（输出在 datasets/scenarios/）")
-    parser.add_argument("--camera", type=int, default=0, help="摄像头序号（默认 0）")
-    parser.add_argument("--width", type=int, default=1280, help="请求宽（默认 1280）")
-    parser.add_argument("--height", type=int, default=720, help="请求高（默认 720）")
+    parser.add_argument("--camera", type=int, default=1,
+                        help="摄像头序号（默认 1 = 外接 HD USB Camera；0 是笔记本内置）")
+    parser.add_argument("--width", type=int, default=1920,
+                        help="请求宽（默认 1920；这颗外接相机 720p 只有 ~9 fps）")
+    parser.add_argument("--height", type=int, default=1080,
+                        help="请求高（默认 1080；720p 只有 ~9 fps）")
     parser.add_argument("--fps", type=float, default=30.0, help="请求帧率（默认 30）")
     parser.add_argument("--fourcc", default="MJPG",
                         help="采集 FOURCC（默认 MJPG；YUYV 会大幅降帧率）")
     parser.add_argument("--backend", default="auto",
                         choices=("auto", "dshow", "msmf", "any"),
-                        help="采集后端（默认 auto：Windows 先 DSHOW 再 MSMF）")
+                        help="采集后端（默认 auto：Windows 先 MSMF 再 DSHOW）")
+    parser.add_argument("--list", action="store_true",
+                        help="只列出本机摄像头及其实测分辨率/帧率，不录制")
     parser.add_argument("--dir", default=DEFAULT_DIR, help="输出目录（默认 datasets/scenarios）")
     parser.add_argument("--name", default=None,
                         help="文件名主干（如 sc01_replacement）；默认 rec_<时间戳>")
@@ -467,6 +557,8 @@ def run(args, log=_console):
 def main(argv=None):
     args = parse_args(argv)
     try:
+        if args.list:
+            return list_cameras(args)
         return run(args)
     except RuntimeError as exc:
         print("[错误] %s" % exc, file=sys.stderr)

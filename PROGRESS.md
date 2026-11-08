@@ -34,10 +34,13 @@
 - **素材录制工具**（为第 3 项真实素材复评准备）：新增 [scripts/record_camera.py](scripts/record_camera.py)
   —— 预览窗口实时显示实测采集帧率，**T** 开录 / **C** 停 / **Q** 退出；停止后自动回读校验
   （帧数、分辨率、可解码），坏了直接 exit 1，并写 `<视频>.capture.json`（sha256/帧数/实测 fps，
-  标标注文件直接抄）。实测：`--headless --seconds 4` → 122 帧 / 30.2 fps / 回读通过；
-  交互路径用窗口消息模拟 T→C 验证 → 85 帧 / 3.0 s / 退出码 0。**踩坑**：同一 UVC 720p/MJPG，
-  DSHOW 只给 **13.6 fps**、MSMF 才 **27.8–30 fps**（DSHOW 把 MJPG 协商成 15 fps 档），
-  脚本默认 MSMF 并按实测帧率写盘，否则回放会整体加速；+12 项单测（`vision` 353→365）。
+  标标注文件直接抄）；`--list` 列出本机摄像头、设备名与 1080p/720p 实测帧率。**摄像头索引**
+  （2026-11-08 实测）：`0` = 笔记本内置 HP True Vision FHD（720p≈21–26 fps），
+  **`1` = 外接 HD USB Camera（接 Jetson 的那颗；720p 只有 ~9 fps，1080p 才 29.9 fps）**，
+  所以默认 `--camera 1 --width 1920 --height 1080`。实测：`--headless --seconds 4`（1080p）
+  → 122 帧 / 30.4 fps / 11.1 MB / 回读解码通过；交互路径用窗口消息模拟 T→C → 85 帧 / 3.0 s / exit 0。
+  **踩坑**：DSHOW 与 720p 组合会退 YUY2 把外接相机压到 9 fps；OpenCV 不支持按设备名打开，
+  只能索引 + `--list` 确认。+12 项单测（`vision` 353→365）。
 - **未接线**：仓库里还没有 `dialog/` 主循环，`VisitBook` 目前只在测试与回放脚本里被调用；
   离场判定（写 `departed_at`）按合同另立协议，长期未收口的到访会被一直当成活跃。
 - **下次入口**：① 对话节点主循环（收 `face_event` → `book.arrive` → `created` 开迎宾 +
