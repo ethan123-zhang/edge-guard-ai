@@ -11,6 +11,9 @@ import tempfile
 import unittest
 from types import SimpleNamespace
 
+import cv2
+import numpy as np
+
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCRIPT = os.path.join(PROJECT_DIR, "scripts", "record_camera.py")
 
@@ -103,6 +106,77 @@ class RecorderHelpersTest(unittest.TestCase):
         faces = [SimpleNamespace(size=120), SimpleNamespace(size=95)]
         self.assertEqual(self.rec.face_summary(faces), (2, 120))
         self.assertEqual(self.rec.face_summary([SimpleNamespace(size=63)]), (1, 63))
+
+    def test_timing_ratio_and_retime_trigger(self):
+        # 30 fps 写盘、实际 20.7 fps：回放快 45%，必须重写
+        self.assertAlmostEqual(self.rec.timing_ratio(1104, 53.4, 30.0), 0.689, places=2)
+        self.assertTrue(self.rec.needs_retime(1104, 53.4, 30.0))
+        # 实测与写盘一致：不动
+        self.assertFalse(self.rec.needs_retime(600, 20.0, 30.0))
+        # 数据不全时不做判断（避免把正常文件改坏）
+        self.assertIsNone(self.rec.timing_ratio(0, 20.0, 30.0))
+        self.assertFalse(self.rec.needs_retime(0, 20.0, 30.0))
+
+    def test_detect_scaled_maps_boxes_back_to_full_frame(self):
+        from vision.detector import FaceDetection
+
+        class FakeDetector(object):
+            def __init__(self):
+                self.seen = None
+
+            def detect(self, frame):
+                self.seen = frame.shape[:2]
+                return [FaceDetection(10, 20, 30, 40, 0.9)]
+
+        frame = np.zeros((1080, 1920, 3), np.uint8)
+        fake = FakeDetector()
+        faces = self.rec.detect_scaled(fake, frame, 640)
+        self.assertEqual(fake.seen, (360, 640))       # 先缩到 640 宽再检测
+        self.assertAlmostEqual(faces[0].x, 30.0, places=1)      # 10 × 3
+        self.assertAlmostEqual(faces[0].y, 60.0, places=1)      # 20 × 3
+        self.assertAlmostEqual(faces[0].w, 90.0, places=1)      # 30 × 3
+        self.assertEqual(faces[0].score, 0.9)
+
+    def test_detect_scaled_skips_resize_when_already_small(self):
+        from vision.detector import FaceDetection
+
+        class FakeDetector(object):
+            def __init__(self):
+                self.seen = None
+
+            def detect(self, frame):
+                self.seen = frame.shape[:2]
+                return [FaceDetection(5, 5, 20, 20, 0.8)]
+
+        frame = np.zeros((360, 640, 3), np.uint8)
+        fake = FakeDetector()
+        faces = self.rec.detect_scaled(fake, frame, 640)
+        self.assertEqual(fake.seen, (360, 640))       # 没缩放
+        self.assertEqual(faces[0].x, 5)
+
+    def test_retime_video_rewrites_container_fps(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "take.mp4")
+            writer = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"),
+                                     30.0, (64, 48))
+            if not writer.isOpened():
+                self.skipTest("本机没有 mp4v 编码器")
+            for index in range(20):
+                writer.write(np.full((48, 64, 3), index * 10, np.uint8))
+            writer.release()
+            ok, frames = self.rec.retime_video(path, 10.0)
+            self.assertTrue(ok)
+            self.assertEqual(frames, 20)
+            cap = cv2.VideoCapture(path)
+            try:
+                self.assertAlmostEqual(cap.get(cv2.CAP_PROP_FPS), 10.0, places=1)
+                read = 0
+                while cap.read()[0]:
+                    read += 1
+            finally:
+                cap.release()
+            self.assertEqual(read, 20)
+            self.assertTrue(os.path.exists(os.path.join(tmp, "take.pre-retime.mp4")))
 
 
 if __name__ == "__main__":

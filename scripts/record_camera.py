@@ -52,6 +52,7 @@ HUD_ORANGE = (0, 165, 255)
 HUD_GREEN = (0, 220, 0)
 HUD_RED = (0, 0, 255)
 HUD_WHITE = (255, 255, 255)
+DETECT_WIDTH = 640        # --detect 的检测输入宽度（整帧 1080p 送 YuNet 要 120 ms/帧）
 
 
 # ---------------------------------------------------------------- 纯函数（可单测）
@@ -77,6 +78,41 @@ def face_summary(faces):
     if not faces:
         return 0, 0
     return len(faces), max(int(face.size) for face in faces)
+
+
+def detect_scaled(face_detector, frame, detect_width=DETECT_WIDTH):
+    """先缩到 `detect_width` 宽再检测，坐标按比例放大回原帧。
+
+    为什么要缩：YuNet 的 `detect()` 会把**整帧**设为输入尺寸，1920×1080 直接送进去
+    实测 **120 ms/帧**，30 fps 的录制循环立刻被拖到 20.7 fps（2026-11-08 实测）；
+    缩到 640 宽后是 ~15 ms，且人脸在 640 宽下仍有 50 px 以上，检出率不受影响。
+    """
+    height, width = frame.shape[:2]
+    if width <= detect_width:
+        return face_detector.detect(frame)
+    from vision.detector import FaceDetection     # 只有 --detect 才需要 vision 包
+
+    scale = float(width) / float(detect_width)
+    small = cv2.resize(frame, (int(detect_width),
+                               max(1, int(round(height / scale)))))
+    faces = []
+    for face in face_detector.detect(small):
+        faces.append(FaceDetection(face.x * scale, face.y * scale,
+                                   face.w * scale, face.h * scale, face.score))
+    return faces
+
+
+def timing_ratio(frames, elapsed, write_fps):
+    """实际采集帧率 ÷ 写盘帧率。明显偏离 1 = 文件回放速度不对（快/慢）。"""
+    if not frames or not elapsed or not write_fps:
+        return None
+    return (float(frames) / float(elapsed)) / float(write_fps)
+
+
+def needs_retime(frames, elapsed, write_fps, tolerance=0.10):
+    """回放速度偏离超过 `tolerance` 就必须按实际帧率重写容器。"""
+    ratio = timing_ratio(frames, elapsed, write_fps)
+    return ratio is not None and abs(ratio - 1.0) > float(tolerance)
 
 
 def default_stem(now=None):
@@ -125,6 +161,55 @@ def verify_recording(path):
         return False, info
     return True, info
 
+
+def retime_video(path, target_fps, log=None):
+    """把已写好的视频按 `target_fps` 重写一遍容器，让回放速度回到实时。
+
+    为什么会用到：录制循环被拖慢时（本机 `--detect` 曾把 30 fps 拖到 20.7 fps），
+    写盘头仍写着 30 fps，回放就快 1.45 倍。帧内容没问题，错的只是 fps 头，
+    重编码一次即可（mp4v 1080p 约 11 ms/帧）；原文件留成 `<name>.pre-retime.mp4`。
+    返回 `(ok, 帧数)`。
+    """
+    log = log or (lambda msg: None)
+    cap = cv2.VideoCapture(path)
+    if not cap.isOpened():
+        return False, 0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+    ext = os.path.splitext(path)[1] or ".mp4"
+    temp = "%s.retiming%s" % (os.path.splitext(path)[0], ext)
+    writer = cv2.VideoWriter(temp, cv2.VideoWriter_fourcc(*"mp4v"),
+                             float(target_fps), (width, height))
+    if width <= 0 or height <= 0 or not writer.isOpened():
+        cap.release()
+        return False, 0
+    frames = 0
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+            break
+        writer.write(frame)
+        frames += 1
+    writer.release()
+    cap.release()
+    if frames <= 0:
+        try:
+            os.remove(temp)
+        except OSError:
+            pass
+        return False, 0
+    backup = "%s.pre-retime%s" % (os.path.splitext(path)[0], ext)
+    try:
+        if os.path.exists(backup):
+            os.remove(backup)
+        os.replace(path, backup)
+        os.replace(temp, path)
+    except OSError as exc:
+        log("[warn] 重写容器失败：%s" % exc)
+        return False, 0
+    log("[rec] 已按 %.1f fps 重写容器（原文件保留为 %s）"
+        % (float(target_fps), os.path.basename(backup)))
+    return True, frames
 
 # ---------------------------------------------------------------- 摄像头 / 写盘
 
@@ -445,34 +530,56 @@ class Recorder(object):
         self.frames += 1
 
     def stop(self):
-        """收口并回读；返回 `(ok, 摘要dict 或 None)`。"""
+        """收口、回读校验、必要时按实际帧率重写容器；返回 `(ok, 摘要dict)`。"""
         if self.writer is None:
             return True, None
         self.writer.release()
         self.writer = None
         elapsed = time.time() - (self.started_at or time.time())
         ok, info = verify_recording(self.output)
+        capture_fps = round(self.frames / elapsed, 1) if elapsed > 0 else 0.0
+        retimed = False
+        if ok and not self.args.no_retime and needs_retime(self.frames, elapsed,
+                                                           self.write_fps):
+            ratio = timing_ratio(self.frames, elapsed, self.write_fps) or 1.0
+            self.log("[rec] 回放速度偏 %.0f%%（实际 %.1f fps，写盘头 %.1f fps），"
+                     "按实际帧率重写容器" % ((ratio - 1.0) * 100, capture_fps,
+                                             self.write_fps))
+            retimed_ok, retimed_frames = retime_video(info["path"], capture_fps,
+                                                      self.log)
+            if retimed_ok and retimed_frames == self.frames:
+                retimed = True
+                self.write_fps = capture_fps
+                ok2, info2 = verify_recording(info["path"])
+                if ok2:
+                    ok, info = ok2, info2
+                else:
+                    self.log("[warn] 重写后回读失败：%s" % info2["problem"])
+            elif retimed_ok:
+                self.log("[warn] 重写后帧数变了（%d → %d），保留原文件"
+                         % (self.frames, retimed_frames))
         info["seconds"] = round(elapsed, 2)
-        info["recorded_fps"] = round(self.frames / elapsed, 1) if elapsed > 0 else 0.0
+        info["capture_fps"] = capture_fps
+        info["recorded_fps"] = capture_fps
         if ok:
             self.saved.append(info)
-            drift = 0.0
-            if self.write_fps > 1:
-                drift = abs(info["recorded_fps"] - self.write_fps) / self.write_fps
-            if drift > 0.15:
-                self.log("[warn] 实际写入 %.1f fps，写盘头写的是 %.1f fps（差 %.0f%%）；"
-                         "回放速度会漂，标注时按 capture.json 的 recorded_fps 复核"
-                         % (info["recorded_fps"], self.write_fps, drift * 100))
+            ratio = timing_ratio(self.frames, elapsed, self.write_fps)
+            if not retimed and ratio is not None and abs(ratio - 1.0) > 0.10:
+                self.log("[warn] 回放速度仍偏 %.0f%%（实际 %.1f fps vs 写盘 %.1f fps）："
+                         "标注时按 capture.json 的 capture_fps 换算时间"
+                         % ((ratio - 1.0) * 100, capture_fps, self.write_fps))
             meta = {
                 "schema": "sentinel/capture@1",
                 "video": os.path.basename(info["path"]),
                 "video_sha256": sha256_file(info["path"]),
                 "fps": info["fps"],
                 "write_fps": round(self.write_fps, 2),
+                "capture_fps": capture_fps,
+                "retimed": retimed,
                 "width": info["width"],
                 "height": info["height"],
                 "frames": info["frames"],
-                "recorded_fps": info["recorded_fps"],
+                "recorded_fps": capture_fps,
                 "duration_ms": int(round(elapsed * 1000)),
                 "camera": self.args.camera,
                 "fourcc": self.args.fourcc,
@@ -519,6 +626,10 @@ def parse_args(argv=None):
                         help="预览上叠加人脸框/宽度/同框人数（不录进视频）")
     parser.add_argument("--detect-every", type=int, default=5,
                         help="--detect 每几帧检测一次（默认 5，兼顾 30 fps）")
+    parser.add_argument("--detect-width", type=int, default=DETECT_WIDTH,
+                        help="--detect 的检测输入宽度（默认 640；整帧 1080p 送 YuNet 要 120 ms/帧）")
+    parser.add_argument("--no-retime", action="store_true",
+                        help="关闭收口时的自动重写容器（默认开启：回放速度偏 >10%% 时按实际帧率重写）")
     parser.add_argument("--dir", default=DEFAULT_DIR, help="输出目录（默认 datasets/scenarios）")
     parser.add_argument("--name", default=None,
                         help="文件名主干（如 sc01_replacement）；默认 rec_<时间戳>")
@@ -594,7 +705,7 @@ def run(args, log=_console):
             frame_index += 1
             if face_detector is not None and frame_index % max(1, args.detect_every) == 0:
                 try:
-                    faces = face_detector.detect(frame)
+                    faces = detect_scaled(face_detector, frame, args.detect_width)
                 except Exception as exc:          # 检测失败不该毁掉录制
                     faces = []
                     log("[warn] 人脸检测失败（继续录）：%s" % exc)
