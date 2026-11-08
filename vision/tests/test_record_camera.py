@@ -9,6 +9,7 @@ import os
 import re
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCRIPT = os.path.join(PROJECT_DIR, "scripts", "record_camera.py")
@@ -93,6 +94,15 @@ class RecorderHelpersTest(unittest.TestCase):
             ok, info = self.rec.verify_recording(path)
             self.assertFalse(ok)
             self.assertIn("0 字节", info["problem"])
+
+    def test_face_summary_empty(self):
+        self.assertEqual(self.rec.face_summary([]), (0, 0))
+        self.assertEqual(self.rec.face_summary(None), (0, 0))
+
+    def test_face_summary_counts_and_widest(self):
+        faces = [SimpleNamespace(size=120), SimpleNamespace(size=95)]
+        self.assertEqual(self.rec.face_summary(faces), (2, 120))
+        self.assertEqual(self.rec.face_summary([SimpleNamespace(size=63)]), (1, 63))
 
 
 if __name__ == "__main__":

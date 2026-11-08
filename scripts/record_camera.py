@@ -38,6 +38,10 @@ import os
 import sys
 import time
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:                    # 让 `py scripts/record_camera.py` 也能 import vision
+    sys.path.insert(0, ROOT)
+
 import cv2
 
 DEFAULT_DIR = os.path.join("datasets", "scenarios")
@@ -66,6 +70,13 @@ def format_hms(seconds):
     """`75.4` → `01:15`；录制时显示用。"""
     total = int(max(0.0, float(seconds)))
     return "%02d:%02d" % (total // 60, total % 60)
+
+
+def face_summary(faces):
+    """`(人数, 最大人脸宽 px)`；给 `--detect` 的 HUD 用。faces 元素要有 `.size`。"""
+    if not faces:
+        return 0, 0
+    return len(faces), max(int(face.size) for face in faces)
 
 
 def default_stem(now=None):
@@ -296,6 +307,35 @@ def list_cameras(args, log=None):
     return 0
 
 
+def load_face_detector(log):
+    """`--detect` 用的 YuNet 检测器（懒加载，默认不装）。
+
+    本机有个坑：`cv2` 的 ONNX 导入器读不了带中文的路径（项目目录叫「哨兵管家」），
+    所以模型路径含非 ASCII 时先拷到系统临时目录再加载。
+    """
+    import shutil
+    import tempfile
+
+    from vision import config, detector
+
+    cfg = config.load("sim")
+    model = str(config.resolve_vision(cfg["detection"]["model"]))
+    if not os.path.exists(model):
+        raise RuntimeError("找不到人脸检测模型：%s（先补 vision/models/）" % model)
+    if any(ord(ch) >= 128 for ch in model):
+        ascii_dir = os.path.join(tempfile.gettempdir(), "sentinel-models")
+        os.makedirs(ascii_dir, exist_ok=True)
+        target = os.path.join(ascii_dir, os.path.basename(model))
+        if not os.path.exists(target) or os.path.getsize(target) != os.path.getsize(model):
+            shutil.copyfile(model, target)
+        cfg["detection"]["model"] = target
+        model = target
+    face_detector = detector.create_detector(cfg)
+    log("[detect] 人脸叠加：%s（每 %d 帧检测一次；只画在预览上，不录进视频）"
+        % (face_detector.describe(), 5))
+    return face_detector
+
+
 def open_writer(path, codec, fps, size, log):
     fourcc = cv2.VideoWriter_fourcc(*codec)
     writer = cv2.VideoWriter(path, fourcc, float(fps), size)
@@ -308,7 +348,20 @@ def open_writer(path, codec, fps, size, log):
 
 # ---------------------------------------------------------------- 画面
 
-def draw_ready(frame, actual, log_lines, capture_fps=None):
+def draw_faces(canvas, faces, min_face_px=100):
+    """把人脸框画在预览画面上（只画在显示副本上，录进去的仍是干净原帧）。"""
+    if not faces:
+        return
+    for face in faces:
+        good = int(face.size) >= min_face_px
+        color = (0, 220, 0) if good else (0, 165, 255)
+        cv2.rectangle(canvas, (face.x, face.y), (face.x + face.w, face.y + face.h),
+                      color, 2)
+        cv2.putText(canvas, "%dpx %.2f" % (int(face.size), face.score),
+                    (face.x, max(22, face.y - 6)), HUD_FONT, 0.55, color, 2, cv2.LINE_AA)
+
+
+def draw_ready(frame, actual, log_lines, capture_fps=None, faces=None):
     canvas = frame.copy()
     cv2.putText(canvas, "READY  |  T: start recording    Q: quit",
                 (12, 30), HUD_FONT, 0.62, HUD_GREEN, 2, cv2.LINE_AA)
@@ -319,13 +372,20 @@ def draw_ready(frame, actual, log_lines, capture_fps=None):
         detail += "  capture ~%.1f fps" % capture_fps
     cv2.putText(canvas, detail,
                 (12, frame.shape[0] - 14), HUD_FONT, 0.5, HUD_WHITE, 1, cv2.LINE_AA)
+    if faces is not None:
+        draw_faces(canvas, faces)
+        count, widest = face_summary(faces)
+        cv2.putText(canvas, "faces=%d  max=%dpx" % (count, widest),
+                    (frame.shape[1] - 260, frame.shape[0] - 14),
+                    HUD_FONT, 0.6, HUD_GREEN if count == 1 and widest >= 100
+                    else HUD_ORANGE, 2, cv2.LINE_AA)
     for offset, text in enumerate(log_lines[-3:]):
         cv2.putText(canvas, text[:96], (12, 60 + 22 * offset),
                     HUD_FONT, 0.5, HUD_ORANGE, 1, cv2.LINE_AA)
     return canvas
 
 
-def draw_recording(frame, elapsed, frames, output, write_fps=0.0):
+def draw_recording(frame, elapsed, frames, output, write_fps=0.0, faces=None):
     canvas = frame.copy()
     cv2.circle(canvas, (26, 26), 9, HUD_RED, -1, cv2.LINE_AA)
     cv2.putText(canvas, "REC %s  frames=%d" % (format_hms(elapsed), frames),
@@ -335,6 +395,13 @@ def draw_recording(frame, elapsed, frames, output, write_fps=0.0):
         note += "   @ %.1f fps" % write_fps
     cv2.putText(canvas, note, (12, frame.shape[0] - 14),
                 HUD_FONT, 0.5, HUD_WHITE, 1, cv2.LINE_AA)
+    if faces is not None:
+        draw_faces(canvas, faces)
+        count, widest = face_summary(faces)
+        cv2.putText(canvas, "faces=%d  max=%dpx" % (count, widest),
+                    (frame.shape[1] - 260, frame.shape[0] - 14),
+                    HUD_FONT, 0.6, HUD_GREEN if count == 1 and widest >= 100
+                    else HUD_ORANGE, 2, cv2.LINE_AA)
     return canvas
 
 
@@ -448,6 +515,10 @@ def parse_args(argv=None):
                         help="采集后端（默认 auto：Windows 先 MSMF 再 DSHOW）")
     parser.add_argument("--list", action="store_true",
                         help="只列出本机摄像头及其实测分辨率/帧率，不录制")
+    parser.add_argument("--detect", action="store_true",
+                        help="预览上叠加人脸框/宽度/同框人数（不录进视频）")
+    parser.add_argument("--detect-every", type=int, default=5,
+                        help="--detect 每几帧检测一次（默认 5，兼顾 30 fps）")
     parser.add_argument("--dir", default=DEFAULT_DIR, help="输出目录（默认 datasets/scenarios）")
     parser.add_argument("--name", default=None,
                         help="文件名主干（如 sc01_replacement）；默认 rec_<时间戳>")
@@ -479,6 +550,11 @@ def run(args, log=_console):
     recorder = Recorder(args, log)
     display_lines = []
     ok_all = True
+    face_detector = load_face_detector(log) if (args.detect and not args.headless) else None
+    if args.detect and args.headless:
+        log("  [warn] --headless 下没有窗口，--detect 被忽略")
+    faces = [] if face_detector is not None else None
+    frame_index = 0
     try:
         if args.headless:
             fps_est, frame = measure_capture_fps(cap, count=30, discard=15, log=log)
@@ -515,6 +591,13 @@ def run(args, log=_console):
                 ok_all = False
                 break
             stamps.append(time.time())
+            frame_index += 1
+            if face_detector is not None and frame_index % max(1, args.detect_every) == 0:
+                try:
+                    faces = face_detector.detect(frame)
+                except Exception as exc:          # 检测失败不该毁掉录制
+                    faces = []
+                    log("[warn] 人脸检测失败（继续录）：%s" % exc)
 
             if recorder.writer is not None:
                 recorder.write(frame)
@@ -523,9 +606,10 @@ def run(args, log=_console):
                     ok_now, info = recorder.stop()
                     ok_all = ok_all and after_stop(ok_now, info)
                 shown = draw_recording(frame, elapsed, recorder.frames,
-                                       recorder.output, recorder.write_fps)
+                                       recorder.output, recorder.write_fps, faces)
             else:
-                shown = draw_ready(frame, actual, display_lines, estimate_fps(stamps))
+                shown = draw_ready(frame, actual, display_lines,
+                                   estimate_fps(stamps), faces)
 
             cv2.imshow(window, shown)
             key = cv2.waitKey(1) & 0xFF
