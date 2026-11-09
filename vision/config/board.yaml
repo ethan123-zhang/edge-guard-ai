@@ -74,6 +74,14 @@ association:
   # 上报要求该轨道至少一帧过质量门（出画/转身残影不算新访客）。
   weak_obs: 2
   require_quality_evidence: true
+  # 现挂会话首报延迟（2026-11-09）：出画那一两帧会给出质量过关的干净正面残影
+  # （余弦 0.29–0.38、rms 0.07–0.12，落在同人侧脸与异人重叠带），weak_obs 与质量门
+  # 都拦不住。真在场的人会继续给证据，残影出现一下就没了 —— 所以首报先挂起，
+  # 撑够 K 帧或 K 毫秒（先到者）才发。板上 17 fps 时约晚 0.18 s。
+  # 弱证据（below_tau/歧义/被占）建出的会话要攒更久。0 = 关（老行为）。
+  first_report_confirm_frames: 3
+  first_report_confirm_ms: 1000
+  weak_first_report_confirm_frames: 6
 
 runtime:
   max_fps: 0             # 板端要真实耗时基线，不人为限帧

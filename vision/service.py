@@ -27,6 +27,20 @@ DEDUPE_IOU = 0.5
 # 帧级均匀保护的探针宽度：整帧缩到 160 宽再算灰度标准差，720p 上约 0.2 ms。
 BLANK_PROBE_WIDTH = 160
 
+# 首报延迟（见 `_first_report`）里算"弱建会话"的理由：外观证据自认不足，
+# 正常外观证据（new_session / associated）攒 K 帧，这些要攒更久。
+DEFER_WEAK_REASONS = ("below_tau", "ambiguous_margin", "session_occupied")
+
+
+def face_label(face_id_or_event):
+    """陌生人的人脸"标签"统一成 `?`：不受 tracker 的 unk_N 轨道编号影响。
+
+    事件上的 `face_id` 对陌生人是 tracker 给的轨道稳定 id（unk_0…），而帧内
+    `face["face_id"]` 是 None；两者拿来做"还是不是同一个人"的比较必须先对齐。
+    """
+    face_id = getattr(face_id_or_event, "face_id", face_id_or_event)
+    return face_id or "?"
+
 
 # ---------------------------------------------------------------- Sink
 
@@ -121,6 +135,7 @@ class Stats(object):
         self.failed = 0
         self.dropped = 0
         self.suppressed = 0     # 关联层判为「同一会话已报过」而没发的条数
+        self.deferred = 0       # 现挂会话首报还在等确认 / 确认不足被撤销的条数
         self.blank = 0          # 帧级均匀保护跳过的近均匀帧（镜头被遮/全黑/流掉线）
         self.fps = 0.0
         self.infer_ms = 0.0
@@ -130,10 +145,10 @@ class Stats(object):
         elapsed = max(1e-6, time.time() - self.started_at)
         blank = " · 空白帧 %d" % self.blank if self.blank else ""
         return ("帧 %d（%.1f fps）· 上报 %d 条（成功 %d / 失败 %d）· "
-                "单帧推理 %.1f ms · 丢帧 %d · 关联去重 %d%s" % (
+                "单帧推理 %.1f ms · 丢帧 %d · 关联去重 %d · 首报待确认 %d%s" % (
                     self.frames, self.frames / elapsed, self.events,
                     self.sent, self.failed, self.infer_ms, self.dropped,
-                    self.suppressed, blank,
+                    self.suppressed, self.deferred, blank,
                 ))
 
 
@@ -174,6 +189,19 @@ class VisionService(object):
         self._require_quality = (bool(assoc_cfg.get("require_quality_evidence", True))
                                  and self.associator.enabled)
         self._good_quality_tracks = {}   # track_id -> 最后一帧合格证据的时刻
+        # 现挂会话首报延迟（2026-11-09，见 _first_report）：会话第一次建出来时先不发，
+        # 等同一身份标签再给出 K 帧 / K 毫秒证据（先到者）才真正上报，没撑住的就不发。
+        self._defer_frames = max(0, int(assoc_cfg.get(
+            "first_report_confirm_frames", 0) or 0))
+        self._defer_ms = max(0, int(float(assoc_cfg.get(
+            "first_report_confirm_ms", 0) or 0) * 1000.0))
+        self._weak_defer_frames = max(self._defer_frames, int(assoc_cfg.get(
+            "weak_first_report_confirm_frames", 0) or 0))
+        self._pending = {}       # track_id -> 待确认的首报（结构见 _first_report）
+        # 本帧被 _first_report 挂起的轨道：它的第 1 帧已经算过，_advance_pending 不再补数
+        self._emitted_this_frame = set()
+        # 本帧每条轨道这一帧的人脸标签（track_id -> face_id 或 "?"），见 _label_of
+        self._frame_labels = {}
         self.backend_label = self._backend_label()
 
     # ---------------------------------------------------------------- 关联层
@@ -225,6 +253,9 @@ class VisionService(object):
 
     def _should_report(self, event, assoc_results):
         """未知人脸过一层匿名会话去重；返回 False 表示这次不该再报。"""
+        return self._should_report_inner(event, assoc_results)
+
+    def _should_report_inner(self, event, assoc_results):
         if event.is_known or not self.associator.enabled:
             return True
         if (self._require_quality
@@ -244,8 +275,121 @@ class VisionService(object):
                      % (event.track_id, result.session_id, result.reason,
                         "%.2f" % result.own_best if result.own_best is not None else "—",
                         "%.2f" % result.other_best if result.other_best is not None else "—"))
+            self._pending.pop(int(event.track_id), None)
             return False
-        self._reported_sessions.add(result.session_id)
+        return self._first_report(event, result, result.session_id)
+
+    # ---------------------------------------------------------------- 首报延迟
+
+    def _first_report(self, event, result, session_id):
+        """现挂会话的首报：先挂起，等同一身份标签再给出 K 帧 / K 毫秒证据（先到者）才真发。
+
+        2026-11-09 真素材复评的残余：出画那一两帧会给出**质量过关的干净正面残影**
+        （余弦 0.29–0.38、rms 0.07–0.12，落在同人侧脸与异人的重叠带），
+        weak_obs 与上报质量门都拦不住，于是多出一条"新访客"。这类残影的共同点是
+        **出现一下就没了**，而真在场的人会继续给证据 —— 所以判据是"活得久"，
+        不是"长得像"。代价只有首次上报晚 K 帧（板上 17 fps 时约 0.2 s）。
+
+        每帧都要有证据才算一帧：tracker 一段轨道只发一次事件（`track.emitted`），
+        所以"这条轨道还在不在场"由 `_settle_pending` 每帧按帧数（同一帧数两遍会
+        让 K 帧少算一帧，`_emitted_this_frame` 负责跳过）。
+
+        `session_id` 为 None（没有会话 / invalid_evidence）、或者关联层关着时，
+        照旧立即上报，行为与延迟关闭时完全一样；那条 `return` 必须在挂"标记"之前，
+        否则会把一条已经真发的轨道误标成"等确认"，害得它下一帧被少算一帧。
+        """
+        if not self.associator.enabled or self._defer_frames <= 0:
+            return self._commit_report(event, session_id)
+        track_id = int(event.track_id)
+        if session_id is None:
+            return self._commit_report(event, session_id)
+        weak = bool(result is not None and result.reason in DEFER_WEAK_REASONS)
+        if weak and not self._defer_weak_pending(track_id, event, result, session_id):
+            # 外观证据自认不足（低于 tau / 歧义 / 会话被占）且不是视觉层自己攒的候选：
+            # 不挂起、也不当"活得久"来确认 —— 它连自己是谁都不确定，多活几帧也不会变清楚。
+            # 直接作废它临时建出来的会话（残影不该留下痕），记一笔延迟，不占 suppressed 口径。
+            # 例外：视觉层自己攒着的"新访客"候选（weak_obs 正在数）最后一帧也是 below_tau，
+            # 那是时段边界，不是"看不出来"，它下面几帧自会给出更硬的证据 —— 只延后不否决。
+            self._drop_pending(track_id, event.frame_ts)
+            self.associator.drop_session(session_id)
+            self.stats.deferred += 1
+            self.log("[vision] 弱证据首报不采信（轨道 %s：%s own=%s other=%s）→ 不报"
+                     % (track_id, result.reason,
+                        "%.2f" % result.own_best if result.own_best is not None else "—",
+                        "%.2f" % result.other_best if result.other_best is not None else "—"))
+            return False
+        if track_id in self._pending:
+            # 这一帧它自己也发了事件：新的一段证据，上一条挂起没撑住
+            self._drop_pending(track_id, event.frame_ts)
+        # 标记给 `_settle_pending`：这条轨道本帧已经在**这里**算过第 1 帧了
+        self._emitted_this_frame.add(track_id)
+        need_frames = self._weak_defer_frames if weak else self._defer_frames
+        self._pending[track_id] = {"event": event, "session": session_id,
+                                   "label": self._label_of(event),
+                                   "result": result, "first_ts": int(event.frame_ts),
+                                   "count": 1, "need": need_frames}
+        # 同一会话另有轨道挂着：两条轨道指向同一条会话，先到的算数，那条撤掉
+        for other_id in list(self._pending.keys()):
+            if other_id != track_id and self._pending[other_id]["session"] == session_id:
+                self._drop_pending(other_id, None)
+        self.stats.deferred += 1
+        return False
+
+    def _defer_weak_pending(self, track_id, event, result, session_id):
+        """below_tau 但属于"视觉层正在攒的候选"：挂起等确认，而不是当成残影否决。
+
+        判据只用一个不会反噬的信号：这条会话是不是**这一帧刚由本轨道新建**的。
+        关联器的 `pending_evidence` 会把候选藏起来不建会话（`session_id` 为 None），
+        所以"这一帧建出来 + 建它的就是本轨道"只会发生在 weak_obs 攒够的那一刻。
+        """
+        if result.reason != "below_tau" or event.track_id is None:
+            return False
+        if not self.associator.created_by(session_id, event.track_id, event.frame_ts):
+            return False
+        return True
+
+    def _label_of(self, event):
+        """事件对应的"人脸标签"：本帧这条轨道**这一帧**真的认出谁（`_frame_labels`）。
+
+        不能用 `event.face_id`：陌生人的事件标签是 tracker 给的轨道稳定 id（unk_0…），
+        而帧内的 `face["face_id"]` 是 None —— 拿它们比"还是不是同一个人"永远不等。
+        """
+        return self._frame_labels.get(int(event.track_id), face_label(event))
+
+    def _drop_pending(self, track_id, frame_ts):
+        """撤掉一条没撑住的现挂首报；它建的会话也一起作废（残影不该留下会话）。"""
+        pending = self._pending.pop(int(track_id), None)
+        if pending is None:
+            return
+        self.stats.deferred += 1
+        session_id = pending.get("session")
+        if session_id is not None and session_id not in self._reported_sessions:
+            self.associator.drop_session(session_id)
+        held = int(pending["first_ts"])
+        if frame_ts is not None:
+            held = max(0, int(frame_ts) - held)
+        self.log("[vision] 首报未确认，丢弃（轨道 %s，会话 %s，撑了 %d ms）：残影不算访客"
+                 % (track_id, session_id, held))
+
+    def _expire_pending(self, frame_ts):
+        """超时还没撑满的首报：一律当作残影丢掉（不再无人收割地挂在内存里）。
+
+        时间线跟 `_settle_pending` 取同一个窗口 `_defer_ms`：超过 K 毫秒
+        既没攒够帧、也从没落到"时间到了也发"那一步，就是出画了，直接作废 ——
+        不留"挂着等下一个字面凑帧"的尾巴。
+        上下都夹住：太短会误杀"漏检一帧"，太长（测试/调参把 K 配到 10 s）会让残影
+        在内存里住十几秒。
+        """
+        frame_ts = int(frame_ts)
+        timeout = max(1000, min(self._defer_ms, 2000))
+        for track_id in list(self._pending.keys()):
+            if (frame_ts - self._pending[track_id]["first_ts"]) >= timeout:
+                self._drop_pending(track_id, frame_ts)
+
+    def _commit_report(self, event, session_id):
+        """真发一条：占住会话 id，之后同一会话的轨道就不再报。"""
+        if session_id is not None:
+            self._reported_sessions.add(session_id)
         return True
 
     # ---------------------------------------------------------------- 配置派生
@@ -302,6 +446,11 @@ class VisionService(object):
             % (self.associator.tau, self.associator.margin,
                self.associator.quality_max_rms)
             if self.associator.enabled else "关（同一个人出画再回来会重报）"))
+        self.log("[vision] 首报延迟：%s" % (
+            "开（正常外观 %d 帧 / 弱证据 %d 帧 / 最多 %d ms，先到者为准）"
+            % (self._defer_frames, self._weak_defer_frames, self._defer_ms)
+            if self.associator.enabled and self._defer_frames > 0
+            else "关（会话建出来当帧就上报）"))
 
         fps_window_start = time.time()
         fps_window_frames = 0
@@ -418,12 +567,17 @@ class VisionService(object):
             })
 
         events_this_frame = self.tracker.update(faces, frame_ts)
+        # 本帧每条轨道**这一帧**的身份标签：要现算，不能用事件的标签 ——
+        # 陌生人的事件标签是 tracker 给的轨道稳定 id（unk_0…），而 face["face_id"] 是 None
+        frame_labels = dict((int(face["track_id"]), face.get("face_id") or "?")
+                            for face in faces if face.get("track_id") is not None)
+        self._frame_labels = frame_labels
         # 每帧都喂证据（不是只在发事件时喂）：参考库要靠整个在场的多帧建立，
         # 只在确认那一帧喂一次，质量不好的那一次会让会话永远匹配不上。
+        tracked_ids = set(face.get("track_id") for face in faces
+                          if face.get("track_id") is not None)
         assoc_results = {}
         if self.associator.enabled:
-            tracked_ids = set(face.get("track_id") for face in faces
-                              if face.get("track_id") is not None)
             self._track_good_quality(faces, frame_ts)
             for face in faces:
                 track_id = face.get("track_id")
@@ -435,11 +589,122 @@ class VisionService(object):
 
         for event in events_this_frame:
             if not self._should_report(event, assoc_results):
-                self.stats.suppressed += 1
+                # `_should_report` 返回"压掉"有两种：关联层判重 / 首报挂起等待。
+                # 挂起期间被压是延迟，不是关联层去重，计数也要分开，现场才看得懂。
+                if int(event.track_id) not in self._pending:
+                    self.stats.suppressed += 1
                 continue
             self._report(event, frame)
 
+        # 挂起中又把这条轨道**并回一条已报过的会话**：它是同一个人，不是新访客。
+        # （出画那一两帧的残影会先把轨道绑定到自己的幽灵会话；人还在，后面几帧
+        # 证据一硬就并回原会话 —— 原来只在"发事件那一帧"检查，挂起期间漏掉了。）
+        # 每帧都查：两人分头出现时，事件帧少得可怜。
+        self._absorb_pending(assoc_results)
+
+        # 收割首报挂起 → 本帧"造出挂起"的轨道已经在 `_first_report` 里算过第 1 帧了，
+        # 用 `skip_tracks` 把它们跳过，别在同一帧里数两遍（那会让 K 帧少算一帧）。
+        if self.associator.enabled and self._defer_frames > 0:
+            self._settle_pending(frame_labels, assoc_results, frame_ts, frame,
+                                 self._emitted_this_frame)
+        self._emitted_this_frame = set()
         return frame, detections
+
+    def _absorb_pending(self, assoc_results):
+        """这条轨道已并回一条报过的会话，就把它挂起的首报撤掉（它不是新访客）。"""
+        for track_id in list(self._pending.keys()):
+            if track_id not in assoc_results:
+                continue
+            pending = self._pending[track_id]
+            result = assoc_results[track_id]
+            if not result.associated or result.session_id is None:
+                continue
+            if result.session_id == pending["session"]:
+                continue                        # 还是自己那条候选，等它自己撑够
+            if result.session_id not in self._reported_sessions:
+                continue                        # 并回的是还没报过的候选：不动它
+            self._pending.pop(track_id, None)
+            self.log("[vision] 首报挂起撤销：轨道 %s 并回已报过的会话 %s（理由 %s）→ 不是新访客"
+                     % (track_id, result.session_id, result.reason))
+
+    def _pending_still_ok(self, pending, label, result, frame_existing):
+        """挂起的候选这一帧还站着吗：还是同一身份标签，而且**还没被推翻**。
+
+        两种状态：
+        - 候选还站着（本帧沿轨 track_bound，或仍分给它同一个会话）：按帧数确认；
+        - 已经被推翻（本帧像是另一条会话、或低于 tau、或跟第二像的拉不开）：
+          **不是立刻作废**，而是立刻结算 —— 撞了别人的会话就等于"我错了"：
+          并回那条已报过的会话就不是新访客（`_settle_overturned`），
+          建不出新会话就是看不清的残影（丢弃）。
+          原来在这里直接丢掉挂起，结果残影轨道后面绑到别的会话也没人看，
+          时间兜底到了照样报一条（2026-11-09 sc01 实测）。
+        """
+        if label != pending["label"]:
+            return False                      # 同一轨道换了身份：直接作废
+        if result is None:
+            return True                       # 缺乏证据：不确认，也不推翻
+        if result.reason == "track_bound":
+            return True
+        if result.session_id == pending["session"]:
+            return True                       # 还分在自己名下（new_session / associated）
+        return False
+
+    def _settle_pending(self, labels, assoc_results, frame_ts, frame, skip_tracks=()):
+        """收割首报挂起：撑够 K 帧的补发、撑够 K 毫秒的补发、被推翻的丢掉。
+
+        `labels`：track_id -> 这一帧该轨道的身份标签（由 `_process_frame` 按帧内
+        `face["face_id"]` 现算，不取 tracker 事件的标签）。
+        `skip_tracks`：本帧在 `_first_report` 里刚挂起的轨道（第 1 帧算过了，
+        这里跳过，同一帧数两遍会让 K 帧少算一帧）。
+
+        计数按**帧**算：一条轨道停下来就是十几帧，两帧、五帧都撑不过来的残影
+        在这里自然被筛掉；同一帧里出现第二张脸时不计数（那是别人的证据）。
+        """
+        self._expire_pending(frame_ts)
+        crowded = len(labels) > 1
+        for track_id in list(self._pending.keys()):
+            pending = self._pending[track_id]
+            label = labels.get(track_id)
+            if label is None or track_id in skip_tracks:
+                continue                      # 这一帧没检出它 / 本帧已算过
+            result = assoc_results.get(track_id)
+            if not self._pending_still_ok(pending, label, result, crowded):
+                # 候选被推翻：立刻结算（撞了别人的会话就并回去，或者当作看不清而丢弃）
+                self._settle_overturned(track_id, pending, result, frame)
+                continue
+            if crowded:
+                continue                      # 场上还有别人：不借别人的在场给别人续命
+            pending["count"] += 1
+            elapsed = int(frame_ts) - pending["first_ts"]
+            if pending["count"] >= pending["need"] or elapsed >= self._defer_ms:
+                self._pending.pop(track_id, None)
+                self.log("[vision] 首报确认（轨道 %s：%d 帧 / %d ms，理由 %s）后才上报："
+                         "现挂一下就走的不算访客"
+                         % (track_id, pending["count"], elapsed,
+                            pending["result"].reason if pending["result"] is not None
+                            else "no_session"))
+                self._commit_report(pending["event"], pending["session"])
+                self._report(pending["event"], frame)
+
+    def _settle_overturned(self, track_id, pending, result, frame):
+        """挂起的候选被这一帧推翻了：并回已报过的会话，或者判断它是看不清的残影。"""
+        self._pending.pop(track_id, None)
+        session_id = None if result is None else result.session_id
+        if (session_id is not None and result.associated
+                and session_id in self._reported_sessions):
+            self.log("[vision] 首报挂起撤销：轨道 %s 并回已报过的会话 %s → 不是新访客"
+                     % (track_id, session_id))
+            return
+        # 建不出新会话（开着的会话都被占着 / 看不出像谁）：正是出画那一两帧的残影形态
+        self.stats.deferred += 1
+        self.associator.drop_session(pending["session"])
+        self.log("[vision] 首报候选被推翻（轨道 %s：理由 %s own=%s other=%s）→ 不报"
+                 % (track_id,
+                    None if result is None else result.reason,
+                    "%.2f" % result.own_best if result is not None
+                    and result.own_best is not None else "—",
+                    "%.2f" % result.other_best if result is not None
+                    and result.other_best is not None else "—"))
 
     @staticmethod
     def _frame_std(frame, probe_width=BLANK_PROBE_WIDTH):

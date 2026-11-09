@@ -191,7 +191,8 @@ class AnonymousAssociator(object):
             elif other_score is None or score > other_score:
                 other_score = score
         other_best = other_score
-
+        # 轨道真的换了会话时再把绑定改过去：沿轨分支不能提前改，否则下一帧永远
+        # "沿轨"、永远拿不到比较值，首报延迟就只会按时间兜底放行（2026-11-09 实测）。
         weak_reason = None
         if best is None:
             # 没有任何可比的会话：不存在"像谁"的歧义，直接建
@@ -235,6 +236,38 @@ class AnonymousAssociator(object):
         self._by_track = {}
         self._pending = {}
         self._next_session_id = 1
+
+    def drop_session(self, session_id):
+        """撤掉一条会话（连同轨道绑定与挂起证据）。
+
+        服务层用它撤销"没撑住首报确认"的会话：那条会话是出画残影临时建出来的，
+        留着会让下一帧同一张脸的弱证据与它比较、继续把参考库灌进去。
+        """
+        if session_id is None:
+            return False
+        session = self._sessions.pop(int(session_id), None)
+        if session is None:
+            return False
+        for track_id in list(self._by_track.keys()):
+            if self._by_track[track_id] is session:
+                self._by_track.pop(track_id, None)
+        return True
+
+    def created_by(self, session_id, track_id, frame_ts):
+        """这条会话是不是"此刻由这条轨道刚建出来的"。
+
+        服务的首报延迟用这个判据区分两种 below_tau：一种是"看不出来"，
+        一种是时段边界上恰好落在 below_tau、但候选已经由视觉层自己攒够 weak_obs
+        建出来了 —— 后者该延后确认，不该当残影直接否决。
+        关联器的 `pending_evidence` 不建会话，所以这个信号不会被普通弱证据触发。
+        """
+        if session_id is None:
+            return False
+        session = self._sessions.get(int(session_id))
+        if session is None:
+            return False
+        return (session.track_id == int(track_id)
+                and int(session.created_ts) == int(frame_ts))
 
     # ---------------------------------------------------------------- 内部
 

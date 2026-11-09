@@ -316,5 +316,24 @@ class TestThresholdValidation(unittest.TestCase):
             AnonymousAssociator(max_refs=0)
 
 
+class TestDropSession(unittest.TestCase):
+    """服务层撤销"没撑住首报确认"的残影会话时用（2026-11-09）。"""
+
+    def test_drop_removes_session_and_track_binding(self):
+        assoc = AnonymousAssociator(enabled=True)
+        result = assoc.observe(1, vec(0), 0.02, 1000)
+        self.assertIsNotNone(result.session_id)
+        self.assertTrue(assoc.drop_session(result.session_id))
+        self.assertEqual(assoc.session_count, 0)
+        # 绑定一起撤掉：同一轨道下一帧必须重新判，而不是沿轨"并入"一个不存在的会话
+        again = assoc.observe(1, vec(0), 0.02, 1100)
+        self.assertNotEqual(again.session_id, result.session_id)
+
+    def test_drop_unknown_session_is_a_no_op(self):
+        assoc = AnonymousAssociator(enabled=True)
+        self.assertFalse(assoc.drop_session(999))
+        self.assertFalse(assoc.drop_session(None))
+
+
 if __name__ == "__main__":
     unittest.main()

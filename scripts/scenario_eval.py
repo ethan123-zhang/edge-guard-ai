@@ -323,6 +323,40 @@ def replay(video_path, doc, cfg, stride, log):
 
     original_report = service._should_report
     original_observe = service.associator.observe
+    # 首报延迟（2026-11-09）：`_should_report` 返回 False 有两种 —— 关联层判重，
+    # 或者首报先挂起等确认。后者最终会经 `_report` 真正上报，所以真正的"发出去"
+    # 要以 `_report` 为准；只看 `_should_report` 会把所有事件都记成"拦截"。
+    original_commit_report = service._report
+
+    def traced_commit_report(event, frame):
+        # 真正的"发出去"以这里为准（首报挂起的补发不经 `_should_report` 的 True）。
+        # 关联层开着时，只有先前那条"想发"的记录是首报挂起，才把那一行改写成已发；
+        # 否则（关联层关 / 没有会话判定）单开一行，保持旧口径。
+        session = getattr(event, "assoc_session", None)
+        matched = None
+        for row in reversed(reports):
+            if (row["track_id"] == int(event.track_id)
+                    and not row["reported"] and row.get("deferred")):
+                matched = row
+                break
+        if matched is not None:
+            matched["reported"] = True
+            matched["deferred"] = False
+            matched["reason"] = "deferred_confirmed"
+        else:
+            reports.append({
+                "t_ms": int(event.frame_ts) - BASE_TS,
+                "frame_index": current["frame_index"],
+                "track_id": int(event.track_id),
+                "bbox": [int(v) for v in event.bbox],
+                "identity": locate_identity(frames, current["frame_index"], event.bbox),
+                "reported": True,
+                "deferred": False,
+                "reason": "delayed_report" if service.associator.enabled else "reported",
+                "own": None,
+                "session": session,
+            })
+        return original_commit_report(event, frame)
 
     def traced_observe(track_id, embedding, rms_norm, frame_ts, tracked_ids=None):
         result = original_observe(track_id, embedding, rms_norm, frame_ts,
@@ -351,6 +385,7 @@ def replay(video_path, doc, cfg, stride, log):
     def traced_report(event, results):
         decision = original_report(event, results)
         result = results.get(event.track_id)
+        deferred = (not decision and int(event.track_id) in getattr(service, "_pending", {}))
         identity = locate_identity(frames, current["frame_index"], event.bbox)
         reports.append({
             "t_ms": int(event.frame_ts) - BASE_TS,
@@ -359,6 +394,7 @@ def replay(video_path, doc, cfg, stride, log):
             "bbox": [int(v) for v in event.bbox],
             "identity": identity,
             "reported": bool(decision),
+            "deferred": bool(deferred),
             "reason": None if result is None else result.reason,
             "own": None if result is None or result.own_best is None
             else round(result.own_best, 3),
@@ -367,6 +403,7 @@ def replay(video_path, doc, cfg, stride, log):
         return decision
 
     service._should_report = traced_report
+    service._report = traced_commit_report
     service.associator.observe = traced_observe
     service._blank_std = 0.0        # 素材里本来就有人走动，别让空白帧保护吞帧
 

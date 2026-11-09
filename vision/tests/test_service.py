@@ -5,6 +5,7 @@
 """
 import os
 import tempfile
+import traceback
 import unittest
 
 import numpy as np
@@ -341,9 +342,16 @@ def face_with_landmarks(bbox=(100, 80, 80, 80), score=0.97, distort=0.0):
 
 def build_assoc_service(tmpdir, recognizer, detector, assoc=None, confirm_frames=1,
                         log=None):
-    """可开关关联层的服务：其余与 build_service 一致，免得两套夹具漂移。"""
+    """可开关关联层的服务：其余与 build_service 一致，免得两套夹具漂移。
+
+    默认把首报延迟关掉（0 / 0）：本类里大多数用例本来就是"轨迹逐帧推演"，
+    这里要钉的是**关联/去重**的语义，延迟另有 `TestFirstReportDefer` 专门测。
+    """
     cfg = config.load("sim")
     cfg["association"] = dict(config.DEFAULTS["association"])
+    cfg["association"].update({"first_report_confirm_frames": 0,
+                               "first_report_confirm_ms": 0.0,
+                               "weak_first_report_confirm_frames": 0})
     cfg["association"].update(assoc or {})
     cfg["recognition"]["confirm_frames"] = confirm_frames
     cfg["server"]["enabled"] = True
@@ -559,6 +567,7 @@ class TestDuplicateDetectionGuard(unittest.TestCase):
         for ts in (0, 500, 1000):
             step(service, detector, ts, [face_with_landmarks(), ghost])
         self.assertEqual(len(sink.of_type("face_event")), 1, "一张脸只能一条事件")
+        # 首报延迟开着时首条事件先挂起，所以要比会话数而不是事件数
         self.assertEqual(service.associator.session_count, 1, "不能复制出第二条会话")
 
 
@@ -646,6 +655,132 @@ class TestBlankFrameGuard(unittest.TestCase):
         service._process_frame(self._black(), 1200)
         self.assertEqual(service.tracker.track_count, tracks_before, "TTL 内轨道不该被清")
         self.assertEqual(service.stats.blank, 1)
+
+
+class TestFirstReportDefer(unittest.TestCase):
+    """现挂会话首报延迟（2026-11-09）：撑够 K 帧 / K 毫秒才发，现挂一下就走的残影不发。
+
+    真素材复评残余：出画那一两帧给出质量过关的干净正面残影（余弦 0.29–0.38、
+    rms 0.07–0.12），weak_obs 与上报质量门都拦不住 → 多一条"新访客"。
+    这里钉的是"活得久"这条判据本身，而不是某条素材的调参：
+    - 计数按**帧**（tracker 一段轨道只发一次事件，但人会连续出现在十几帧里）；
+    - 撑不住的就在 `_expire_pending` 被收走，它建的候选会话一起作废；
+    - 轨道并回一条**已报过**的会话 = 同一个人，挂起立刻撤掉（`_absorb_pending`）。
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+    def _service(self, detector, recognizer=None, log=None, **assoc):
+        settings = {"enabled": True, "first_report_confirm_frames": 3,
+                    "first_report_confirm_ms": 10.0,
+                    "weak_first_report_confirm_frames": 6}
+        settings.update(assoc)
+        return build_assoc_service(
+            self._tmp.name, recognizer or ConstantRecognizer([0.0, 1.0, 0.0]),
+            detector, settings, log=log)
+
+    def test_first_report_waits_for_k_frames(self):
+        """前两帧只挂起不报，第 3 帧撑满才真发（报的是第 1 帧的事件）。"""
+        detector = ScriptedDetector()
+        service, sink = self._service(detector)
+        step(service, detector, 0, [face_with_landmarks()])
+        self.assertEqual(sink.of_type("face_event"), [], "第 1 帧只登记，不能报")
+        self.assertEqual(len(service._pending), 1)
+        step(service, detector, 100, [face_with_landmarks()])
+        self.assertEqual(sink.of_type("face_event"), [], "第 2 帧还差一帧")
+        step(service, detector, 200, [face_with_landmarks()])
+        reported = sink.of_type("face_event")
+        self.assertEqual(len(reported), 1, "撑满 3 帧才报")
+        self.assertEqual(reported[0]["frame_ts"], 0, "报的是被挂起的那一帧")
+        self.assertEqual(service._pending, {})
+        self.assertEqual(service.stats.deferred, 1, "只挂起一次，不是每帧一次")
+
+    def test_flash_appearance_is_discarded_not_reported(self):
+        """出现一下就没了：撤销并丢掉它建的会话，之后不留下任何痕。"""
+        detector = ScriptedDetector()
+        service, sink = self._service(detector)
+        step(service, detector, 0, [face_with_landmarks()])
+        ghost_session = list(service._pending.values())[0]["session"]
+        service._expire_pending(2500)             # 超过首报窗口：就是残影
+        self.assertEqual(sink.of_type("face_event"), [], "残影不能算一个访客")
+        self.assertEqual(service._pending, {}, "超时未确认的要被收走")
+        self.assertNotIn(ghost_session, service.associator.session_ids(),
+                         "残影建的会话要一起作废")
+        self.assertEqual(service.stats.suppressed, 0, "它不是被关联层压掉的")
+        self.assertEqual(service.stats.deferred, 2, "挂起 + 丢弃，各记一次")
+
+    def test_k_milliseconds_also_confirms(self):
+        """帧数一时凑不满（换轨/低帧率）时，时间到了也发：先到者为准。"""
+        detector = ScriptedDetector()
+        service, sink = self._service(detector, first_report_confirm_ms=0.5)
+        step(service, detector, 0, [face_with_landmarks()])
+        step(service, detector, 500, [face_with_landmarks()])
+        self.assertEqual(len(sink.of_type("face_event")), 1, "过了 500 ms 也要发")
+
+    def test_disabled_defer_reports_on_the_first_frame(self):
+        detector = ScriptedDetector()
+        service, sink = self._service(detector, first_report_confirm_frames=0,
+                                      first_report_confirm_ms=0)
+        step(service, detector, 0, [face_with_landmarks()])
+        self.assertEqual(len(sink.of_type("face_event")), 1, "0 = 老行为：当帧就报")
+        self.assertEqual(service._pending, {})
+
+    def test_known_face_same_identity_keeps_counting(self):
+        """同一个人连续在场：标签不变就一直计数，直到撑满。"""
+        detector = ScriptedDetector()
+        service, sink = self._service(detector)
+        for ts in (0, 50, 100):
+            step(service, detector, ts, [face_with_landmarks()])
+        self.assertEqual(len(sink.of_type("face_event")), 1)
+        self.assertEqual(sink.of_type("face_event")[0]["frame_ts"], 0)
+
+    def test_session_merged_back_drops_the_pending(self):
+        """挂起期间轨道并回一条**已报过**的会话：同一个人，挂起立刻撤掉。
+
+        这是 sc01/sc02 的共性：出画残影先把轨道绑到幽灵会话，人还在，后面几帧
+        就并回原会话 —— 挂起必须跟着撤，否则时间兜底一到又多报一条。
+        """
+        detector = ScriptedDetector()
+        logs = []
+        service, sink = self._service(detector, log=logs.append)
+        step(service, detector, 0, [face_with_landmarks()])
+        track_id = list(service._pending.keys())[0]
+        reported_session = 7
+        service._reported_sessions.add(reported_session)
+        from vision.association import AssociationResult
+        service._absorb_pending({track_id: AssociationResult(
+            reported_session, True, "associated", 0.9, 0.1)})
+        self.assertEqual(service._pending, {}, "同一个人并回原会话，不能再当新访客报一次")
+        self.assertTrue(any("并回已报过的会话" in line for line in logs))
+
+    def test_overturned_candidate_without_reported_session_is_dropped(self):
+        """候选被推翻、又撞上一条还没报过的会话：建不出新访客，直接作废。"""
+        detector = ScriptedDetector()
+        logs = []
+        service, sink = self._service(detector, log=logs.append)
+        step(service, detector, 0, [face_with_landmarks()])
+        ghost = list(service._pending.values())[0]["session"]
+        service._settle_overturned(
+            1, service._pending.pop(1),
+            type("R", (), {"reason": "session_occupied", "session_id": 42,
+                           "associated": False, "own_best": 0.5, "other_best": 0.2})(),
+            None)
+        self.assertEqual(sink.of_type("face_event"), [])
+        self.assertEqual(service.stats.deferred, 2)
+        self.assertNotIn(ghost, service.associator.session_ids())
+        self.assertTrue(any("候选被推翻" in line for line in logs))
+
+    def test_pending_map_is_bounded_by_track_count(self):
+        """挂起最多一条轨道一条，不会随帧数增长（残影冲刷不会堆积）。"""
+        detector = ScriptedDetector()
+        service, sink = self._service(detector)
+        for index, ts in enumerate((0, 100, 200)):
+            step(service, detector, ts, [face_with_landmarks(bbox=(100 + index * 400, 80, 80, 80))])
+        self.assertLessEqual(len(service._pending), service.tracker.track_count)
+        self.assertEqual(sink.of_type("face_event"), [], "三条新轨道都还没撑够")
+        self.assertIn("首报待确认", service.stats.summary())
 
 
 class TestBackendLabel(unittest.TestCase):

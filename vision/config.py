@@ -90,6 +90,12 @@ DEFAULTS = {
         "weak_obs": 2,
         # 上报前要求该轨道至少有一帧过 quality_max_rms 门：出画/转身残影不算新访客
         "require_quality_evidence": True,
+        # 现挂会话首报延迟：会话第一次建出来时先不发，等它再被同一轨道确认 K 帧
+        # 或 K 毫秒（取先到者）才真正上报。0 = 关（老行为，建会话当帧即报）。
+        "first_report_confirm_frames": 3,
+        "first_report_confirm_ms": 1000,
+        # 就是弱证据（below_tau/歧义/被占，外观证据自认不足）建出的会话，也要攒够这么多帧
+        "weak_first_report_confirm_frames": 6,
     },
     "server": {
         "enabled": True,
@@ -259,6 +265,12 @@ def validate(cfg):
     _need(float(assoc["track_ttl_sec"]) > 0, "association.track_ttl_sec 必须为正")
     _need(int(assoc["max_sessions"]) >= 1, "association.max_sessions 至少为 1")
     _need(int(assoc["max_refs"]) >= 1, "association.max_refs 至少为 1")
+    _need(int(assoc["first_report_confirm_frames"]) >= 0,
+          "association.first_report_confirm_frames 不能为负（0 = 首报不延迟）")
+    _need(float(assoc["first_report_confirm_ms"]) >= 0.0,
+          "association.first_report_confirm_ms 不能为负")
+    _need(int(assoc["weak_first_report_confirm_frames"]) >= 0,
+          "association.weak_first_report_confirm_frames 不能为负")
 
     srv = cfg["server"]
     _need(str(srv["ws_url"]).startswith("ws://"),
