@@ -326,13 +326,12 @@ def replay(video_path, doc, cfg, stride, log):
     # 首报延迟（2026-11-09）：`_should_report` 返回 False 有两种 —— 关联层判重，
     # 或者首报先挂起等确认。后者最终会经 `_report` 真正上报，所以真正的"发出去"
     # 要以 `_report` 为准；只看 `_should_report` 会把所有事件都记成"拦截"。
+    # 延迟关着（默认）时这层不能触发：每次 `_report` 都会对应一条 `reported=True`
+    # 的 `_should_report` 记录，再补一行会让同一次上报被算两次。
     original_commit_report = service._report
 
     def traced_commit_report(event, frame):
-        # 真正的"发出去"以这里为准（首报挂起的补发不经 `_should_report` 的 True）。
-        # 关联层开着时，只有先前那条"想发"的记录是首报挂起，才把那一行改写成已发；
-        # 否则（关联层关 / 没有会话判定）单开一行，保持旧口径。
-        session = getattr(event, "assoc_session", None)
+        # 只有先前那条"想发"的记录是首报挂起（deferred）时，才把那一行改写成已发
         matched = None
         for row in reversed(reports):
             if (row["track_id"] == int(event.track_id)
@@ -343,19 +342,6 @@ def replay(video_path, doc, cfg, stride, log):
             matched["reported"] = True
             matched["deferred"] = False
             matched["reason"] = "deferred_confirmed"
-        else:
-            reports.append({
-                "t_ms": int(event.frame_ts) - BASE_TS,
-                "frame_index": current["frame_index"],
-                "track_id": int(event.track_id),
-                "bbox": [int(v) for v in event.bbox],
-                "identity": locate_identity(frames, current["frame_index"], event.bbox),
-                "reported": True,
-                "deferred": False,
-                "reason": "delayed_report" if service.associator.enabled else "reported",
-                "own": None,
-                "session": session,
-            })
         return original_commit_report(event, frame)
 
     def traced_observe(track_id, embedding, rms_norm, frame_ts, tracked_ids=None):
@@ -450,6 +436,10 @@ def main(argv=None):
     parser.add_argument("--tau", type=float, default=None, help="覆盖相似度门限")
     parser.add_argument("--margin", type=float, default=None, help="覆盖边距")
     parser.add_argument("--quality-max-rms", type=float, default=None, help="覆盖质量门")
+    parser.add_argument("--defer-frames", type=int, default=None,
+                        help="覆盖首报确认帧数（0 = 关；默认用配置档里的值）")
+    parser.add_argument("--defer-ms", type=float, default=None,
+                        help="覆盖首报确认毫秒数（0 = 关）")
     parser.add_argument("--no-association", action="store_true", help="关掉关联层跑基线")
     parser.add_argument("--json", default=None, help="把统计写成 JSON")
     parser.add_argument("--quiet", action="store_true", help="只打结论")
@@ -485,6 +475,10 @@ def main(argv=None):
         assoc["margin"] = args.margin
     if args.quality_max_rms is not None:
         assoc["quality_max_rms"] = args.quality_max_rms
+    if args.defer_frames is not None:
+        assoc["first_report_confirm_frames"] = args.defer_frames
+    if args.defer_ms is not None:
+        assoc["first_report_confirm_ms"] = args.defer_ms
     cfg["association"] = assoc
 
     log("[eval] %s（%s）tau=%.2f margin=%.2f 质量门 rms<=%.2f，stride=%d"

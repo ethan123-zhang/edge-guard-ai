@@ -92,9 +92,11 @@ DEFAULTS = {
         "require_quality_evidence": True,
         # 现挂会话首报延迟：会话第一次建出来时先不发，等它再被同一轨道确认 K 帧
         # 或 K 毫秒（取先到者）才真正上报。0 = 关（老行为，建会话当帧即报）。
+        # 2026-11-09 真素材实测（8 条）：关 6/8、开 7/8；它就是为压掉出画那一两帧
+        # 的"干净正面残影"（余弦 0.29–0.38、rms 0.07–0.12）而加的。
         "first_report_confirm_frames": 3,
         "first_report_confirm_ms": 1000,
-        # 就是弱证据（below_tau/歧义/被占，外观证据自认不足）建出的会话，也要攒够这么多帧
+        # 弱证据（below_tau/歧义/被占）建出的会话要攒够这么多帧才上报
         "weak_first_report_confirm_frames": 6,
     },
     "server": {

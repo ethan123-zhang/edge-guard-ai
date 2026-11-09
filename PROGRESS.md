@@ -1,5 +1,28 @@
 # 当前进度与续接入口
 
+## 第十八轮：方案 B 落地（首报延迟），真素材 6/8 → 7/8（2026-11-09）
+
+> 说明：[首报延迟与复评](docs/首报延迟-2026-11-09.md) · 交接：[handoffs/2026-11-09-首报延迟](docs/handoffs/2026-11-09-首报延迟.md)
+
+- **用户拍板方案 B**（延迟上报 K 帧）并已实现：`vision/service.py` 新增首报延迟 ——
+  会话第一次建出来先挂起，同一轨道再撑够 **K 帧（3）或 K 毫秒（1000）先到者** 才真发；
+  撑不住的按残影丢弃，它建的候选会话一起作废（`association.drop_session`）。
+  配置键：`association.first_report_confirm_frames / _ms / weak_first_report_confirm_frames`。
+- **复评结果**（8 条真素材，板上阈值 tau=0.45/margin=0.10/质量门 0.16）：
+  **关 6/8 → 开 7/8**。修掉的是 `sc02_adjacent_t2`（原残余之一）；`sc01_replacement_t1` 仍多 1 条无身份事件。
+- **关键实现细节（两处踩坑，都写进代码注释）**：
+  1. 计数必须**按 track_id 各算各的**，不能"场上有多张脸就不数"——相邻双人（sc02）恰恰同场两脸，
+     那样新来的人永远撑不满、直接被当残影丢掉（第一版实现就是这么错的，实测 sc02 两条 B 全不报）。
+  2. 会话"出生"是弱证据（below_tau/歧义/被占）的，后面几帧即便 `track_bound`，
+     强度也只有出生那一下那么强 —— 否则出画残影用 below_tau 建会话、再沿轨 3 帧就骗过确认。
+     这个判据由 `association.created_reason()` 提供（会话上记 `created_reason`）。
+- **残余（sc01_replacement_t1）**：慢速出画给的干净正面残影能撑 ~10 帧（比 K 帧还长），
+  "活得久"这条判据分不开它和真在场 —— 只剩方案 A（重录该 take）能收口，见交档 §2。
+- 本机 `pytest vision dialog` **476 项全过**；`python -m vision.run_tests` 401 项 OK；
+  板端已同步 107 文件 sha256 一致、401 OK(skipped=2)、check_backend 走 TensorRT。
+- `scripts/scenario_eval.py`：新增 `--defer-frames / --defer-ms` 覆盖；上报记录改以
+  `_report` 为准（延迟补发也计入，否则全被记成"拦截"）。
+
 ## 第十七轮：关联层真素材回放评估 + 弱证据/质量门两处收紧（2026-11-09）
 
 > 说明：[真实素材关联复评](docs/真实素材关联复评-2026-11-08.md) · 交接：[handoffs/2026-11-09-关联层真素材复评](docs/handoffs/2026-11-09-关联层真素材复评.md)

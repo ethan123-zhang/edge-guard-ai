@@ -97,15 +97,19 @@ class AssociationResult(object):
 class _Session(object):
     """一个匿名会话：生命周期独立于空间轨道，容纳若干已入册的高质量参考特征。"""
 
-    __slots__ = ("id", "created_ts", "last_ts", "refs", "track_id", "track_ts")
+    __slots__ = ("id", "created_ts", "last_ts", "refs", "track_id", "track_ts",
+                 "created_reason")
 
-    def __init__(self, session_id, frame_ts, track_id):
+    def __init__(self, session_id, frame_ts, track_id, created_reason="new_session"):
         self.id = session_id
         self.created_ts = int(frame_ts)
         self.last_ts = int(frame_ts)
         self.refs = []            # [(vec, rms_norm), ...]，只含过质量门的脸
         self.track_id = track_id  # 当前占用的轨道（一对一）
         self.track_ts = int(frame_ts)
+        # 出生理由：new_session = 没有可比会话（强）；below_tau / ambiguous_margin /
+        # session_occupied = 外观证据自认不足（弱）。服务层的首报延迟要按这个分口径。
+        self.created_reason = str(created_reason)
 
 
 class AnonymousAssociator(object):
@@ -269,6 +273,18 @@ class AnonymousAssociator(object):
         return (session.track_id == int(track_id)
                 and int(session.created_ts) == int(frame_ts))
 
+    def created_reason(self, session_id):
+        """这条会话是凭什么建出来的（new_session / below_tau / ambiguous_margin /
+        session_occupied），没有这条会话就返回 None。
+
+        服务层按它分口径：弱证据建的会话，后面几帧即便沿轨 `track_bound`，
+        强度也只有出生那一下那么强 —— 出画残影正是这么"活"下来的。
+        """
+        if session_id is None:
+            return None
+        session = self._sessions.get(int(session_id))
+        return None if session is None else session.created_reason
+
     # ---------------------------------------------------------------- 内部
 
     def _is_occupied_by_other(self, session, track_id, frame_ts, tracked_ids=None):
@@ -295,7 +311,7 @@ class AnonymousAssociator(object):
 
     def _new_session(self, track_id, vec, rms_norm, frame_ts, reason,
                      best_score=None, other_best=None):
-        session = _Session(self._next_session_id, frame_ts, track_id)
+        session = _Session(self._next_session_id, frame_ts, track_id, reason)
         self._next_session_id += 1
         self._enroll(session, vec, rms_norm)
         self._sessions[session.id] = session

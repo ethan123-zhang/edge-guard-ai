@@ -303,8 +303,8 @@ class VisionService(object):
         track_id = int(event.track_id)
         if session_id is None:
             return self._commit_report(event, session_id)
-        weak = bool(result is not None and result.reason in DEFER_WEAK_REASONS)
-        if weak and not self._defer_weak_pending(track_id, event, result, session_id):
+        weak_reason = bool(result is not None and result.reason in DEFER_WEAK_REASONS)
+        if weak_reason and not self._defer_weak_pending(track_id, event, result, session_id):
             # 外观证据自认不足（低于 tau / 歧义 / 会话被占）且不是视觉层自己攒的候选：
             # 不挂起、也不当"活得久"来确认 —— 它连自己是谁都不确定，多活几帧也不会变清楚。
             # 直接作废它临时建出来的会话（残影不该留下痕），记一笔延迟，不占 suppressed 口径。
@@ -318,6 +318,14 @@ class VisionService(object):
                         "%.2f" % result.own_best if result.own_best is not None else "—",
                         "%.2f" % result.other_best if result.other_best is not None else "—"))
             return False
+        # 会话"出生"那一下就是弱证据的，后面几帧即便沿轨 track_bound，强度也只有出生
+        # 那一下那么强 —— 出画残影正是这么"活"下来的（sc01_t1 t=22050 用 below_tau
+        # 建会话，之后每帧 track_bound，3 帧就骗过确认）。所以按弱口径要它撑更久。
+        born_weak = self.associator.created_reason(session_id) in DEFER_WEAK_REASONS
+        weak = weak_reason or born_weak
+        if weak and not weak_reason:
+            self.log("[vision] 会话 %s 是弱证据建出来的 → 首报按弱口径要撑 %d 帧"
+                     % (session_id, self._weak_defer_frames))
         if track_id in self._pending:
             # 这一帧它自己也发了事件：新的一段证据，上一条挂起没撑住
             self._drop_pending(track_id, event.frame_ts)
@@ -627,7 +635,7 @@ class VisionService(object):
             self.log("[vision] 首报挂起撤销：轨道 %s 并回已报过的会话 %s（理由 %s）→ 不是新访客"
                      % (track_id, result.session_id, result.reason))
 
-    def _pending_still_ok(self, pending, label, result, frame_existing):
+    def _pending_still_ok(self, pending, label, result):
         """挂起的候选这一帧还站着吗：还是同一身份标签，而且**还没被推翻**。
 
         两种状态：
@@ -657,23 +665,23 @@ class VisionService(object):
         `skip_tracks`：本帧在 `_first_report` 里刚挂起的轨道（第 1 帧算过了，
         这里跳过，同一帧数两遍会让 K 帧少算一帧）。
 
-        计数按**帧**算：一条轨道停下来就是十几帧，两帧、五帧都撑不过来的残影
-        在这里自然被筛掉；同一帧里出现第二张脸时不计数（那是别人的证据）。
+        计数按**帧**算：一条轨道停下来就是十几帧，几帧都撑不过来的残影在这里被筛掉。
+
+        场上同时有第二张脸时**照样计数**：计数是按 track_id 各算各的，
+        不存在"借别人的在场"——相邻双人（sc02）恰恰是同场两脸，若一 crowded 就不数，
+        新来的人永远撑不满、被当残影丢掉（2026-11-09 实测：sc02 两条的 B 直接不报）。
         """
         self._expire_pending(frame_ts)
-        crowded = len(labels) > 1
         for track_id in list(self._pending.keys()):
             pending = self._pending[track_id]
             label = labels.get(track_id)
             if label is None or track_id in skip_tracks:
                 continue                      # 这一帧没检出它 / 本帧已算过
             result = assoc_results.get(track_id)
-            if not self._pending_still_ok(pending, label, result, crowded):
+            if not self._pending_still_ok(pending, label, result):
                 # 候选被推翻：立刻结算（撞了别人的会话就并回去，或者当作看不清而丢弃）
                 self._settle_overturned(track_id, pending, result, frame)
                 continue
-            if crowded:
-                continue                      # 场上还有别人：不借别人的在场给别人续命
             pending["count"] += 1
             elapsed = int(frame_ts) - pending["first_ts"]
             if pending["count"] >= pending["need"] or elapsed >= self._defer_ms:

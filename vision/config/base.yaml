@@ -49,7 +49,8 @@ association:
   tau: 0.45              # 本方相似度阈值
   margin: 0.10           # 本方 - 异方 最小边距
   quality_max_rms: 0.10  # 入册质量门（对齐残差 ÷ 眼距）
-  # 现挂会话首报延迟（见 vision/service.py `_first_report`）：撑够 K 帧或 K 毫秒才发首报
+  # 现挂会话首报延迟（见 vision/service.py `_first_report`）：撑够 K 帧或 K 毫秒才发首报。
+  # 2026-11-09 真素材 8 条实测：关 6/8、开 7/8（压掉出画那一两帧的干净正面残影）。
   first_report_confirm_frames: 3
   first_report_confirm_ms: 1000
   weak_first_report_confirm_frames: 6
