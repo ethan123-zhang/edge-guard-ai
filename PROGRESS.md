@@ -1,5 +1,37 @@
 # 当前进度与续接入口
 
+## 第十七轮：关联层真素材回放评估 + 弱证据/质量门两处收紧（2026-11-09）
+
+> 说明：[真实素材关联复评](docs/真实素材关联复评-2026-11-08.md) · 交接：[handoffs/2026-11-09-关联层真素材复评](docs/handoffs/2026-11-09-关联层真素材复评.md)
+
+- **回放评估入口**（提交 `dae6499`）：`scripts/scenario_eval.py` 按 `sentinel/scenario-annotation@1`
+  标注回放真素材，走的还是生产链路（onnx_pipeline → FaceTracker → `VisionService._process_frame`），
+  逐帧记录关联判定（轨道/会话/理由/own/other/rms）、逐条记录上报，输出同人/异人余弦矩阵；
+  自动核对标注里的 `video_sha256`；断言覆盖 replacement / adjacent / recovery / ambiguity 四类，
+  `--stride` 默认 **1**（等于生产帧率）。17 项单测；`test_py36_compat` 已把它列为板端目标。
+  辅助脚本上库：`scripts/make_annotations.py`（SFace 聚类草稿）、`show_annotation_timeline.py`、
+  `summarize_eval.py`（矩阵表）。
+- **8 条真素材**（`datasets/scenarios/real-20261108/`，gitignore）：sc01 换人×2、sc02 相邻双人×2、
+  sc03 原人恢复×2、sc04 歧义×2；每条 `.mp4` + `.capture.json`（sha256/帧数/实测 fps）+ 标注 `.json`。
+- **复评结果**（板上阈值 `tau=0.45 / margin=0.10 / quality_max_rms=0.16`）：修复前 5/8 通过，
+  修复后 **6/8**，且两条失败从"同一人被拆成 3–4 条会话"降到"只多 1 条无身份残影"。
+- **两处修复**（提交 `4eef6b9`）：
+  1. `vision/association.py` 弱证据**候选挂起**：below_tau / ambiguous_margin / session_occupied
+     第一次只返回 `pending_evidence`，同一轨道连续 `weak_obs=2` 帧仍弱才建会话（挂起按轨道 TTL 过期）。
+     出画那一两帧侧脸不再建出重复会话，同一人的正脸不会被灌进"第二条会话"里互相比拼。
+  2. `vision/service.py` 上报前**质量门** `require_quality_evidence`：一条轨道至少一帧
+     `rms_norm <= quality_max_rms` 才允许发事件；实测出画/转身帧残差 0.21–0.80（甚至 25），
+     本来就没资格入册，旧的"照旧上报"造成一次出画连报 3 条"新访客"。
+  - 配套：`vision/config.py`、`vision/config/board.yaml` 增加两项；合同补
+    「真素材复评与两处收紧（2026-11-08）」；本机 `vision 391 / dialog 75`（466）全过。
+- **部署**：`pwsh -File scripts\deploy_board.ps1` → 104/104 文件 sha256 一致、`check_backend` 走
+  TensorRT（yuNet/sFace fp16）、板端 `python3 -m vision.run_tests` **391 OK（skipped=2）**。
+- **残余（未过严格断言）**：`sc01_replacement_t1`、`sc02_adjacent_t2` 各多 1 条无身份事件，
+  来自 2–4 帧"干净正面残影"（余弦 0.29–0.38、rms 0.07–0.12），与异人分布重叠、仅凭外观不可判别。
+  处置候选（重录素材 / 新会话延迟上报 K 帧 / 放宽断言）**待用户拍板**，见复评文档 §4。
+- **未做**：真实门口素材（逆光/多人/快速穿过）仍未采；`below_tau` 漏关联的强口径
+  "每次连续在场只 1 条事件"仍不承诺。本轮结束时板子未关机（用户要求结束对话）。
+
 ## 第十六轮：业务层 10 分钟到访窗口落地 + 板子地址修正（2026-11-08）
 
 > 说明：[业务到访窗口](docs/业务到访窗口-2026-11-08.md) · 证据：[visit-window-2026-11-08.json](docs/data/visit-window-2026-11-08.json)
