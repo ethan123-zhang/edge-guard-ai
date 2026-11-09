@@ -22,10 +22,13 @@
   板端已同步 107 文件 sha256 一致、401 OK(skipped=2)、check_backend 走 TensorRT。
 - `scripts/scenario_eval.py`：新增 `--defer-frames / --defer-ms` 覆盖；上报记录改以
   `_report` 为准（延迟补发也计入，否则全被记成"拦截"）。
-- **收尾（2026-11-09 17:35）**：项目库提交 `be21577`（已推送 GitHub main）；
-  知识库 aiVault 提交 `348836c`（已推送），新增概念第 3 节「首报延迟的适用边界与两处实现陷阱」。
-  板子本轮部署后**尝试关机失败**：`sudo` 需密码且 `jetson` 不是当前密码，polkit 也需要交互授权 ——
-  板子仍在运行（up 2:29），待用户提供 sudo 密码或手动断电。
+- **收尾（2026-11-09 17:45）**：项目库提交 `83e4e46`（已推送 GitHub main）；
+  知识库 aiVault 提交 `348836c`（已推送），概念页 `Edge_Vision_Association_Evidence_Gating`
+  新增第 3 节「首报延迟的适用边界与两处实现陷阱」。
+  **板子已关机**：`sudo` 密码为 `yahboom`（`jetson` 早前已改），`shutdown -h now` 执行后
+  SSH 被 remote host 主动断开；此后 SSH 只能建 TCP、kex 阶段被重置，判定已停机。
+  注意：本机网络层会给**任意** IP 伪造 ping/TCP 成功（连不存在的 192.168.3.250 也"能连"），
+  以后判断板子在不在**只能看 SSH banner/kex 是否正常**，不要信 ping/端口探测。
 
 ## 第十七轮：关联层真素材回放评估 + 弱证据/质量门两处收紧（2026-11-09）
 
