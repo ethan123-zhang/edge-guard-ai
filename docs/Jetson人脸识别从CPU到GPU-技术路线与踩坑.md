@@ -35,7 +35,7 @@
 trtexec --onnx=yunet_trt320.onnx --saveEngine=yunet_fp16.engine --fp16
 ```
 
-其中 `--onnx` 指输入模型，`--saveEngine` 指输出文件，`--fp16` 允许采用 FP16 执行策略。SFace 支持一批多张脸，构建时还要给出 **min=1、opt=4、max=8** 的输入形状范围。`opt=4` 是优化时的参考批量，**不表示运行时只能喂 4 张**。当前项目的构建脚本是 [ensure_engines.py](../scripts/ensure_engines.py)，并非每次都要求手工输入这条命令。NVIDIA 官方也将 `trtexec` 用于[构建和基准测量](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/performance/benchmarking.html)。
+其中 `--onnx` 指输入模型，`--saveEngine` 指输出文件，`--fp16` 允许 TensorRT 在构建执行计划时采用 FP16 计算策略。**这不等于把前向的所有输入、输出、每一层都强制改成 FP16，也不等于修改原 ONNX 的权重文件。** 本项目 Python 管线准备的 YuNet/SFace 输入仍是 `float32` 数组；运行封装读取 engine 的实际 binding 类型，并把计算结果交回 Python。可以把 `--fp16` 理解为“允许内部选用半精度计算”，把“生成 engine”理解为更完整的工作：确定输入规格、选择计算实现并保存执行计划。项目对照 CPU 路径检查输出差异，不能仅凭文件名中的 `fp16` 判断每一层的实际精度。SFace 支持一批多张脸，构建时还要给出 **min=1、opt=4、max=8** 的输入形状范围。`opt=4` 是优化时的参考批量，**不表示运行时只能喂 4 张**。当前项目的构建脚本是 [ensure_engines.py](../scripts/ensure_engines.py)，并非每次都要求手工输入这条命令。NVIDIA 官方也将 `trtexec` 用于[构建和基准测量](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/performance/benchmarking.html)。
 
 ## 实际遇到的难题，按发生顺序看
 
