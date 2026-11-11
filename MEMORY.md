@@ -1,14 +1,19 @@
 ---
 type: index
 topic: 哨兵管家记忆库索引
-last_updated: 2026-11-06
+last_updated: 2026-11-11
 ---
 
 # 哨兵管家：当前状态与记忆入口
 
 先读memory/00-maintenance-rule.md。本页只保留状态摘要与指针；项目进度在本库，通用知识正文在aiVault。
 
-## 当前状态与续接（2026-11-08）
+## 当前状态与续接（2026-11-11）
+
+- **2026-11-11 第十九轮：主人端（上位机）设计定稿，未写实现**。用户确认：服务端+APK 都做、范围到任务书阶段 2–3（键盘接待入口）、推送先做适配层、方案 A（服务端先行 + Web 看板 + WebView 壳 APK）、语音改用**天问51**（只能播预置语音）。设计正文 [主人端-设计与接口](docs/主人端-设计与接口-2026-11-11.md)，交接 [2026-11-11-主人端设计与环境基线](docs/handoffs/2026-11-11-主人端设计与环境基线.md)。基线 `pytest vision dialog -q` = **476 passed**（代码 `ded4233`）。
+- **三个硬缺口（下一轮先解）**：① 主人端服务一层在仓库里**不存在**（8766/visit_report/security_alert 零实现）；② **两块板未开机**（SSH 无 banner，判活只看 kex，别信 ping）；③ **无 Android 工具链且外网 403**（需用户装 Android Studio）。推送资质见 `05` 的 H7/H8/H9。
+
+## 历史（2026-11-08）
 
 - **2026-11-08 第十六轮**：业务层 10 分钟到访窗口落地 —— `dialog/visits.py`（`VisitBook.arrive`，固定窗口锚在 `arrived_at`、活跃到访不拆、`unk_*` 不互并、`msg_id` 幂等）+ `visit_event` 账本表 + `scripts/visit_window_replay.py`。验收：`dialog.run_tests` 75 项、`vision.run_tests` 353 项全过；证据 [visit-window-2026-11-08.json](docs/data/visit-window-2026-11-08.json)（合成 11 项断言全过；真实自然姿态夹具 12 条 `unk_*` 事件 → 12 次到访，**业务层不跨匿名 ID 猜同人**，属层级边界不是回归）。说明见 [业务到访窗口](docs/业务到访窗口-2026-11-08.md)。仍未接线对话节点（仓库还没有 dialog 主循环），离场判定另立合同。
 - **SFace engine 重建分支实跑通过**（2026-11-08，补上一轮只验 YuNet 的空白）：`/tmp` 里目标 engine 不存在 → 内置 profile `min1/opt4/max8×112×112` → trtexec 重建 **483 s** → sidecar 生成并复验；batch 1/4/8 与生产 engine 余弦 ≥ **0.99955**、max abs diff **0.0156**；生产 engine 前后 sha256 未变。**板端 engine/ONNX 在部署根目录 `~/sentinel-quality-20261106/`，不在 `vision/models/`**（那里只有原始模型）。证据 `docs/data/sface-engine-rebuild-2026-11-08.json`。

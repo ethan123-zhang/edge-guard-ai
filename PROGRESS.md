@@ -1,5 +1,32 @@
 # 当前进度与续接入口
 
+## 第十九轮：主人端（上位机）设计定稿 + 环境基线（2026-11-11）
+
+> 设计：[主人端-设计与接口](docs/主人端-设计与接口-2026-11-11.md)
+> · 交接：[handoffs/2026-11-11-主人端设计与环境基线](docs/handoffs/2026-11-11-主人端设计与环境基线.md)
+> · 依据：[安卓主人端及整机实施与验收任务书](docs/DeepSeek实施与验收任务书-安卓主人端及整机.md)
+
+- **本轮只到设计定稿，未写实现代码**（用户明确"先不要开工"）。
+- **用户决策（已确认）**：① 载体 = **服务端 + 安卓 APK 都做**；② 范围 = **主人端服务 + 键盘接待入口（任务书阶段 2–3）**，
+  不做 ASR/TTS/LLM；③ 推送 = **先做可替换适配层，通道待定**（阶段 1 记"阻塞"）；
+  ④ 方案 = **A 服务端先行 + 静态 Web 看板 + 最小 APK 壳**；⑤ 语音输入/播报改用**天问51**，它**只能播预置语音/短语**。
+- **缺口核查（本轮最重要的发现）**：任务书要的主人端**背面服务一层在仓库里不存在** ——
+  `*.py` 搜 `8766|visit_report|security_alert|set_home_state` **零实现**（只有 `dialog/privilege.py` 一句注释）；
+  没有接待主循环、待发队列、照片 HTTP、`master/`、`android/`、任何页面文件。可直接复用：
+  `dialog/visits.py`（10 分钟窗口 + `msg_id` 幂等）、`dialog/db.py`、`dialog/privilege.py`、`vision/ws_protocol.py`。
+- **基线**：`py -3.12 -m pytest vision dialog -q` → **476 passed in 6.60s**（与 11/10 同数，代码 `ded4233`）。
+- **环境基线**：本机无 Android SDK/Gradle/adb/JDK17（只有 JDK 11）；策略代理对
+  `dl.google.com`/Adoptium/npm/pypi/GitHub 一律 `403`，**工具链下载不通**。
+  **两块板未开机**：`192.168.43.10/.11`、`192.168.3.154` SSH banner 超时，`192.168.3.214` kex 被 reset
+  （= 11/09 关机特征）。**ping 不可信**（连不存在的 `192.168.3.250` 也"能连"），判活只看 SSH kex。
+- **设计要点**（正文见设计文档）：单端口 8766 按 `Upgrade` 分流 HTTP/WS；
+  新增 `outbox`（`message_key` 幂等，**补传真源，不再扫 `visit.report_status`**）、
+  `snapshot_asset`（照片以来源事件 `msg_id` 绑定，展示取"最早一条已收到"）、`client_device`（token 绑定）；
+  消息键 `report:<visit_id>` / `alert:<visit_id>:<utterance_id>`；
+  越权规则先于汇总、汇总只发一次；三种观测点（接入方确认/推送平台受理/手机展示）分别落日志。
+- **未开工**：实现顺序见设计 §12（server/api → reception → outbox → snapshots+图传 → master_sim → web → android）。
+- **风险**：R1 板未开机 / R2 工具链 403 / R3 推送未定 / R4 板端 Python 未知 / R5 视觉已知多报 1 条 / R6 天问51 只能预置语音。
+
 ## 第十八轮：方案 B 落地（首报延迟），真素材 6/8 → 7/8（2026-11-09）
 
 > 说明：[首报延迟与复评](docs/首报延迟-2026-11-09.md) · 交接：[handoffs/2026-11-09-首报延迟](docs/handoffs/2026-11-09-首报延迟.md)

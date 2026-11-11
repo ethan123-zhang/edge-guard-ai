@@ -1,7 +1,7 @@
 ---
 type: project
 topic: 环境与硬件事实
-last_updated: 2026-10-31
+last_updated: 2026-11-11
 ---
 
 # 环境与硬件事实
@@ -15,6 +15,7 @@ last_updated: 2026-10-31
 - 板端验收目录 `/home/jetson/sentinel-check-20261031-1939`；`jetson_local`为Haar+none，无网络与截图。
 - 当前证据：`docs/Jetson事件链路诊断-2026-10-31.md`。通用知识方法正文见aiVault。
 - 2026-11-06 板端复验路径：`ssh jetson@10.77.156.4`（已装本机公钥，不需要口令）；**导入 numpy/cv2 前必须 `export OPENBLAS_CORETYPE=ARMV8`**，否则 OpenBLAS 选错核型直接 `Illegal instruction`。质量研究目录 `/home/jetson/sentinel-quality-20261106/`，模型在 `~/sentinel-check-20261101-dnn-models/`，固定视频在 `~/sentinel-check-20261101-video/datasets/video-validation/`。
+- **2026-11-11 两板仍未开机**：`192.168.43.10/.11`、`192.168.3.154` SSH 在 **banner 阶段超时**，`192.168.3.214` **kex 被 reset**（= 11/09 关机特征）。**ping/TCP 不可信**：本机网络层给任意 IP 伪造成功（连不存在的 `192.168.3.250` 也"能连"），**判活只看 SSH kex/banner**。
 - **2026-11-08 板子地址变更**：`jetson@192.168.3.154` 可用（板子重启后 IP 回到这个）；**`10.77.156.4` 已不是板子**（能 ping、SSH 在 banner 交换阶段被 reset，是别的设备占着）。`scripts/deploy_board.ps1` 的默认 `-Host` 已同步改成 `192.168.3.154`。板端一次性核对：`ls /dev/video0`、`python3 scripts/ensure_engines.py --check`、`python3 scripts/check_backend.py --profile board`（三项在 11-08 均通过：TRT 8.2.1.8/fp16，检测+识别都在 TensorRT）。
 
 > 以下段落保留旧日期画像，不代表当前U盘系统；遇到冲突以本节和最新实测报告为准。历史口令不再保留。
@@ -31,6 +32,7 @@ last_updated: 2026-10-31
 | 对话节点 | **鲁班猫5 v1（RK3588）** | 6 TOPS NPU + 8 核 CPU（4×A76 + 4×A55），出厂 Ubuntu。**实测见下方** |
 | 摄像头 | 亚博智能 1080p USB | 已验证可用 |
 | 音箱 | 最基础款 | 够用 |
+| 语音板 | **天问51**（用户提供，2026-11-11 确认） | 做语音识别输入与播报；**只能播预置语音/短语（发命令码触发），不能合成任意文本**；型号与串口协议待定 |
 | 转换机 | **本机笔记本** | **RTX 4060 Laptop 8GB**，用于 RKLLM 模型转换（详见第 2 节） |
 
 ### Jetson Nano B01 板端实测（**2026-10-16 起；2026-10-23 纠正型号口径**）
@@ -182,6 +184,7 @@ last_updated: 2026-10-31
 | 摄像头 | `idx0` 640×480 **黑场**；`idx1` 1280×720 显示 **intel 标志**（虚拟摄像头） | **拿不到真人画面**；仿真用图片目录回放（`--source`） |
 | 视觉模型 | **YuNet / SFace 都没有** | 只能跑 Haar + 无识别降级档，见 E-51 |
 | 出网 | **github / pypi / huggingface / jsdelivr 全部 403**（沙箱策略代理） | 模型只能由用户浏览器下载 |
+| **Android 工具链（2026-11-11 实测）** | **无 SDK / Gradle / adb / Flutter，只有 JDK 11**（`C:\Program Files\Eclipse Adoptium`，未进 PATH）；`dl.google.com`、Adoptium、npm、pypi、GitHub 全部 `proxy tunnel 403` | **APK 无法自取工具链** → 需用户装 Android Studio，或手动下载塞进 `tools/` |
 | WSL / Docker | `wsl -l -v` 仍被沙箱挡（`Wsl/E_ACCESSDENIED`）；Docker 守护进程未启动 | 本轮**没做** arm64 保真环境（用户选的是 A 方案） |
 | 中文路径 | `cv2.imread/imwrite` 在 `E:\哨兵管家\...` 下**静默失败**（返回 None/False） | 已封装 `vision/imageio.py`，见 E-48 |
 
