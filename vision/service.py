@@ -16,8 +16,7 @@ import time
 import cv2
 import numpy as np
 
-from vision import align, association, config, events
-from vision.imageio import imwrite
+from vision import align, association, config, events, snapshot_push
 from vision.tracker import iou
 from vision.ws_client import WebSocketClient, WsClientError
 
@@ -177,6 +176,9 @@ class VisionService(object):
         self._print_events = bool(cfg["output"]["print_events"])
         self._roi = self._roi_rect_from_cfg(cfg["roi"])
         self._snapshot_saved = 0
+        # 存图后推到主人端（设计 §5）：后台线程 + 有界队列，断网/对端没起都不拖主循环。
+        # 默认关；板上由 board.yaml 打开，密钥走环境变量（见 vision/snapshot_push.py）。
+        self._pusher = snapshot_push.build_pusher(cfg, log=self.log)
         self.associator = self._build_associator(cfg.get("association") or {})
         self._reported_sessions = set()
         # 上报前的质量证据门（关联层开着才生效）：2026-11-08 真素材实测，
@@ -449,6 +451,9 @@ class VisionService(object):
         self.log("[vision] 实际后端：%s（心跳里会带这个字段）" % self.backend_label)
         self.log("[vision] 人脸库：%d 人" % len(self.gallery))
         self.log("[vision] 事件出口：%s" % getattr(self.sink, "name", "?"))
+        self.log("[vision] 图片推送：%s" % (
+            self._pusher.describe() if self._pusher is not None
+            else "关（只在本地落盘）"))
         self.log("[vision] 关联层：%s" % (
             "开（tau=%.2f, margin=%.2f, 质量门 rms<=%.2f）"
             % (self.associator.tau, self.associator.margin,
@@ -514,6 +519,9 @@ class VisionService(object):
                         time.sleep(spare)
         finally:
             self.source.release()
+            # 先收推图线程（把已入队的发完），再关事件出口
+            if self._pusher is not None:
+                self._pusher.close()
             self.sink.close()
         return self.stats
 
@@ -776,15 +784,29 @@ class VisionService(object):
         if problems:
             self.log("[vision] 事件不合规，仍发送但请修：%s" % "；".join(problems))
 
-        snapshot_path = self._save_snapshot(event, frame)
+        # 一张图只编码一次：本地落盘和推图共用同一份 JPEG 字节。
+        # 关掉本地落盘时也要编码 —— 推图不依赖 `save_snapshots`。
+        jpeg = None
+        if self._save_snapshots or self._pusher is not None:
+            jpeg = self._snapshot_jpeg(event, frame)
+        snapshot_path = self._store_snapshot(event, jpeg) if jpeg is not None else None
+        pushed = False
+        if jpeg is not None and self._pusher is not None:
+            # 照片按事件 msg_id 绑定（任务书 §二.4）：主人端只认这个键
+            pushed = self._pusher.enqueue(msg["msg_id"], event.face_id,
+                                          event.frame_ts, jpeg)
         self._emit(msg)
         self.stats.events += 1
         if self._print_events:
             tag = event.name if event.is_known else "陌生人"
-            self.log("[vision] 上报 %s · %s · conf=%.3f · %s%s" % (
+            push_tag = ""
+            if self._pusher is not None:
+                push_tag = " · 推图已入队" if pushed else " · 推图被丢弃"
+            self.log("[vision] 上报 %s · %s · conf=%.3f · %s%s%s" % (
                 event.face_id, tag, event.confidence,
                 "截图 %s" % snapshot_path if snapshot_path else "无截图",
                 "" if self.stats.failed == 0 else "（累计发送失败 %d）" % self.stats.failed,
+                push_tag,
             ))
 
     def _emit(self, msg):
@@ -797,14 +819,11 @@ class VisionService(object):
 
     # ---------------------------------------------------------------- 截图
 
-    def _save_snapshot(self, event, frame):
-        if not self._save_snapshots:
-            return None
-        day = time.strftime("%Y%m%d", time.localtime(event.frame_ts / 1000.0))
-        out_dir = os.path.join(self._snapshot_dir, day)
-        os.makedirs(out_dir, exist_ok=True)
-        name = "%s_%d.jpg" % (event.face_id, event.frame_ts)
-        path = os.path.join(out_dir, name)
+    def _snapshot_jpeg(self, event, frame):
+        """整帧画框后编码成 JPEG 字节；编码失败返回 None（只打日志，不影响上报）。
+
+        画框是为了看板/APK 上"一眼看出是谁"；原图会让人对着一张走廊照片发呆。
+        """
         canvas = frame.copy()
         x, y, w, h = event.bbox
         color = (0, 200, 0) if event.is_known else (0, 165, 255)
@@ -812,7 +831,37 @@ class VisionService(object):
         label = ("%s %.2f" % (event.face_id, event.confidence)).encode("ascii", "replace").decode("ascii")
         cv2.putText(canvas, label, (x, max(14, y - 6)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
-        imwrite(path, canvas, jpeg_quality=self._snapshot_quality)
+        try:
+            ok, buf = cv2.imencode(".jpg", canvas,
+                                   [int(cv2.IMWRITE_JPEG_QUALITY),
+                                    int(self._snapshot_quality)])
+        except cv2.error as exc:
+            self.log("[vision] 截图编码失败：%s" % exc)
+            return None
+        if not ok:
+            self.log("[vision] 截图编码失败（imencode 返回 False）")
+            return None
+        return buf.tobytes()
+
+    def _store_snapshot(self, event, jpeg):
+        """把 JPEG 字节落盘（按帧时间分日、事件 face_id + frame_ts 命名）。"""
+        if not self._save_snapshots or jpeg is None:
+            return None
+        day = time.strftime("%Y%m%d", time.localtime(event.frame_ts / 1000.0))
+        out_dir = os.path.join(self._snapshot_dir, day)
+        try:
+            os.makedirs(out_dir, exist_ok=True)
+        except OSError as exc:
+            self.log("[vision] 截图目录建不出来：%s" % exc)
+            return None
+        name = "%s_%d.jpg" % (event.face_id, event.frame_ts)
+        path = os.path.join(out_dir, name)
+        try:
+            with open(path, "wb") as fh:
+                fh.write(jpeg)
+        except OSError as exc:
+            self.log("[vision] 截图写盘失败：%s" % exc)
+            return None
         self._snapshot_saved += 1
         return os.path.relpath(path, os.path.dirname(self._snapshot_dir))
 

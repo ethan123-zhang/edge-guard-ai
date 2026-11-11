@@ -1,0 +1,95 @@
+{
+  "task": "视觉节点推图到主人端（vision -> master /vision/snapshot）",
+  "date": "2026-11-11",
+  "code": {
+    "new": ["vision/snapshot_push.py", "vision/tests/test_snapshot_push.py", "scripts/board_vision.sh"],
+    "changed": ["vision/service.py", "vision/config.py", "vision/config/base.yaml",
+                "vision/config/board.yaml", "scripts/vision_sim.py"]
+  },
+  "unit_tests": {
+    "new_file": "vision/tests/test_snapshot_push.py",
+    "new_cases": 18,
+    "full_suite": "py -3.12 -m pytest vision dialog master -q",
+    "full_suite_result": "543 passed",
+    "full_suite_before": "525 passed"
+  },
+  "pc_end_to_end": {
+    "setup": "真实 master.server（18766/18765，临时库）+ 真实 scripts/vision_sim.py（视频源 d01_office_entry_woman.mp4）",
+    "evidence_script": "temp/e2e-20261111/verify_e2e.py",
+    "result": "PASS",
+    "visits": 3,
+    "visit_events": 3,
+    "snapshot_assets": 3,
+    "photo_bytes": [142574, 145338, 141745],
+    "photo_msg_id_bound_to_visit_event": true,
+    "photo_endpoint": "GET /api/visits/{id}/photo -> 200 image/jpeg",
+    "vision_online_during_run": true,
+    "notes": "照片 msg_id 与 face_event.msg_id 逐条相等；关掉本地落盘也能推图（只编码一次）"
+  },
+  "jetson_deployment": {
+    "board": "jetson@192.168.5.10（Ubuntu 18.04.6 / Python 3.6.9 / OpenCV 4.1.1）",
+    "app_dir": "/home/jetson/sentinel-vision",
+    "start_script": "scripts/board_vision.sh（start/stop/status；密钥读 .env 并 export）",
+    "master": "cat@192.168.5.11 ~/sentinel-master（8765 视觉入站 / 8766 HTTP+WS）",
+    "vision_key_configured": true
+  },
+  "board_runs": [
+    {
+      "source": "video d01（a-cheerful-young-woman-enters-the-office-5506.mp4）",
+      "duration_sec": 40.1,
+      "frames": 478,
+      "fps": 11.9,
+      "infer_ms": 73.6,
+      "backend": "yunet-onnx/tensorrt + sface-onnx/tensorrt",
+      "events_reported": 2,
+      "association_suppressed": 4,
+      "photos_received": 2,
+      "photo_bytes": [149645, 144863],
+      "bound": true
+    },
+    {
+      "source": "camera device 0（v4l2 / MJPG / 1280x720）",
+      "duration_sec": 12.1,
+      "frames": 134,
+      "fps": 11.1,
+      "infer_ms": 47.9,
+      "events_reported": 1,
+      "photos_received": 1,
+      "photo_bytes": [109348],
+      "bound": true
+    },
+    {
+      "source": "camera device 0 via scripts/board_vision.sh start（修好 .env export 之后）",
+      "events_reported": 1,
+      "photos_received": 1,
+      "photo_bytes": [113566],
+      "bound": true,
+      "push_log": "图片推送：http://192.168.5.11:8766/vision/snapshot（成功 0 / 失败 0 / 丢弃 0）"
+    }
+  ],
+  "master_db_after": {
+    "visit": 9,
+    "visit_event": 9,
+    "snapshot_asset": 6,
+    "photoless_visits": 3,
+    "photoless_reason": "三个是部署期冒烟（推图未启用/密钥没 export）留下的；正好覆盖看板『缺图·采集中』分支"
+  },
+  "bugs_found_and_fixed_during_deploy": [
+    {
+      "symptom": "board_vision.sh start 后 logs/vision.log 一直为空，看起来像没起来",
+      "cause": "python3 stdout 重定向到文件时是块缓冲",
+      "fix": "board_vision.sh 用 python3 -u；vision_sim.log() 加 flush=True"
+    },
+    {
+      "symptom": "board_vision.sh 里 .env 明明有 key，日志仍报『推图未启用：缺少共享密钥』",
+      "cause": ". ./.env 只设置了 shell 变量，没有 export，子进程 python 拿不到",
+      "fix": "读 .env 后显式 export SENTINEL_VISION_KEY，并用 /proc/<pid>/environ 验证"
+    }
+  ],
+  "known_issues": [
+    "摄像头当前对着近处桌面/被遮挡，实拍帧糊成一片、YuNet 仍给出高置信假框（bbox 覆盖大半画面）→ 演示前必须把镜头对向门口/桌面场景；这是摆位问题，不是检测代码回归",
+    "推图失败只在本地计数并丢弃（队列 8 条），没有重试/补传：主人端没起时照片就丢了，看板显示缺图",
+    "master 启动时 last_vision_ts 初始化为当前时间，重启后 15 秒内 health 会误报 vision_online=true（既有行为，未改）",
+    "企业微信 webhook URL 仍未提供，公网推送无法验证"
+  ]
+}

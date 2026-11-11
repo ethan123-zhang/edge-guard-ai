@@ -72,6 +72,14 @@ output:
   save_snapshots: true
   snapshot_quality: 90
   print_events: true
+  # 存图后推到主人端（POST /vision/snapshot，设计 §5）。默认关：本机没有鲁班猫时
+  # 不开；板上由 board.yaml 打开。密钥不进仓库 → 留空读环境变量 SENTINEL_VISION_KEY。
+  snapshot_push:
+    enabled: false
+    url: ""                 # 例 http://192.168.5.11:8766/vision/snapshot
+    key: ""
+    timeout: 2.0            # 单次 POST 全程上限（秒）
+    queue_size: 8           # 有界队列，满了丢最新一张，绝不阻塞主循环
 
 runtime:
   max_fps: 0

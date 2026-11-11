@@ -1,9 +1,34 @@
 # 当前进度与续接入口
 
-> **会话收尾（2026-11-11）**：本会话（第十九～二十三轮）完整交接见
-> [handoffs/2026-11-11-收尾-主人端与APK联调](docs/handoffs/2026-11-11-收尾-主人端与APK联调.md)。
-> 一句话现状：主人端服务在鲁班猫常驻、手机 APK 真机看板可用、PC 回放 37/37、单测 49 passed；
-> 视觉推图/企业微信 webhook/云 ASR/桌面标定 未接。
+> **最新（2026-11-11 第二十四轮）**：视觉侧推图打通并上板 —— Jetson 实拍/视频源的照片按事件
+> `msg_id` 落到鲁班猫并绑定到访，照片接口 200；全量单测 **543 passed**。
+> 交接 [handoffs/2026-11-11-视觉推图联调](docs/handoffs/2026-11-11-视觉推图联调.md)。
+> 一句话现状：**视觉→主人端→看板整条链路真机跑通**；卡点只剩企业微信 webhook、摄像头摆位、板上自启。
+
+> 上一轮收尾（第十九～二十三轮）：[handoffs/2026-11-11-收尾-主人端与APK联调](docs/handoffs/2026-11-11-收尾-主人端与APK联调.md)
+> ——主人端服务常驻鲁班猫、手机 APK 看板可用、PC 回放 37/37。
+
+## 第二十四轮：视觉推图打通 + 双板真机联调（2026-11-11）
+
+> 说明：[视觉推图](docs/视觉推图-2026-11-11.md) · 交接：[handoffs/2026-11-11-视觉推图联调](docs/handoffs/2026-11-11-视觉推图联调.md)
+> · 证据：[vision-snapshot-push-2026-11-11.json](docs/data/vision-snapshot-push-2026-11-11.json)
+
+- **新增 `vision/snapshot_push.py`**：存完 JPEG 后 `POST /vision/snapshot?msg_id=&face_id=&frame_ts=`，
+  有界队列（8）+ 守护线程，`enqueue()` 不阻塞、失败只计数、`close()` 把队列发完。照片按**事件的
+  `msg_id`** 绑定（任务书 §二.4，主人端只认这个键）。`service._report` 一张图只编码一次（本地落盘
+  与推图共用），关掉 `save_snapshots` 也能推；`run()` 收尾先关推图再关事件出口。
+- **配置**：`output.snapshot_push`（默认关，`board.yaml` 开）；密钥走 `SENTINEL_VISION_KEY` 不进仓库；
+  `board.yaml` 的 `ws_url` 改 `ws://192.168.5.11:8765`、推图指 `http://192.168.5.11:8766/vision/snapshot`。
+- **新增 `scripts/board_vision.sh`**：Jetson 常驻启停（start/stop/status），密钥读 `~/sentinel-vision/.env`
+  并 **export**、`python3 -u`（两个坑都踩过，见交接 §4）。
+- **验收**：18 项新单测（队列满/失败计数/close 发完/密钥回落），全量 **543 passed**（原 525）；
+  本机 E2E（真 master + 真 vision_sim）**3 到访 / 3 照片**，`msg_id` 逐条相等、照片接口 200 image/jpeg；
+  Jetson 视频源 40 s（TRT：478 帧 / 11.9 fps / 2 事件 → 2 照）、实拍 12 s（1 照）全部落到鲁班猫并绑定。
+- **踩坑**：`nohup` 后 `logs/vision.log` 全空 = python stdout 块缓冲（`-u` + flush）；`. ./.env` 只设 shell
+  变量不 export，子进程 python 拿不到 key → 日志报"缺少共享密钥"。
+- **未完成**：企业微信 webhook 仍未给（`push.relay.url` 空着）；摄像头当前对着桌面/糊，实拍会出高置信
+  假框（演示前必须对场景）；推图失败无补传；两板无 systemd 自启；鲁班猫库里有 9 条测试到访（3 条缺图），
+  演示前建议清库（命令见交接 §7）。
 
 ## 第二十三轮：APK 真机跑通（vivo S19）+ 手机看板可用（2026-11-11）
 

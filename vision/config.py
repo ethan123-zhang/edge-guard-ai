@@ -120,6 +120,16 @@ DEFAULTS = {
         "save_snapshots": True,
         "snapshot_quality": 90,
         "print_events": True,
+        # 存图后推到主人端（`POST /vision/snapshot`，设计 §5）。默认关：
+        # 本机联调没有鲁班猫时不该每帧堵在 POST 上；板上由 board.yaml 打开。
+        # 密钥不进仓库：留空读环境变量 SENTINEL_VISION_KEY（与主人端同一个变量名）。
+        "snapshot_push": {
+            "enabled": False,
+            "url": "",             # 例 http://192.168.5.11:8766/vision/snapshot
+            "key": "",
+            "timeout": 2.0,        # 单次 POST 全程上限（秒）；对端半死也不拖主循环
+            "queue_size": 8,       # 有界队列：满了丢最新一张并计数，绝不阻塞
+        },
     },
     "runtime": {
         "max_fps": 0,          # 0=不限；PC 仿真时压到 15 更省 CPU
@@ -289,6 +299,22 @@ def validate(cfg):
     _need(str(out["snapshot_dir"]).strip() != "", "output.snapshot_dir 不能为空")
     _need(1 <= int(out["snapshot_quality"]) <= 100,
           "output.snapshot_quality 必须在 1~100 之间")
+
+    push = out.get("snapshot_push") or {}
+    _need(isinstance(push.get("enabled", False), bool),
+          "output.snapshot_push.enabled 必须是布尔值 true/false，当前 %r"
+          % (push.get("enabled"),))
+    if push.get("enabled"):
+        url = str(push.get("url") or "").strip()
+        _need(url.startswith("http://") and "/" in url[len("http://"):],
+              "output.snapshot_push.url 必须是 http://主机:端口/vision/snapshot，当前 %r"
+              % (url,))
+        _need(float(push.get("timeout", 2.0)) > 0,
+              "output.snapshot_push.timeout 必须为正（秒），当前 %r"
+              % (push.get("timeout"),))
+        _need(int(push.get("queue_size", 8)) >= 1,
+              "output.snapshot_push.queue_size 至少为 1，当前 %r"
+              % (push.get("queue_size"),))
 
     runtime = cfg["runtime"]
     _need(float(runtime["max_fps"]) >= 0, "runtime.max_fps 不能为负")

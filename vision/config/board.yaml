@@ -35,7 +35,7 @@ detection:
 
 server:
   enabled: true
-  ws_url: ws://192.168.3.214:8765
+  ws_url: ws://192.168.5.11:8765    # 鲁班猫的视觉入站口（2026-11-11 双板打通后实测地址）
   heartbeat_sec: 5.0
   reconnect_sec: 3.0
   # 事件出口必须"断了也不拖主循环"：对端 accept 了但不应答时握手读会挂死，
@@ -47,6 +47,15 @@ server:
 
 output:
   save_snapshots: true
+  # 存图后推到鲁班猫主人端（设计 §5）：照片按事件 msg_id 绑定，看板/APK 才有图。
+  # 密钥不进仓库 → 板上 export SENTINEL_VISION_KEY=<与 master.local.yaml 一致的 vision_key>
+  # 没设密钥时服务照常上报事件，只是推图关闭（启动日志会明说）。
+  snapshot_push:
+    enabled: true
+    url: http://192.168.5.11:8766/vision/snapshot
+    key: ""
+    timeout: 2.0
+    queue_size: 8
 
 recognition:
   # 板上 SFace 的 ONNX 原件（engine 的 sidecar 绑的就是这个文件的哈希）。

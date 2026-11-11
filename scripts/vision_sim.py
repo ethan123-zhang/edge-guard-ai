@@ -29,7 +29,8 @@ from vision.imageio import imwrite
 
 
 def log(message):
-    print("%s %s" % (time.strftime("%H:%M:%S"), message))
+    # flush：板上 nohup 重定向到文件时 stdout 是块缓冲，不 flush 就 tail 不到日志
+    print("%s %s" % (time.strftime("%H:%M:%S"), message), flush=True)
 
 
 def parse_args(argv=None):
