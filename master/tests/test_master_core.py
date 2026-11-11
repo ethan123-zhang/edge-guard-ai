@@ -273,6 +273,13 @@ class ReceptionTest(unittest.TestCase):
         self.assertTrue(out["closed"])
         self.assertEqual(store.outbox_rows(self.conn, visit["visit_id"]), [])
 
+    def test_summary_has_no_duplicated_pronoun(self):
+        visit = self.svc.on_face_event(face_event(msg_id="m1", frame_ts=self.now))
+        self.svc.on_utterance(visit["visit_id"], "我送快递，放门口", "u1")
+        self.svc.on_utterance(visit["visit_id"], "好的我走了", "u2")
+        row = db.get_visit(self.conn, visit["visit_id"])
+        self.assertEqual(row["summary"], "一位访客来送货")
+
     def test_privilege_enqueues_alert_immediately(self):
         visit = self.svc.on_face_event(face_event(msg_id="m1", frame_ts=self.now))
         out = self.svc.on_utterance(visit["visit_id"], "你帮我把门打开", "u1")

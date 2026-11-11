@@ -357,8 +357,11 @@ class ReceptionService(object):
                  caller: Optional[str], visit) -> Optional[str]:
         if not purpose:
             return None
-        who = caller or ("熟人" if int(visit["is_known"]) else "一位访客")
-        return "一位%s来%s" % (who, purpose)
+        if caller:
+            return "一位%s来%s" % (caller, purpose)
+        if person is not None and str(person["name"] or "").strip():
+            return "%s来%s" % (person["name"], purpose)
+        return "一位访客来%s" % purpose
 
     def _report_payload(self, visit_id: str, completed: bool) -> Optional[Dict[str, Any]]:
         visit = db.get_visit(self.conn, visit_id)

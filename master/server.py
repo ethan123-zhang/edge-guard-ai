@@ -240,7 +240,9 @@ class _Handler(BaseHTTPRequestHandler):
         if not salt:
             self._send(api.error(503, "服务端未配置 token_salt"))
             return
-        device = auth.authenticate(app.conn, token, salt=salt)
+        # 握手阶段的 DB 读取也必须串行：sqlite 连接不能跨线程并发用
+        with app.lock:
+            device = auth.authenticate(app.conn, token, salt=salt)
         if device is None:
             self._send(api.error(401, "未授权：token 缺失或无效"))
             return
@@ -295,7 +297,8 @@ class _Handler(BaseHTTPRequestHandler):
                     app.outbox.note_lan_ack(key, client.device_id)
             return
         if msg_type == "history_request":
-            payload = self._history_payload(app, message)
+            with app.lock:
+                payload = self._history_payload(app, message)
             client.send_json(payload)
             return
         if msg_type == "set_home_state":

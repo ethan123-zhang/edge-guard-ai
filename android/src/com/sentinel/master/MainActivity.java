@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(0, statusBarHeight(), 0, 0);
         setContentView(root);
         if (serverUrl().isEmpty() || token().isEmpty()) {
             showSettings();
@@ -52,6 +53,12 @@ public class MainActivity extends Activity {
 
     private String serverUrl() {
         return prefs.getString(KEY_URL, DEFAULT_URL);
+    }
+
+    /** 状态栏高度：没有 ActionBar 的壳要给内容让出顶部，否则标题压在状态栏下面。 */
+    private int statusBarHeight() {
+        int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        return id > 0 ? getResources().getDimensionPixelSize(id) : 0;
     }
 
     private String token() {

@@ -13,6 +13,9 @@
 
 * { box-sizing: border-box; }
 
+/* 关键：`hidden` 属性要压过下面的 display:grid/flex，否则"缺图"占位块藏不住 */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -188,3 +191,22 @@ dialog::backdrop { background: rgba(0, 0, 0, .55); }
   padding: 9px 11px;
 }
 .settings menu { display: flex; justify-content: flex-end; gap: 8px; padding: 0; margin: 14px 0 0; }
+
+/* 手机竖屏（APK 与手机浏览器共用）：当前到访卡改成上下排，避免信息列被裁掉 */
+@media (max-width: 680px) {
+  .bar { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+  .chips { order: 3; width: 100%; }
+  .right { margin-left: 0; }
+  main { padding: 10px; gap: 10px; }
+  .card { padding: 12px; border-radius: 12px; }
+  .current-body { flex-direction: column; gap: 10px; }
+  .photo-wrap { width: 100%; }
+  .photo-wrap img, .photo-empty { max-height: 220px; object-fit: cover; }
+  .name { font-size: 17px; }
+  .info dl { grid-template-columns: 62px 1fr; gap: 4px 8px; }
+  .visits li { flex-wrap: wrap; gap: 4px 8px; }
+  .visits .when { width: auto; font-size: 11px; }
+  .visits .what { width: 100%; white-space: normal; }
+  .talk-entry input { font-size: 14px; }
+  dialog { width: 94vw; padding: 14px; }
+}

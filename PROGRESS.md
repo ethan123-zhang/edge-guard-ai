@@ -1,5 +1,26 @@
 # 当前进度与续接入口
 
+## 第二十三轮：APK 真机跑通（vivo S19）+ 手机看板可用（2026-11-11）
+
+> 代码：`android/`、`master/web/style.css`、`scripts/board_master.sh` · 交接：[双板打通与推送通道](docs/handoffs/2026-11-11-双板打通与推送通道.md)
+
+- **手机 USB 调试打通**：`adb devices` 认到 vivo S19（`V2364A`，序列号 `10CE6H0ZJ8001GF`）；
+  `adb install -r android/build/sentinel-master-debug.apk` 成功。
+- **手机 WiFi 自动接入**：手机原本 WiFi 关闭（只有 5G），用 `adb shell cmd wifi connect-network`
+  接入 `大学生科技协会`（WPA2，本机 `netsh wlan show profile ... key=clear` 取密码），手机 IP `192.168.5.12`。
+- **真机看板验收通过**（截图 `temp/phone9.png`）：APK 打开即进 WebView 看板，状态 `在线（局域网直连）`、
+  家中无人、视觉离线、待发 0；当前到访卡显示模拟访客照片、来意"送货"、留言"一位访客来送货"。
+- **修掉三个真机问题**：
+  1. `[hidden]` 被 CSS `display:grid` 压住 → "缺图·采集中"占位块在成功加载照片后仍显示；加 `[hidden]{display:none!important}`；
+  2. 手机竖屏布局溢出 → 加 `@media (max-width:680px)`：当前到访卡上下排、历史列表换行；
+  3. 标题压在状态栏下 → `MainActivity` 按 `status_bar_height` 给根布局加顶部内边距。
+- **修一个并发 bug**：WS 握手鉴权与 `history_request` 读写 SQLite 没拿 `app.lock`，真机连上后出现
+  `sqlite3.InterfaceError: bad parameter or other API misuse`。两处都加锁。
+- **修汇总文案**：`一位一位访客来送货` → `一位访客来送货`（有自称时 `一位李先生来送货`），补单测。
+- **鲁班猫常驻**：`scripts/board_master.sh` 用 `pgrep -f 'master[.]server'`（避免匹配到执行命令的 shell 自己）
+  启停；重启后 8765/8766 正常、手机与 PC 各一条 WS 连接。
+- **回归**：`pytest master` **49 passed**。
+
 ## 第二十二轮：APK 工具链打通 + 最小 WebView 壳出包（2026-11-11）
 
 > 说明：[APK 手工构建](docs/APK手工构建-2026-11-11.md) · 代码：`android/`、`scripts/build_apk.py`
