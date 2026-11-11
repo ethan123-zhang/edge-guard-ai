@@ -1,5 +1,26 @@
 # 当前进度与续接入口
 
+## 第二十一轮：双板打通 + 企业微信推送通道 + 场景/语音路线定案（2026-11-11）
+
+> 交接：[handoffs/2026-11-11-双板打通与推送通道](docs/handoffs/2026-11-11-双板打通与推送通道.md)
+
+- **两板打通**：本机改连 WiFi `大学生科技协会`（192.168.5.7）后，`jetson@192.168.5.10`（`yahboom`）与
+  `cat@192.168.5.11`（`lubancat1`）均可 SSH。Jetson 摄像头已插回（`05a3:9230`，`/dev/video0`，
+  **MJPG 720p@60**，YUYV 只 9fps）；**Jetson 上跑 OpenCV 必须 `export OPENBLAS_CORETYPE=ARMV8`**。
+  鲁班猫是 **Ubuntu 26.04.1 / Python 3.14.4**，8765/8766 空闲、外网通。
+- **`master/` 上鲁班猫冒烟通过**：同步到 `~/sentinel-master`（26 文件），Python 3.14 下 imports OK、
+  `/api/health` 200、看板 200、双端口监听正常。
+- **公网推送按用户拍板落地**：用户选**企业微信群机器人 webhook**；新增 `master/push/relay.py`
+  （文本摘要 / 越权原话、`45009` 限频可重试）与 `composite.py`（`lan + relay` 任一受理即算送达）；
+  `relay.url` 未配置自动跳过公网通道。`pytest master` **48 passed**。
+- **用户决策**：场景=**实验室桌面**（非门口）；语音=**鲁班猫 + USB 麦克风/音箱 + 云 ASR 首选、Vosk 离线备选**；
+  ASRPRO2.0 只做命令词/预置播报（不能自由说）；手机演示时**可同 WiFi 也可不同**。
+- **卡点**：Android Studio 已装（`D:\Android\Android Studio`，JBR 25）但 **SDK 未装**——本机直连 DNS 不可用、
+  策略代理对 `dl.google.com` 403，首启报 "Unable to access Android SDK add-on list"；企业微信 webhook 未给；
+  云 ASR 厂商/key 未定；`vision/service.py` 推图调用未加；实验室构图未标定。
+- **环境坑**：Windows 8674–8773 被 Hyper-V/WSL 保留（8765/8766 绑不上 → PC 用 `config/master.local.yaml` 覆盖 18766/18765）；
+  本机 HTTP 客户端要 `-NoProxy`；**不要用 ping 判板子存活**。
+
 ## 第二十轮：主人端服务 + Web 看板落地（2026-11-11）
 
 > 交接：[handoffs/2026-11-11-主人端服务实现](docs/handoffs/2026-11-11-主人端服务实现.md)

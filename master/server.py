@@ -43,7 +43,8 @@ class App(object):
         self.snapshots_root = master_config.snapshots_dir(cfg)
         self.snapshots_root.mkdir(parents=True, exist_ok=True)
         self.hub = ClientHub(log=self._log)
-        adapter = push.create(cfg["push"]["adapter"], broadcast=self.hub.broadcast)
+        adapter = push.create(cfg["push"]["adapter"], cfg=cfg,
+                              broadcast=self.hub.broadcast, log=self._log)
         self.outbox = Outbox(self.conn, adapter, cfg, log=self._log)
         self.reception = ReceptionService(self.conn, self.outbox, cfg,
                                           log=self._log, notify=self._notify)

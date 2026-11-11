@@ -69,8 +69,14 @@ DEFAULTS: Dict[str, Any] = {
         "poll_interval_ms": 500,
     },
     "push": {
-        # 已定：局域网直连（WebSocket 广播）。relay/vendor 等通道定了再插适配器
-        "adapter": "lan",
+        # 已定：局域网直连（看板/APK）+ 公网企业微信群机器人（用户 2026-11-11 拍板）
+        # 写成列表时任一通道受理即算送达；relay.url 为空会自动跳过公网通道
+        "adapter": ["lan", "relay"],
+        "relay": {
+            "url": "",              # 企业微信群机器人 webhook，放 config/master.local.yaml
+            "provider": "wecom",    # wecom | generic
+            "timeout_s": 5,
+        },
     },
     "security": {
         # 空串 = 未配置 → 对应入口返回 503，不静默放行
@@ -171,7 +177,18 @@ def validate(cfg: Dict[str, Any]) -> None:
     _need(int(outbox.get("batch", 0)) >= 1, "outbox.batch 必须 >= 1")
 
     push = cfg.get("push") or {}
-    _need(str(push.get("adapter") or "").strip() != "", "push.adapter 不能为空")
+    adapter = push.get("adapter")
+    if isinstance(adapter, (list, tuple)):
+        _need(len(adapter) >= 1, "push.adapter 列表不能为空")
+        for name in adapter:
+            _need(str(name).strip() in ("lan", "relay"),
+                  "push.adapter 只支持 lan / relay，收到 %r" % (name,))
+    else:
+        _need(str(adapter or "").strip() in ("lan", "relay"),
+              "push.adapter 只支持 lan / relay，收到 %r" % (adapter,))
+    relay = push.get("relay") or {}
+    _need(str(relay.get("provider") or "wecom") in ("wecom", "generic"),
+          "push.relay.provider 只支持 wecom / generic")
 
 
 def resolve_project(rel_path: Any) -> Path:

@@ -25,3 +25,11 @@ photo:
 outbox:
   retry_base_ms: 1000
   retry_max_ms: 60000
+
+push:
+  # 局域网（看板/APK）+ 公网（企业微信群机器人）；任一受理即算送达
+  adapter: [lan, relay]
+  relay:
+    provider: wecom
+    # webhook 地址不进仓库：写进 config/master.local.yaml 的 push.relay.url
+    url: ""
