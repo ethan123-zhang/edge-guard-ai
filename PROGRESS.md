@@ -1,15 +1,41 @@
 # 当前进度与续接入口
 
-> **本轮收尾（2026-11-11 18:15）**：视觉侧推图打通并上板 —— Jetson 实拍/视频源的照片按事件
-> `msg_id` 落到鲁班猫并绑定到访，照片接口 200；全量单测 **543 passed**；提交 `d376082` 已推 GitHub。
-> **两块板已关机**（Jetson 192.168.5.10 / 鲁班猫 192.168.5.11，SSH :22 均不可达），下轮先开板。
-> 交接 [handoffs/2026-11-11-视觉推图联调](docs/handoffs/2026-11-11-视觉推图联调.md)。
-> 一句话现状：**视觉→主人端→看板整条链路真机跑通**；卡点只剩企业微信 webhook、摄像头摆位、板上自启。
-> 下次进入点：开两块板 → Jetson `bash ~/sentinel-vision/scripts/board_vision.sh start`
-> → 鲁班猫 `bash ~/sentinel-master/run.sh`（清库/摄像头摆位见交接 §5–§7）。
+> **本轮收尾（2026-11-11 20:08）**：手机看板真机联调 + 双板 systemd 自启动。企业微信「群机器人」
+> 已改名「消息推送」并配通（板端发送 `HTTP 200 errcode 0`，真实接待 `report:v_0041` → `sent`）；
+> 手机 `clients:1`、走一次 = **1 条到访 + 1 张方向正确的照片**；清库重来流程跑通；两板 reboot 后
+> 服务自动 `active`（20:05:02 自动上报 v_0005）。仓库**无代码改动**，PushPlus 试做已回滚（49 passed）。
+> 交接 [handoffs/2026-11-11-手机看板与双板自启动](docs/handoffs/2026-11-11-手机看板与双板自启动.md)。
+> 一句话现状：**演示链路（相机→视觉→主人端→手机→企业微信）全通且开机自启**；
+> 剩余：演示前清库、移动网络下推送验证、完整接待彩排、语音线（麦克风未到）。
+> 下次进入点：开机等 1 分钟即自启；演示前按交接 §8 清库并重配手机 token。
+> **日志位置变了**：服务由 systemd 托管，改看 `journalctl -u sentinel-{master,vision}`。
 
 > 上一轮收尾（第十九～二十三轮）：[handoffs/2026-11-11-收尾-主人端与APK联调](docs/handoffs/2026-11-11-收尾-主人端与APK联调.md)
 > ——主人端服务常驻鲁班猫、手机 APK 看板可用、PC 回放 37/37。
+
+## 第二十五轮：手机看板联调 + 双板 systemd 自启动（2026-11-11）
+
+> 交接：[handoffs/2026-11-11-手机看板与双板自启动](docs/handoffs/2026-11-11-手机看板与双板自启动.md)
+> · 证据：`temp/phone_visit1.png`、`temp/check_photo.jpg`（本地，已 gitignore）
+
+- **企业微信「群机器人」已改名「消息推送」**（官方帮助文档原文 "formerly known as Robot in Group"）：群聊右侧
+  「聊天信息」→「消息推送」→ 添加 → Webhook。配进板端 `config/master.local.yaml` 后，板端直连
+  `HTTP 200 {"errcode":0}`，真实接待 outbox `report:v_20261111_0041` → `status=sent, attempts=1`。
+- **补 `security` 段（关键修复）**：板端 `master.yaml` 原本没有 `vision_key/token_salt/photo_secret`，
+  `run.sh` 也不 export → 重启后 Jetson 推图 503、手机与 `/api/*` 全 503。写进 `master.local.yaml`
+  （`vision_key=vision-20261111`，与 Jetson `.env` 一致；另随机生成 salt/photo_secret）后恢复。
+- **手机看板真机可用**：vivo S19 同 WiFi（192.168.5.12）→ APK WebView 连上 `clients:1`，看板显示
+  「在线（局域网直连）」，历史/详情/带人脸框照片/键盘接待入口全部正常。换 salt 后手机 token 失效，
+  重配流程：清库后重签 `--issue-token phone-vivo` → `adb uninstall/install` 清 prefs →
+  uiautomator 定位原生设置页输入（token 框 `630,658`、保存 `630,849`）。
+- **清库重来**：停服务 → 删 `data/sentinel.db*` + `data/snapshots/*` → 启服务 → 重签 token。
+  清库后走一次 = **1 条到访 + 1 张照片**（v_0001，19:56），照片方向正确（摄像头原先装反 180°，已物理转正）。
+- **双板 systemd 自启**：`sentinel-master.service`（鲁班猫，`User=cat`）与 `sentinel-vision.service`
+  （Jetson，`EnvironmentFile=.env` + `OPENBLAS_CORETYPE=ARMV8` 等）。两板真实 `reboot` 验证：
+  服务自动 `active`、20:05:02 视觉自动上报 v_0005、手机自动重连。**日志改看 `journalctl -u sentinel-{master,vision}`**。
+- **回滚**：本轮早些时候试做的 PushPlus provider 已 `git checkout` 还原，工作区干净，`pytest master` **49 passed**。
+- 未完成：库里 5 条验证到访（演示前清）；手机**关 WiFi** 走移动网络的推送未验证；完整接待用手机键盘
+  走一遍未做；换 token 时 APK 黑屏一次（重开恢复，未定位）；麦克风未到、语音线未做。
 
 ## 第二十四轮：视觉推图打通 + 双板真机联调（2026-11-11）
 
