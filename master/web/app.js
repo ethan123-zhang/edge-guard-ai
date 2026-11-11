@@ -116,9 +116,18 @@
       var img = $(targetId);
       if (!img) return;
       if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+      img.onerror = function () {
+        img.hidden = true;
+        if (targetId === "current-photo") {
+          $("current-photo-empty").hidden = false;
+          $("current-photo-empty").textContent = "缺图 · 采集中";
+        }
+      };
       var url = URL.createObjectURL(blob);
       img.dataset.url = url;
       img.src = url;
+      img.hidden = false;
+      if (targetId === "current-photo") $("current-photo-empty").hidden = true;
       state.photoKey = key;
     }).catch(function () {
       var img = $(targetId);
@@ -347,7 +356,10 @@
       }).catch(function (err) { alert(err.message); });
     });
 
-    if (!settings.token) openSettings();
+    if (!settings.token) {
+      openSettings();
+      return;
+    }
     connectWS();
     refresh();
     state.pollTimer = setInterval(refresh, 3000);

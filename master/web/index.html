@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>哨兵管家 · 主人端</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <header class="bar">
-  <div class="brand">哨兵管家 <span class="sub">主人端</span></div>
+  <h1 class="brand">哨兵管家 <span class="sub">主人端</span></h1>
   <div class="chips">
     <span class="chip" id="chip-home">家中状态 ·</span>
     <span class="chip" id="chip-vision">视觉 ·</span>
@@ -42,7 +43,7 @@
         </dl>
         <div class="alert-strip" id="current-alert" hidden></div>
         <div class="talk-entry" id="talk-entry" hidden>
-          <input id="talk-text" maxlength="200" placeholder="访客说了什么（键盘接待入口）">
+          <input id="talk-text" maxlength="200" aria-label="访客说的话" placeholder="访客说了什么（键盘接待入口）">
           <button id="talk-send">提交</button>
         </div>
       </div>
@@ -70,8 +71,8 @@
 <dialog id="settings-dialog">
   <form method="dialog" class="settings">
     <h2>设置</h2>
-    <label>服务器地址<br><input id="set-server" placeholder="http://192.168.5.11:8766"></label>
-    <label>设备 token（只在本机保存）<br><input id="set-token" type="password" autocomplete="off"></label>
+    <label>服务器地址<br><input id="set-server" aria-label="服务器地址" placeholder="http://192.168.5.11:8766"></label>
+    <label>设备 token（只在本机保存）<br><input id="set-token" type="password" aria-label="设备 token" autocomplete="off"></label>
     <p class="muted small">token 由服务端 `--issue-token` 生成；未登记的设备一律拒绝。</p>
     <menu>
       <button value="cancel" class="ghost">取消</button>
