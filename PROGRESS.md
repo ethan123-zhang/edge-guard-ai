@@ -1,17 +1,40 @@
 # 当前进度与续接入口
 
-> **本轮收尾（2026-11-11 20:08）**：手机看板真机联调 + 双板 systemd 自启动。企业微信「群机器人」
-> 已改名「消息推送」并配通（板端发送 `HTTP 200 errcode 0`，真实接待 `report:v_0041` → `sent`）；
-> 手机 `clients:1`、走一次 = **1 条到访 + 1 张方向正确的照片**；清库重来流程跑通；两板 reboot 后
-> 服务自动 `active`（20:05:02 自动上报 v_0005）。仓库**无代码改动**，PushPlus 试做已回滚（49 passed）。
-> 交接 [handoffs/2026-11-11-手机看板与双板自启动](docs/handoffs/2026-11-11-手机看板与双板自启动.md)。
-> 一句话现状：**演示链路（相机→视觉→主人端→手机→企业微信）全通且开机自启**；
-> 剩余：演示前清库、移动网络下推送验证、完整接待彩排、语音线（麦克风未到）。
-> 下次进入点：开机等 1 分钟即自启；演示前按交接 §8 清库并重配手机 token。
-> **日志位置变了**：服务由 systemd 托管，改看 `journalctl -u sentinel-{master,vision}`。
+> **本轮收尾（2026-11-11 21:15）**：看板换版 + Cloudflare 公网入口。把另一对话重做的「纸质账簿版」看板
+> （`master/web` 三文件，`798b5e9`）部署到鲁班猫并验收；给鲁班猫装 cloudflared 快速隧道
+> （`scripts/board_tunnel.sh` + systemd，`ef25857`），手机 4G 下**实测能打开看板 + 真实照片**；
+> 新增 `security.health_requires_token` 收紧公网下的 `/api/health`；`pytest master` **50 passed**。
+> 整机 reboot 实测：**40 秒回来，`sentinel-master`/`sentinel-tunnel` 自动 active，新地址自动推企业微信**。
+> 交接 [handoffs/2026-11-11-前端换版与公网入口](docs/handoffs/2026-11-11-前端换版与公网入口.md)。
+> 一句话现状：**局域网演示链路全通 + 公网（临时网址）可达**；公网地址变了会自动推企业微信。
+> 剩余：演示前清库并重签 token、完整接待彩排、固定网址（要域名，暂不做）、语音线（麦克风未到）。
+> 下次进入点：`cat ~/sentinel-master/data/public_url.txt` 看公网地址；演示前按交接 §8 清库。
 
-> 上一轮收尾（第十九～二十三轮）：[handoffs/2026-11-11-收尾-主人端与APK联调](docs/handoffs/2026-11-11-收尾-主人端与APK联调.md)
-> ——主人端服务常驻鲁班猫、手机 APK 看板可用、PC 回放 37/37。
+> 上一轮收尾：[handoffs/2026-11-11-手机看板与双板自启动](docs/handoffs/2026-11-11-手机看板与双板自启动.md)
+> ——手机看板真机联调、企业微信推送、双板 systemd 自启。
+
+## 第二十六轮：看板换版 + Cloudflare 公网入口（2026-11-11）
+
+> 提交：`798b5e9`（前端）、`ef25857`（公网 + health 鉴权）· 交接：[handoffs/2026-11-11-前端换版与公网入口](docs/handoffs/2026-11-11-前端换版与公网入口.md)
+> · 证据：`temp/phone_4g_public2.png`（4G 公网看板）、`temp/phone_lan.png`（局域网看板，均 gitignore）
+
+- **换前端**：另一对话重做的纸质账簿版（浅色纸面 / 夜巡双主题）已部署到
+  `/home/cat/sentinel-master/master/web/`，静态文件按请求读盘**不用重启服务**；板上哈希与本机一致。
+  验收：真实后端 + 真 token 下 `shipcheck_flow` 15 步全过（当前到访/真机照片/历史/详情/主题/无 console 错），
+  公网 https 再跑 **11/11 与 7/7 步 PASS**；手机 WebView 局域网实拍正常。
+- **公网入口**：鲁班猫跑 Cloudflare 快速隧道（出站连接，不开端口、不改校园网），
+  `scripts/board_tunnel.sh` + `scripts/systemd/sentinel-tunnel.service` 常驻并开机自启。
+  地址写在 `data/public_url.txt`，**每次重连换地址会自动推企业微信**（实测 `errcode:0`）。
+  整机 reboot 40 秒回来、两服务自动 active、新地址自动通知。
+  装 cloudflared 的坑：GitHub 直连 ~10 KB/s，改 Cloudflare 官方源 **18 MB / 7 秒**。
+- **公网安全**：HTTPS + WSS；数据接口要 Bearer token；新增 `security.health_requires_token`
+  （板端已置 true，无 token `401` / 有 token `200` 实测），避免网址泄露即暴露"家里有没有人"。
+  8765 视觉入站与 SSH 不在公网。
+- **真机 4G 实测**：手机关 WiFi 走移动数据，APK 改公网地址后看板完整加载（值守状态、当前访客、
+  带人脸框照片、键盘接待入口）；之后按约定改回局域网地址，手机自动连回校园网。
+  adb 坑：APK 不可调试、讯飞输入法会吃掉 `input text`（先 `input keyevent 204` 切语言）。
+- **未完成**：固定网址（要域名，用户选临时地址+微信通知）；APK 双地址自动切换（用户选手动切换）；
+  演示库待清（含 20:52 / 21:10 两条调试到访）；完整接待彩排。
 
 ## 第二十五轮：手机看板联调 + 双板 systemd 自启动（2026-11-11）
 
