@@ -1,83 +1,99 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>哨兵管家 · 主人端</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#171E26">
+<meta name="color-scheme" content="light dark">
+<title>哨兵管家 主人端</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header class="bar">
-  <h1 class="brand">哨兵管家 <span class="sub">主人端</span></h1>
-  <div class="chips">
-    <span class="chip" id="chip-home">家中状态 ·</span>
-    <span class="chip" id="chip-vision">视觉 ·</span>
-    <span class="chip" id="chip-reception">接待 ·</span>
-    <span class="chip" id="chip-time">--:--:--</span>
+
+<header class="masthead">
+  <div class="masthead-row">
+    <h1 class="brand">哨兵管家</h1>
+    <button class="icon-btn" id="btn-theme" type="button" aria-label="切换夜巡配色" title="切换夜巡配色"><span>夜巡</span></button>
+    <button class="icon-btn" id="btn-settings" type="button" aria-label="服务器与设备 token 设置" title="设置"><span>设置</span></button>
   </div>
-  <div class="right">
-    <span class="conn" id="conn">连接中…</span>
-    <button class="ghost" id="btn-settings" title="服务器与设备 token">设置</button>
-  </div>
+  <p class="status" id="status-line">正在连接…</p>
+  <p class="sr-only" id="live-region" aria-live="polite"></p>
 </header>
 
 <main>
-  <section class="card current" id="current-card">
-    <div class="card-head">
-      <h2>当前到访</h2>
-      <span class="muted" id="current-meta"></span>
+  <section class="now" id="current-card" aria-labelledby="now-title">
+    <div class="now-head">
+      <span class="eyebrow" id="now-eyebrow">现在</span>
+      <time class="stamp-time" id="current-arrived">还没有人</time>
     </div>
-    <div class="current-body">
-      <div class="photo-wrap">
-        <img id="current-photo" alt="访客照片" hidden>
-        <div class="photo-empty" id="current-photo-empty">缺图 · 采集中</div>
+
+    <h2 class="now-name" id="now-title">现在没人来</h2>
+    <p class="now-meta" id="current-meta"></p>
+
+    <figure class="now-photo" id="now-photo-figure">
+      <img id="current-photo" alt="访客照片" width="960" height="720" hidden>
+      <div class="photo-empty" id="current-photo-empty">
+        <span>照片采集中</span>
+        <small>相机上报后会出现在这里</small>
       </div>
-      <div class="info">
-        <div class="name" id="current-name">暂无来访</div>
-        <dl>
-          <dt>访客自称</dt><dd id="current-caller">—</dd>
-          <dt>来意</dt><dd id="current-purpose">—</dd>
-          <dt>留言</dt><dd id="current-summary">—</dd>
-          <dt>到访时间</dt><dd id="current-arrived">—</dd>
-        </dl>
-        <div class="alert-strip" id="current-alert" hidden></div>
-        <div class="talk-entry" id="talk-entry" hidden>
-          <input id="talk-text" maxlength="200" aria-label="访客说的话" placeholder="访客说了什么（键盘接待入口）">
-          <button id="talk-send">提交</button>
-        </div>
+    </figure>
+
+    <p class="seal" id="current-alert" hidden></p>
+
+    <dl class="facts" id="facts">
+      <div class="fact"><dt>自称</dt><dd id="current-caller">还没有记录</dd></div>
+      <div class="fact"><dt>来意</dt><dd id="current-purpose">还没有记录</dd></div>
+      <div class="fact"><dt>说了什么</dt><dd id="current-summary">还没有记录</dd></div>
+    </dl>
+
+    <form class="talk" id="talk-entry" hidden>
+      <label class="talk-label" for="talk-text">访客说了什么，你替他记一句</label>
+      <div class="talk-row">
+        <input id="talk-text" maxlength="200" autocomplete="off" placeholder="比如：我来还钥匙">
+        <button class="btn btn-solid" id="talk-send" type="submit"><span>记下</span></button>
       </div>
-    </div>
+      <p class="talk-note" id="talk-note" role="status" hidden></p>
+    </form>
   </section>
 
-  <section class="card">
-    <div class="card-head">
-      <h2>历史到访</h2>
-      <button class="ghost" id="btn-refresh">刷新</button>
+  <section class="log" aria-labelledby="log-title">
+    <div class="log-head">
+      <h2 id="log-title">到访记录</h2>
+      <button class="btn btn-quiet" id="btn-refresh" type="button"><span>刷新</span></button>
     </div>
-    <ul class="visits" id="visits"></ul>
-    <div class="pager"><button class="ghost" id="btn-more" hidden>加载更多</button></div>
+    <div class="log-body" id="visits-host">
+      <p class="log-empty" id="visits-empty" hidden>还没有记录。门口第一次有人来时，这里会出现第一条。</p>
+      <ul class="visits" id="visits"></ul>
+    </div>
+    <div class="pager"><button class="btn btn-quiet" id="btn-more" type="button" hidden><span>更早的记录</span></button></div>
   </section>
 </main>
 
-<dialog id="detail-dialog">
-  <div class="detail-head">
+<footer class="colophon">
+  <p>局域网直连，记录存在本地库。照片只在有人到访时采集。</p>
+</footer>
+
+<dialog id="detail-dialog" aria-labelledby="detail-title">
+  <div class="dialog-head">
     <h2 id="detail-title">到访详情</h2>
-    <button class="ghost" id="btn-close-detail">关闭</button>
+    <button class="btn btn-quiet" id="btn-close-detail" type="button"><span>关闭</span></button>
   </div>
   <div class="detail-body" id="detail-body"></div>
 </dialog>
 
-<dialog id="settings-dialog">
-  <form method="dialog" class="settings">
-    <h2>设置</h2>
-    <label>服务器地址<br><input id="set-server" aria-label="服务器地址" placeholder="http://192.168.5.11:8766"></label>
-    <label>设备 token（只在本机保存）<br><input id="set-token" type="password" aria-label="设备 token" autocomplete="off"></label>
-    <p class="muted small">token 由服务端 `--issue-token` 生成；未登记的设备一律拒绝。</p>
-    <menu>
-      <button value="cancel" class="ghost">取消</button>
-      <button value="save" id="btn-save-settings">保存</button>
-    </menu>
+<dialog id="settings-dialog" aria-labelledby="settings-title">
+  <form method="dialog" class="settings" id="settings-form">
+    <h2 id="settings-title">连接设置</h2>
+    <label for="set-server">服务器地址</label>
+    <input id="set-server" type="text" inputmode="url" autocomplete="off" placeholder="http://192.168.5.11:8766">
+    <label for="set-token">设备 token（只存在这台手机上）</label>
+    <input id="set-token" type="password" autocomplete="off">
+    <p class="hint">token 由服务端 <code>--issue-token</code> 生成。没有登记的设备会被拒绝。</p>
+    <div class="dialog-actions">
+      <button class="btn btn-quiet" value="cancel" type="submit" formnovalidate><span>取消</span></button>
+      <button class="btn btn-solid" value="save" id="btn-save-settings" type="submit"><span>保存</span></button>
+    </div>
   </form>
 </dialog>
 
