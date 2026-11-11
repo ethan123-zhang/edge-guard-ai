@@ -183,7 +183,15 @@ class TestAssociationProfile(unittest.TestCase):
         self.assertTrue(assoc["enabled"], "板上这次就是要接关联层")
         self.assertGreater(assoc["quality_max_rms"], 0.10,
                            "320 输入把关键点量化了，照抄 0.10 只入册 2.5%")
-        self.assertAlmostEqual(assoc["quality_max_rms"], 0.16)
+        # 2026-11-11：0.16 在侧脸/遮挡下入册不够，关联退化 track_bound → 同一人重复建会话；
+        # 放宽到 0.20 后再用静坐素材复测。
+        self.assertAlmostEqual(assoc["quality_max_rms"], 0.20)
+
+    def test_board_profile_widens_track_ttl(self):
+        """轨道 TTL 放宽到 5 秒：抬手/转头丢脸 2~5 秒不再拆成新访客。"""
+        cfg = config.load("board")
+        self.assertEqual(cfg["recognition"]["track_ttl_sec"], 5.0)
+        self.assertEqual(cfg["association"]["track_ttl_sec"], 5.0)
 
     def test_validate_rejects_bad_association_values(self):
         for patch, needle in (
