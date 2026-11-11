@@ -85,6 +85,9 @@ DEFAULTS: Dict[str, Any] = {
         "photo_secret": "",
         # 允许登记的设备名长度上限（防把日志写爆）
         "max_device_name": 64,
+        # 公网入口（Cloudflare 隧道等）时置 true：/api/health 也要设备 token。
+        # 默认 false 保留局域网探活；true 时看板照常工作（页面请求本来就带 token）。
+        "health_requires_token": False,
     },
 }
 

@@ -6,8 +6,11 @@
 profile: pc
 
 server:
-  host: 0.0.0.0          # 局域网内手机直连；不要暴露公网（任务书边界）
+  host: 0.0.0.0          # 局域网手机直连；公网入口走 Cloudflare 隧道（docs/04 §4.5），不要直接端口映射
   port: 8766             # 单端口：HTTP 与 WebSocket 按 Upgrade 分流
+  # 公网暴露时在 config/master.local.yaml 里加：
+  #   security:
+  #     health_requires_token: true    # /api/health 也要 token（默认 false 仅供局域网探活）
 
 paths:
   db: data/sentinel.db   # 与 dialog 侧共用；旧库启动时只加表，不迁移

@@ -101,6 +101,11 @@ class Router(object):
 
     def _api(self, method, path, query, headers, body) -> Response:
         if path == "/api/health" and method == "GET":
+            # 默认公开（局域网探活）；公网入口下由配置收紧，避免网址泄露即暴露"家里有没有人"
+            if (self.app.cfg.get("security") or {}).get("health_requires_token"):
+                device, fail = self._auth_device(query, headers)
+                if fail:
+                    return fail
             return self._health()
         if path == "/api/current" and method == "GET":
             device, fail = self._auth_device(query, headers)

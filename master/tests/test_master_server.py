@@ -142,6 +142,19 @@ class ServerTest(unittest.TestCase):
         payload = json.loads(body)
         self.assertTrue(payload["ok"])
 
+    def test_health_can_require_token_for_public_entry(self):
+        """公网入口下 health 也要 token：避免网址泄露就暴露"家里有没有人"。"""
+        self.app.cfg["security"]["health_requires_token"] = True
+        try:
+            status, _, _ = _http(self.owner_port, "GET", "/api/health")
+            self.assertEqual(status, 401)
+            status, body, _ = _http(self.owner_port, "GET", "/api/health",
+                                    token=self.token)
+            self.assertEqual(status, 200)
+            self.assertTrue(json.loads(body)["ok"])
+        finally:
+            self.app.cfg["security"]["health_requires_token"] = False
+
     def test_private_api_requires_token(self):
         status, _, _ = _http(self.owner_port, "GET", "/api/current")
         self.assertEqual(status, 401)

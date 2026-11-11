@@ -1,0 +1,30 @@
+# 鲁班猫公网入口：Cloudflare 快速隧道（systemd unit）
+#
+# 装法（板上）：
+#   sudo cp scripts/systemd/sentinel-tunnel.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now sentinel-tunnel
+#   systemctl status sentinel-tunnel --no-pager
+#   systemctl restart sentinel-tunnel      # 换地址后：新地址会推企业微信
+# 看地址：
+#   cat /home/cat/sentinel-master/data/public_url.txt
+# 日志：
+#   journalctl -u sentinel-tunnel -n 50 --no-pager
+[Unit]
+Description=哨兵管家公网入口（Cloudflare 隧道）
+Documentation=file:///home/cat/sentinel-master/docs/04-部署与运维.md
+After=network-online.target sentinel-master.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cat
+WorkingDirectory=/home/cat/sentinel-master
+ExecStart=/bin/bash /home/cat/sentinel-master/scripts/board_tunnel.sh run
+Restart=always
+RestartSec=5
+# 隧道只是出站连接；失败不拖累主人端，所以不要 BindsTo
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
