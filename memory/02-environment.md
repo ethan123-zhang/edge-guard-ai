@@ -16,6 +16,8 @@ last_updated: 2026-11-11
 - 当前证据：`docs/Jetson事件链路诊断-2026-10-31.md`。通用知识方法正文见aiVault。
 - 2026-11-06 板端复验路径：`ssh jetson@10.77.156.4`（已装本机公钥，不需要口令）；**导入 numpy/cv2 前必须 `export OPENBLAS_CORETYPE=ARMV8`**，否则 OpenBLAS 选错核型直接 `Illegal instruction`。质量研究目录 `/home/jetson/sentinel-quality-20261106/`，模型在 `~/sentinel-check-20261101-dnn-models/`，固定视频在 `~/sentinel-check-20261101-video/datasets/video-validation/`。
 - **2026-11-11 两板仍未开机**：`192.168.43.10/.11`、`192.168.3.154` SSH 在 **banner 阶段超时**，`192.168.3.214` **kex 被 reset**（= 11/09 关机特征）。**ping/TCP 不可信**：本机网络层给任意 IP 伪造成功（连不存在的 `192.168.3.250` 也"能连"），**判活只看 SSH kex/banner**。
+- **2026-11-11 用户给的新板址（尚未打通）**：Jetson `192.168.5.10`（`jetson`/`yahboom`）、鲁班猫 `192.168.5.11`（`cat`/`lubancat1`）。**本机当时在 WiFi `MrZhang`（10.52.160.146），没有 192.168.5.0/24 路由**，两址 SSH 均 `connect timed out`（不是 banner 超时，是 TCP 都没到）。要用新址，先让本机进同一网段（连哪个 AP / 是否走以太网口），否则阶段 0/2/4 真机验收记"未测"。
+- **2026-11-11 Windows 保留端口坑**：`netsh interface ipv4 show excludedportrange protocol=tcp` 显示 **8674–8773 被 Hyper-V/WSL 保留**，所以本机直接绑 8765/8766 会 `WinError 10013`（PermissionError）。PC 侧用 `config/master.local.yaml`（gitignore）覆盖成 `18766/18765`；板端仍是 8766/8765。另：本机 HTTP 客户端要带 `-NoProxy`，否则被策略代理 `127.0.0.1:3221` 转 502。
 - **2026-11-08 板子地址变更**：`jetson@192.168.3.154` 可用（板子重启后 IP 回到这个）；**`10.77.156.4` 已不是板子**（能 ping、SSH 在 banner 交换阶段被 reset，是别的设备占着）。`scripts/deploy_board.ps1` 的默认 `-Host` 已同步改成 `192.168.3.154`。板端一次性核对：`ls /dev/video0`、`python3 scripts/ensure_engines.py --check`、`python3 scripts/check_backend.py --profile board`（三项在 11-08 均通过：TRT 8.2.1.8/fp16，检测+识别都在 TensorRT）。
 
 > 以下段落保留旧日期画像，不代表当前U盘系统；遇到冲突以本节和最新实测报告为准。历史口令不再保留。
@@ -32,7 +34,7 @@ last_updated: 2026-11-11
 | 对话节点 | **鲁班猫5 v1（RK3588）** | 6 TOPS NPU + 8 核 CPU（4×A76 + 4×A55），出厂 Ubuntu。**实测见下方** |
 | 摄像头 | 亚博智能 1080p USB | 已验证可用 |
 | 音箱 | 最基础款 | 够用 |
-| 语音板 | **天问51**（用户提供，2026-11-11 确认） | 做语音识别输入与播报；**只能播预置语音/短语（发命令码触发），不能合成任意文本**；型号与串口协议待定 |
+| 语音板 | **天问 ASRPRO2.0 语音识别模块**（用户 2026-11-11 确认，取代"天问51"口径） | 做语音识别输入与播报；识别词/播报内容在板端配置，主机侧只收串口文本；**串口帧格式/波特率/接线待定** |
 | 转换机 | **本机笔记本** | **RTX 4060 Laptop 8GB**，用于 RKLLM 模型转换（详见第 2 节） |
 
 ### Jetson Nano B01 板端实测（**2026-10-16 起；2026-10-23 纠正型号口径**）

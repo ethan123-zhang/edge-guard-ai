@@ -1,0 +1,27 @@
+# 主人端（鲁班猫 RK3588）配置 —— 与 vision/config/*.yaml 同一套加载方式
+# 只写"值得被人看见"的值；其余键在 master/config.py 的 DEFAULTS 里有默认值。
+# 密钥不写这里：用环境变量 SENTINEL_VISION_KEY / SENTINEL_TOKEN_SALT / SENTINEL_PHOTO_SECRET，
+# 或写进 config/master.local.yaml（已 gitignore）。
+
+profile: pc
+
+server:
+  host: 0.0.0.0          # 局域网内手机直连；不要暴露公网（任务书边界）
+  port: 8766             # 单端口：HTTP 与 WebSocket 按 Upgrade 分流
+
+paths:
+  db: data/sentinel.db   # 与 dialog 侧共用；旧库启动时只加表，不迁移
+  snapshots: data/snapshots
+  web: master/web
+
+reception:
+  silence_timeout_ms: 45000
+  session_timeout_ms: 300000
+
+photo:
+  max_bytes: 2097152     # 2 MB；手机流量与板端内存都扛得住
+  sign_ttl_s: 600        # 推送里的签名照片链接有效期 10 分钟
+
+outbox:
+  retry_base_ms: 1000
+  retry_max_ms: 60000

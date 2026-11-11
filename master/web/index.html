@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>哨兵管家 · 主人端</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand">哨兵管家 <span class="sub">主人端</span></div>
+  <div class="chips">
+    <span class="chip" id="chip-home">家中状态 ·</span>
+    <span class="chip" id="chip-vision">视觉 ·</span>
+    <span class="chip" id="chip-reception">接待 ·</span>
+    <span class="chip" id="chip-time">--:--:--</span>
+  </div>
+  <div class="right">
+    <span class="conn" id="conn">连接中…</span>
+    <button class="ghost" id="btn-settings" title="服务器与设备 token">设置</button>
+  </div>
+</header>
+
+<main>
+  <section class="card current" id="current-card">
+    <div class="card-head">
+      <h2>当前到访</h2>
+      <span class="muted" id="current-meta"></span>
+    </div>
+    <div class="current-body">
+      <div class="photo-wrap">
+        <img id="current-photo" alt="访客照片" hidden>
+        <div class="photo-empty" id="current-photo-empty">缺图 · 采集中</div>
+      </div>
+      <div class="info">
+        <div class="name" id="current-name">暂无来访</div>
+        <dl>
+          <dt>访客自称</dt><dd id="current-caller">—</dd>
+          <dt>来意</dt><dd id="current-purpose">—</dd>
+          <dt>留言</dt><dd id="current-summary">—</dd>
+          <dt>到访时间</dt><dd id="current-arrived">—</dd>
+        </dl>
+        <div class="alert-strip" id="current-alert" hidden></div>
+        <div class="talk-entry" id="talk-entry" hidden>
+          <input id="talk-text" maxlength="200" placeholder="访客说了什么（键盘接待入口）">
+          <button id="talk-send">提交</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>历史到访</h2>
+      <button class="ghost" id="btn-refresh">刷新</button>
+    </div>
+    <ul class="visits" id="visits"></ul>
+    <div class="pager"><button class="ghost" id="btn-more" hidden>加载更多</button></div>
+  </section>
+</main>
+
+<dialog id="detail-dialog">
+  <div class="detail-head">
+    <h2 id="detail-title">到访详情</h2>
+    <button class="ghost" id="btn-close-detail">关闭</button>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+</dialog>
+
+<dialog id="settings-dialog">
+  <form method="dialog" class="settings">
+    <h2>设置</h2>
+    <label>服务器地址<br><input id="set-server" placeholder="http://192.168.5.11:8766"></label>
+    <label>设备 token（只在本机保存）<br><input id="set-token" type="password" autocomplete="off"></label>
+    <p class="muted small">token 由服务端 `--issue-token` 生成；未登记的设备一律拒绝。</p>
+    <menu>
+      <button value="cancel" class="ghost">取消</button>
+      <button value="save" id="btn-save-settings">保存</button>
+    </menu>
+  </form>
+</dialog>
+
+<script src="/app.js"></script>
+</body>
+</html>

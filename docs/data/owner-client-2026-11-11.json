@@ -1,0 +1,274 @@
+{
+  "suite": "owner-client-2026-11-11",
+  "generated_at": "2026-11-11T11:44:40+0800",
+  "elapsed_s": 9.55,
+  "summary": {
+    "checks": 37,
+    "passed": 37,
+    "failed": 0
+  },
+  "checks": [
+    {
+      "check": "A 进场建到访",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "check": "B 独立成一次到访",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "check": "B 照片上传成功",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "check": "A 照片迟到上传成功",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "check": "A 绑定自己的照片",
+      "expected": "evt-a",
+      "actual": "evt-a",
+      "pass": true
+    },
+    {
+      "check": "B 绑定自己的照片",
+      "expected": "evt-b",
+      "actual": "evt-b",
+      "pass": true
+    },
+    {
+      "check": "A 图片内容正确",
+      "expected": "<9 bytes>",
+      "actual": "<9 bytes>",
+      "pass": true
+    },
+    {
+      "check": "B 图片内容正确",
+      "expected": "<9 bytes>",
+      "actual": "<9 bytes>",
+      "pass": true
+    },
+    {
+      "check": "照片接口 200",
+      "expected": [
+        200,
+        200
+      ],
+      "actual": [
+        200,
+        200
+      ],
+      "pass": true
+    },
+    {
+      "check": "重放不新增到访",
+      "expected": 1,
+      "actual": 1,
+      "pass": true
+    },
+    {
+      "check": "重放不重复迎宾",
+      "expected": 1,
+      "actual": 1,
+      "pass": true
+    },
+    {
+      "check": "重启后重放仍不新增到访",
+      "expected": 1,
+      "actual": 1,
+      "pass": true
+    },
+    {
+      "check": "重启后不覆盖照片",
+      "expected": 1,
+      "actual": 1,
+      "pass": true
+    },
+    {
+      "check": "无照片记录可打开",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "check": "无照片明确缺图",
+      "expected": null,
+      "actual": null,
+      "pass": true
+    },
+    {
+      "check": "无照片取图 404",
+      "expected": 404,
+      "actual": 404,
+      "pass": true
+    },
+    {
+      "check": "不拿旧照片顶替",
+      "expected": null,
+      "actual": null,
+      "pass": true
+    },
+    {
+      "check": "只打招呼不产生汇总",
+      "expected": [],
+      "actual": [],
+      "pass": true
+    },
+    {
+      "check": "快递产生一条汇总",
+      "expected": [
+        "visit_report"
+      ],
+      "actual": [
+        "visit_report"
+      ],
+      "pass": true
+    },
+    {
+      "check": "快递汇总已送达",
+      "expected": "sent",
+      "actual": "sent",
+      "pass": true
+    },
+    {
+      "check": "开门产生一条告警",
+      "expected": [
+        "security_alert"
+      ],
+      "actual": [
+        "security_alert"
+      ],
+      "pass": true
+    },
+    {
+      "check": "告警标记越权",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "check": "告警原话可追溯",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "check": "复合句告警立即产生",
+      "expected": [
+        "security_alert"
+      ],
+      "actual": [
+        "security_alert"
+      ],
+      "pass": true
+    },
+    {
+      "check": "复合句汇总补齐",
+      "expected": [
+        "security_alert",
+        "visit_report"
+      ],
+      "actual": [
+        "security_alert",
+        "visit_report"
+      ],
+      "pass": true
+    },
+    {
+      "check": "汇总保留越权原话",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "check": "否定句不误报越权",
+      "expected": [
+        "visit_report"
+      ],
+      "actual": [
+        "visit_report"
+      ],
+      "pass": true
+    },
+    {
+      "check": "告警在照片之前到达",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "check": "此时确实还没有照片",
+      "expected": 404,
+      "actual": 404,
+      "pass": true
+    },
+    {
+      "check": "告警带原话",
+      "expected": "把门打开",
+      "actual": "把门打开",
+      "pass": true
+    },
+    {
+      "check": "告警带实际回应",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "check": "断网时消息留在队列",
+      "expected": [
+        "pending"
+      ],
+      "actual": [
+        "pending"
+      ],
+      "pass": true
+    },
+    {
+      "check": "断网时待发计数为 1",
+      "expected": 1,
+      "actual": 1,
+      "pass": true
+    },
+    {
+      "check": "重连后补发到达",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    },
+    {
+      "check": "补发后状态 sent",
+      "expected": [
+        "sent"
+      ],
+      "actual": [
+        "sent"
+      ],
+      "pass": true
+    },
+    {
+      "check": "只收敛一条",
+      "expected": 1,
+      "actual": 1,
+      "pass": true
+    },
+    {
+      "check": "接入方确认有记录",
+      "expected": true,
+      "actual": true,
+      "pass": true
+    }
+  ],
+  "notes": [
+    "运行在临时库 + 临时端口；照片是假 JPEG 字节，不是真人素材。",
+    "真实 Jetson 视觉节点与手机 App 的复验在阶段 0/4 另行记录。"
+  ]
+}
