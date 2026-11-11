@@ -1,5 +1,23 @@
 # 当前进度与续接入口
 
+## 第二十二轮：APK 工具链打通 + 最小 WebView 壳出包（2026-11-11）
+
+> 说明：[APK 手工构建](docs/APK手工构建-2026-11-11.md) · 代码：`android/`、`scripts/build_apk.py`
+
+- **SDK 用国内镜像装配完成**（Clash 访 Google 实测只有 ~0.65 MB/s，且 Studio 向导卡在 `source-37.0_r02.zip`
+  不动；腾讯镜像 **7–10 MB/s**）：`D:\Android\Sdk` 下已有 **platform-tools r37.0.1 / platforms;android-36 /
+  build-tools 36.0.0**（build-tools 包内顶层目录是老命名 `android-16`，已改名）。
+  三件套验证：`adb 1.0.41`、`aapt2 2.20`、`apksigner 0.9`，`android.jar` 就位。
+- **不走 Gradle**：Gradle 首次构建要拉 AGP/Kotlin/Gradle 发行版（Google Maven 403 必卡），
+  改为 `aapt2 → javac → jar → d8 → zip 追加 classes.dex → zipalign → apksigner` **手工出包**，
+  全本地、断网可构建；脚本 `scripts/build_apk.py`。
+- **产物**：`android/build/sentinel-master-debug.apk`（**12.4 KB**，已签名）。
+  `aapt2 dump badging` 核对：`com.sentinel.master`、minSdk 24 / targetSdk 36、INTERNET、可启动 MainActivity。
+- **壳的内容**（设计 §8）：设置页（服务器地址 + token）+ WebView 复用局域网看板；页面加载后注入
+  `localStorage` 的 server/token；**无开门/喊话入口**；通知入口留到阶段 4。
+- **待做**：装到 vivo S19（需开 USB 调试 + 授权）、Studio 里把 SDK Location 指到 `D:\Android\Sdk`、
+  cmdline-tools（可选，镜像已支持）。
+
 ## 第二十一轮：双板打通 + 企业微信推送通道 + 场景/语音路线定案（2026-11-11）
 
 > 交接：[handoffs/2026-11-11-双板打通与推送通道](docs/handoffs/2026-11-11-双板打通与推送通道.md)
