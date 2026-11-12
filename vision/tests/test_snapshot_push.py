@@ -237,11 +237,16 @@ class TestSnapshotPushConfig(unittest.TestCase):
         self.assertEqual(push["key"], "", "密钥不能写进仓库里的 yaml")
 
     def test_board_profile_points_at_lubancat_without_a_key(self):
-        push = config.load("board")["output"]["snapshot_push"]
+        cfg = config.load("board")
+        push = cfg["output"]["snapshot_push"]
         self.assertTrue(push["enabled"], "板上必须打开推图，否则看板永远缺图")
         url = push["url"]
         self.assertTrue(url.startswith("http://"), url)
-        self.assertIn("192.168.5.11", url)
+        # 板端 IP 换网就会变（2026-11-12 从 192.168.5.11 换成现场 DHCP 地址），
+        # 所以不钉死具体地址：只要求推图主机与视觉 WS 出口是同一块鲁班猫。
+        ws_host = urlparse(cfg["server"]["ws_url"]).hostname
+        snap_host = urlparse(url).hostname
+        self.assertEqual(ws_host, snap_host, "推图与视觉事件必须指向同一块板")
         self.assertIn("/vision/snapshot", url)
         self.assertEqual(push["key"], "")
 

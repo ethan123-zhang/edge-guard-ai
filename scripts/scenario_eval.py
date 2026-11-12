@@ -392,6 +392,7 @@ def replay(video_path, doc, cfg, stride, log):
     service._report = traced_commit_report
     service.associator.observe = traced_observe
     service._blank_std = 0.0        # 素材里本来就有人走动，别让空白帧保护吞帧
+    service._texture_min = 0.0      # 同上：两条帧级判据一起关，回放才与历史结果可比
 
     processed = 0
     frame_index = 0

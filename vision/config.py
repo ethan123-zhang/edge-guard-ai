@@ -67,6 +67,13 @@ DEFAULTS = {
         # "陌生人"事件。真实素材帧（8 条 1080p）标准差最低也有 20+，2.0 不会误伤。
         # 0 = 关闭（老行为）。证据 docs/data/detector-black-frame-fp-2026-11-07.json。
         "blank_std": 2.0,
+        # 帧级细节保护（2026-11-12 加）：同一张缩到 160 宽的灰度图上拉普拉斯方差低于此值
+        # = 画面里没有任何高频细节。补的是 blank_std 的漏：镜头被挡但边缝漏光/桌面反光时，
+        # 画面是"暗 + 一侧光晕渐变"，全局标准差被渐变抬到 6.65，blank_std=2.0 拦不住；
+        # 这种帧 YuNet 照样吐 score=0.63、宽 85.5% 画面、上边越界的假脸
+        # （docs/黑帧假事件-2026-11-12.md）。真实素材 288 帧最低 118.66（注入纯黑帧除外），
+        # 20.0 有约 6 倍余量。0 = 关闭。
+        "texture_min": 20.0,
     },
     "recognition": {
         "backend": "auto",    # auto|sface|none
@@ -255,6 +262,9 @@ def validate(cfg):
     _need(float(det.get("blank_std", 2.0)) >= 0.0,
           "detection.blank_std 不能为负（0=关闭帧级均匀保护），当前 %r"
           % (det.get("blank_std"),))
+    _need(float(det.get("texture_min", 0.0)) >= 0.0,
+          "detection.texture_min 不能为负（0=关闭帧级细节保护），当前 %r"
+          % (det.get("texture_min"),))
 
     rec = cfg["recognition"]
     _need(str(rec["backend"]) in _BACKEND_CHOICES["recognition"],

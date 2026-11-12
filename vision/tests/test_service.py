@@ -37,14 +37,18 @@ class FakeSource(object):
 
 
 def textured_frame(size=(240, 320)):
-    """有内容的帧（从左到右 0→255 渐变，灰度标准差约 74）。
+    """有内容的帧（左右渐变 + 8px 棋盘），灰度标准差约 74、高频能量也够。
 
     **不要用 `np.zeros`**：那会命中帧级均匀保护（`detection.blank_std`），检测会被
     跳过 —— 2026-11-07 加的保护就是为全黑帧准备的，测试夹具得用"正常画面"。
+    **也不要只给渐变**：只有渐变没有细节的帧同样会被帧级细节保护
+    （`detection.texture_min`）拦掉 —— 真实画面里的墙/门/衣物都有高频细节。
     """
     height, width = size
     row = np.linspace(0, 255, width).astype(np.uint8)
-    return np.repeat(np.repeat(row[None, :, None], height, axis=0), 3, axis=2)
+    base = np.repeat(np.repeat(row[None, :, None], height, axis=0), 3, axis=2)
+    checker = ((np.indices((height, width)).sum(axis=0) // 8) % 2).astype(np.int16)
+    return (base.astype(np.int16) + (checker[..., None] * 40 - 20)).clip(0, 255).astype(np.uint8)
 
 
 class FakeDetector(object):
@@ -620,8 +624,9 @@ class TestBlankFrameGuard(unittest.TestCase):
         detector = FakeDetector()
         service, _sink = build_service(self._tmp.name, detector=detector)
         service._blank_std = 0.0
+        service._texture_min = 0.0
         service._process_frame(self._black(), 0)
-        self.assertEqual(detector.calls, 1, "blank_std=0 必须是老行为")
+        self.assertEqual(detector.calls, 1, "两条帧级判据都关掉才是老行为")
         self.assertEqual(service.stats.blank, 0)
 
     def test_run_loop_counts_blank_frames(self):
@@ -655,6 +660,61 @@ class TestBlankFrameGuard(unittest.TestCase):
         service._process_frame(self._black(), 1200)
         self.assertEqual(service.tracker.track_count, tracks_before, "TTL 内轨道不该被清")
         self.assertEqual(service.stats.blank, 1)
+
+
+class TestFrameTextureGuard(unittest.TestCase):
+    """帧级细节保护（2026-11-12）：暗 + 光晕渐变的被遮帧不能变成"陌生人"。
+
+    现场形态（docs/黑帧假事件-2026-11-12.md）：镜头被挡但边缝漏光 → 画面是暗底
+    加一侧光晕，灰度标准差 6.65 过得了 blank_std=2.0，但拉普拉斯方差只有 3.60；
+    YuNet 照样吐 score=0.6315、bbox=(110,-7,1094,748) 的假脸。
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+    @staticmethod
+    def _dim_gradient(size=(240, 320)):
+        """合成版的被遮帧：暗（7~37 灰阶）+ 一侧渐变，没有任何高频细节。"""
+        height, width = size
+        row = np.linspace(7, 37, width)
+        plane = np.repeat(np.repeat(row[None, :, None], height, axis=0), 3, axis=2)
+        return plane.astype(np.uint8)
+
+    def test_dim_gradient_fools_std_guard_but_not_texture_guard(self):
+        frame = self._dim_gradient()
+        self.assertGreater(VisionService._frame_std(frame), 2.0,
+                           "夹具要能过 blank_std 门限，否则测不到这次的漏洞")
+        self.assertLess(VisionService._frame_texture(frame), 20.0)
+        self.assertGreater(VisionService._frame_texture(textured_frame()), 20.0,
+                           "真实画面不能被细节保护误伤")
+
+    def test_dim_gradient_frame_skips_detection_and_reports_nothing(self):
+        detector = FakeDetector()
+        service, sink = build_service(self._tmp.name, detector=detector)
+        _annotated, detections = service._process_frame(self._dim_gradient(), 0)
+        self.assertEqual(detector.calls, 0, "无细节帧不该进检测器")
+        self.assertEqual(detections, [])
+        self.assertEqual(service.stats.blank, 1)
+        self.assertEqual(sink.of_type("face_event"), [], "被遮的镜头不能报陌生人")
+
+    def test_both_guards_must_be_off_to_restore_old_behavior(self):
+        detector = FakeDetector()
+        service, _sink = build_service(self._tmp.name, detector=detector)
+        service._texture_min = 0.0
+        service._blank_std = 0.0
+        service._process_frame(self._dim_gradient(), 0)
+        self.assertEqual(detector.calls, 1, "两条判据都关掉才是老行为")
+        self.assertEqual(service.stats.blank, 0)
+
+    def test_blank_std_alone_still_skips(self):
+        """关掉细节保护也不该让纯黑帧漏过去（两条判据互不替代）。"""
+        detector = FakeDetector()
+        service, _sink = build_service(self._tmp.name, detector=detector)
+        service._texture_min = 0.0
+        service._process_frame(np.zeros((240, 320, 3), np.uint8), 0)
+        self.assertEqual(detector.calls, 0)
 
 
 class TestFirstReportDefer(unittest.TestCase):

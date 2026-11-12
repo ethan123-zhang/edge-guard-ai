@@ -1,0 +1,101 @@
+{
+  "topic": "black-frame-false-positive-2026-11-12",
+  "generated_at": "2026-11-12T16:10:00+08:00",
+  "event": {
+    "what": "全黑照片却画出人脸框，产生一条陌生人来访",
+    "frame_ts_ms": 1794464829316,
+    "local_time": "2026-11-12 14:27:09.316",
+    "snapshot": "temp/today_1427.jpg (1280x720, 本地 gitignore)",
+    "drawn_face_id": "unk_1794464829316",
+    "drawn_confidence": 0.0,
+    "drawn_box_outer_rect": [104, 0, 1212, 719]
+  },
+  "root_cause": {
+    "guard": "vision/service.py:_process_frame + _frame_std（detection.blank_std=2.0）",
+    "criterion": "整帧缩到 160 宽后的灰度标准差 < 2.0",
+    "why_it_passed": "帧是暗底 + 一侧光晕渐变（mean 12.32, p5 8, p95 29, p99 37），梯度把标准差抬到 6.65，超过 2.0；但画面没有任何高频细节",
+    "measured_probe": {
+      "blank_std": 6.65,
+      "laplacian_var": 3.6,
+      "gray_mean": 12.32,
+      "gray_p1_p5_p50_p95_p99": [7, 8, 10, 29, 37]
+    }
+  },
+  "reproduction": {
+    "preprocessing": "橙色 overlay 遮罩(HSV 10-35/120-255) + dilate(9x9) + inpaint(TELEA,5) 去掉事后画的框与文字",
+    "model": "YuNet 2022 opset9 实验副本 / 320 输入；板端为 yunet_trt320.onnx",
+    "pc": {
+      "cv2": "4.13.0",
+      "faces": 1,
+      "score": 0.6315,
+      "bbox": [110.0, -7.0, 1094.0, 748.0],
+      "width_ratio": 0.855,
+      "height_ratio": 1.039,
+      "area_ratio": 0.888
+    },
+    "board": {
+      "cv2": "4.1.1",
+      "backend": "cpu dnn",
+      "faces": 1,
+      "score": 0.6315,
+      "bbox": [110.0, -7.0, 1094.0, 748.0],
+      "width_ratio": 0.855,
+      "height_ratio": 1.039
+    }
+  },
+  "real_material_reference": {
+    "sources": [
+      "datasets/doorway-20261107/raw (8 条 1080p)",
+      "datasets/scenarios/real-20261108 (8 条 + _extra 4 条)",
+      "datasets/video-validation (4 条)"
+    ],
+    "sampled_frames": 288,
+    "blank_std": {"min": 0.0, "p5": 36.22, "median": 50.13,
+                  "note": "min=0 来自两条自带注入纯黑帧的对照片，由 blank_std 判据负责"},
+    "laplacian_var": {"min": 0.0, "p5": 143.57, "median": 879.72,
+                      "min_excluding_injected_black": 118.66,
+                      "min_file": "head-pose-face-detection-female-and-male.mp4"},
+    "pure_black": {"blank_std": 0.0, "laplacian_var": 0.0},
+    "dim_16": {"blank_std": 0.0, "laplacian_var": 0.0}
+  },
+  "fix": {
+    "config_key": "detection.texture_min",
+    "default": 20.0,
+    "criterion": "同一张 160 宽灰度图的拉普拉斯方差 < texture_min → 跳过检测（与 blank_std 共路径）",
+    "margin": "118.66 / 20 ≈ 5.9x 对真实素材；暗帧 3.60 被挡",
+    "cost": "共用一次缩放，额外一次 Laplacian，约 0.1 ms/帧",
+    "files": [
+      "vision/service.py",
+      "vision/config.py",
+      "vision/config/base.yaml",
+      "vision/config/board.yaml",
+      "vision/tests/test_service.py",
+      "vision/tests/test_config.py",
+      "vision/tests/test_snapshot_push.py",
+      "scripts/scenario_eval.py"
+    ]
+  },
+  "verification": {
+    "unit_tests": {"vision": "428 passed", "vision+dialog+master": "554 passed"},
+    "board_deploy": {"files": 115, "sha256": "115/115 一致",
+                     "check_backend": "exit 0 / tensorrt",
+                     "board_tests": "428 OK (2 skipped)"},
+    "board_probe": {"blank_std": 6.65, "texture": 3.60,
+                    "old_guard_passes": true, "new_guard_blocks": true},
+    "board_e2e_image_dir": {
+      "source": "14:27 暗帧 ×3（/tmp/bkframes）",
+      "frames": 9,
+      "blank_frames": 9,
+      "events": 0,
+      "log": "空白帧保护：画面无有效细节，跳过检测（std=6.65 texture=3.60）"
+    },
+    "service_restart": {"at": "2026-11-12 16:05:48", "pid": 11369,
+                        "backend": "yunet-onnx/tensorrt + sface-onnx/tensorrt",
+                        "gallery": "1 人"},
+    "not_done": ["现场遮镜头 10 s 的实机验收（需人到机位）"]
+  },
+  "boundaries": [
+    "不解决识别阈值边缘（同一人 confidence 0.351-0.736 vs match_threshold 0.363）",
+    "夜间/失焦真实画面可能落入 texture_min，结果是漏报而非误报；可按需下调或置 0"
+  ]
+}

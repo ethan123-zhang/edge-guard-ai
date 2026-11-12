@@ -23,7 +23,8 @@ from vision.ws_client import WebSocketClient, WsClientError
 # 同一帧两个框 IoU 超过这个值就认为是同一张脸被重复检出（去重见 `_dedupe_detections`）
 DEDUPE_IOU = 0.5
 
-# 帧级均匀保护的探针宽度：整帧缩到 160 宽再算灰度标准差，720p 上约 0.2 ms。
+# 帧级空白保护的两个探针指标都在这张"整帧缩到 160 宽"的灰度图上算：
+# 灰度标准差（均匀性）与拉普拉斯方差（高频细节），720p 上合计约 0.3 ms。
 BLANK_PROBE_WIDTH = 160
 
 # 首报延迟（见 `_first_report`）里算"弱建会话"的理由：外观证据自认不足，
@@ -169,6 +170,7 @@ class VisionService(object):
         self._match_threshold = float(cfg["recognition"]["match_threshold"])
         self._min_face_px = int(cfg["detection"]["min_face_px"])
         self._blank_std = float(cfg["detection"].get("blank_std", 0.0) or 0.0)
+        self._texture_min = float(cfg["detection"].get("texture_min", 0.0) or 0.0)
         self._blank_logged = 0
         self._save_snapshots = bool(cfg["output"]["save_snapshots"])
         self._snapshot_dir = config.resolve_project(cfg["output"]["snapshot_dir"])
@@ -548,14 +550,20 @@ class VisionService(object):
         cx, cy, cw, ch = self._crop_rect(frame.shape)
         crop = frame[cy:cy + ch, cx:cx + cw]
 
-        # 帧级均匀保护：近均匀帧（镜头被遮/全黑/流掉线）根本没有可检的人脸，
+        # 帧级空白保护：近均匀帧（镜头被遮/全黑/流掉线）根本没有可检的人脸，
         # 而 YuNet 在这种输入上会吐"高置信大框"假脸（板端实测 score 0.886）。
-        # 这里直接跳过检测+识别，只把空结果喂给 tracker 让旧轨道按 TTL 自然老化。
-        if self._blank_std > 0.0 and self._frame_std(crop) < self._blank_std:
-            self.stats.blank += 1
-            self._log_blank()
-            self.tracker.update([], frame_ts)
-            return frame, []
+        # 两条判据互补，任一条命中就跳过检测+识别，只把空结果喂给 tracker 让旧轨道按 TTL 老化：
+        #   ① blank_std：缩到 160 宽后的灰度标准差，挡"整片均匀"；
+        #   ② texture_min：同一张图上的拉普拉斯方差，挡"暗 + 光晕渐变"这种不均匀但没有
+        #      任何高频细节的帧（14:27 那次的形态：std 6.65 漏过 ①，拉普拉斯仅 3.6）。
+        if self._blank_std > 0.0 or self._texture_min > 0.0:
+            std, texture = self._frame_probe(crop)
+            if (self._blank_std > 0.0 and std < self._blank_std) or \
+                    (self._texture_min > 0.0 and texture < self._texture_min):
+                self.stats.blank += 1
+                self._log_blank(std, texture)
+                self.tracker.update([], frame_ts)
+                return frame, []
 
         # 先收集这一帧所有合格的脸，再一次性提特征：新管线可以按批喂 TensorRT
         # （一张脸一次前向在板上是浪费），旧识别器则自动退化成逐张。
@@ -723,28 +731,45 @@ class VisionService(object):
                     and result.other_best is not None else "—"))
 
     @staticmethod
-    def _frame_std(frame, probe_width=BLANK_PROBE_WIDTH):
-        """缩小后的灰度标准差：越小画面越"均匀"（全黑 / 镜头被遮 / 流掉线）。
+    def _frame_probe(frame, probe_width=BLANK_PROBE_WIDTH):
+        """缩到 `probe_width` 宽后算 (灰度标准差, 拉普拉斯方差)：一次缩放量两个指标。
 
-        先缩小再算，720p 上约 0.2 ms；全黑与暗帧(16) 都是 0，真实素材帧 20+。
+        标准差小 = 整片均匀（全黑 / 暗帧 / 流掉线）；拉普拉斯方差小 = 没有任何高频细节
+        （镜头被挡但漏光的"暗 + 光晕渐变"帧，标准差会被渐变撑大，单靠标准差拦不住）。
+        720p 上两次测算合计约 0.3 ms。
         """
         height, width = frame.shape[:2]
         if height <= 0 or width <= 0:
-            return 0.0
+            return 0.0, 0.0
         if width > probe_width:
             scale = float(probe_width) / float(width)
             frame = cv2.resize(frame, (int(probe_width), max(1, int(height * scale))),
                                interpolation=cv2.INTER_AREA)
         gray = frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         _mean, std = cv2.meanStdDev(gray)
-        return float(std[0][0])
+        texture = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        return float(std[0][0]), texture
 
-    def _log_blank(self):
+    @staticmethod
+    def _frame_std(frame, probe_width=BLANK_PROBE_WIDTH):
+        """缩小后的灰度标准差：越小画面越"均匀"（全黑 / 镜头被遮 / 流掉线）。
+
+        先缩小再算，720p 上约 0.2 ms；全黑与暗帧(16) 都是 0，真实素材帧 20+。
+        """
+        return VisionService._frame_probe(frame, probe_width)[0]
+
+    @staticmethod
+    def _frame_texture(frame, probe_width=BLANK_PROBE_WIDTH):
+        """缩小后的拉普拉斯方差：越小画面越"没有细节"（被遮/失焦/无纹理）。"""
+        return VisionService._frame_probe(frame, probe_width)[1]
+
+    def _log_blank(self, std, texture):
         """限频：全黑环境 17 fps 会刷屏，所以只打前 3 条 + 每 100 条一次。"""
         self._blank_logged += 1
         if self._blank_logged <= 3 or self._blank_logged % 100 == 0:
-            self.log("[vision] 空白帧保护：画面近均匀，跳过检测（累计 %d 帧）"
-                     % self.stats.blank)
+            self.log("[vision] 空白帧保护：画面无有效细节，跳过检测"
+                     "（std=%.2f texture=%.2f，累计 %d 帧）"
+                     % (std, texture, self.stats.blank))
 
     def _embeddings(self, crop, dets):
         """一帧一次批量识别：有 `embed_batch` 就用，没有就逐张调 `embed`。

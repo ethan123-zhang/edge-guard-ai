@@ -262,6 +262,30 @@ class TestBlankFrameGuardConfig(unittest.TestCase):
         self.assertIn("detection.blank_std", str(ctx.exception))
 
 
+class TestFrameTextureGuardConfig(unittest.TestCase):
+    """帧级细节保护（2026-11-12）：暗 + 光晕渐变的被遮帧要拦，真实素材不能被误伤。"""
+
+    def test_default_is_on_with_a_conservative_threshold(self):
+        det = config.DEFAULTS["detection"]
+        self.assertAlmostEqual(det["texture_min"], 20.0)
+        self.assertAlmostEqual(config.load("sim")["detection"]["texture_min"], 20.0)
+
+    def test_board_keeps_it_on(self):
+        self.assertGreater(config.load("board")["detection"]["texture_min"], 0.0)
+
+    def test_zero_means_disabled(self):
+        cfg = config.load("sim")
+        cfg["detection"]["texture_min"] = 0
+        config.validate(cfg)
+
+    def test_rejects_negative_threshold(self):
+        cfg = config.load("sim")
+        cfg["detection"]["texture_min"] = -1.0
+        with self.assertRaises(config.ConfigError) as ctx:
+            config.validate(cfg)
+        self.assertIn("detection.texture_min", str(ctx.exception))
+
+
 class TestServerTimeoutConfig(unittest.TestCase):
     """WS 出口的超时必须可配且有界（2026-11-07：对端不读会把主循环拖死）。"""
 
