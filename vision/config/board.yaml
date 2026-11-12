@@ -35,7 +35,7 @@ detection:
 
 server:
   enabled: true
-  ws_url: ws://192.168.5.11:8765    # 鲁班猫的视觉入站口（2026-11-11 双板打通后实测地址）
+  ws_url: ws://10.32.174.19:8765    # 鲁班猫的视觉入站口（2026-11-12 现场 DHCP 地址；换网络要按 nmcli 重填）
   heartbeat_sec: 5.0
   reconnect_sec: 3.0
   # 事件出口必须"断了也不拖主循环"：对端 accept 了但不应答时握手读会挂死，
@@ -52,7 +52,7 @@ output:
   # 没设密钥时服务照常上报事件，只是推图关闭（启动日志会明说）。
   snapshot_push:
     enabled: true
-    url: http://192.168.5.11:8766/vision/snapshot
+    url: http://10.32.174.19:8766/vision/snapshot
     key: ""
     timeout: 2.0
     queue_size: 8

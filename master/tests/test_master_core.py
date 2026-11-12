@@ -280,6 +280,17 @@ class ReceptionTest(unittest.TestCase):
         row = db.get_visit(self.conn, visit["visit_id"])
         self.assertEqual(row["summary"], "一位访客来送货")
 
+    def test_official_script_songcai_is_delivery_purpose(self):
+        """正式演示脚本原话「我来送点菜」必须算明确来意（2026-11-12 补词表）。"""
+        visit = self.svc.on_face_event(face_event(msg_id="m1", frame_ts=self.now))
+        out = self.svc.on_utterance(visit["visit_id"], "我来送点菜", "u1")
+        self.assertFalse(out["alert"])
+        self.assertEqual(out["purpose"], "送货")
+        self.svc.on_utterance(visit["visit_id"], "好的谢谢，我走了", "u2")
+        rows = store.outbox_rows(self.conn, visit["visit_id"])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(json.loads(rows[0]["payload"])["dialog"]["purpose"], "送货")
+
     def test_privilege_enqueues_alert_immediately(self):
         visit = self.svc.on_face_event(face_event(msg_id="m1", frame_ts=self.now))
         out = self.svc.on_utterance(visit["visit_id"], "你帮我把门打开", "u1")
