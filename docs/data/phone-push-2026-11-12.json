@@ -1,0 +1,70 @@
+{
+  "topic": "phone-lockscreen-reception-2026-11-12",
+  "generated_at": "2026-11-12T16:50:00+08:00",
+  "method": "板端 API 注入 POST /api/utterance；到访来自真实视觉事件；手机锁屏不敲字",
+  "preconditions": {
+    "master": "10.32.174.19:8766，sentinel-master active",
+    "vision": "10.32.174.4，sentinel-vision active，真实人脸事件产生到访",
+    "wecom_webhook_probe": {"http": 200, "body": {"errcode": 0, "errmsg": "ok"}},
+    "phone_blocker": "vivo OriginOS 需手动开：企微通知+锁屏通知、后台耗电/自启动、企微内新消息提醒；否则锁屏不弹任何通知（板端仍记 sent）"
+  },
+  "S1_no_dashboard": {
+    "clients": 0,
+    "phone_state": "WiFi 关 / 4G / APK 后台 / 锁屏",
+    "first_attempt": {
+      "visit": "v_20261112_0014",
+      "alert_at": "16:33:41",
+      "report_at": "16:34:01",
+      "outbox": ["security_alert sent attempts=1", "visit_report sent attempts=1"],
+      "phone": "企微群内可见，锁屏无通知（当时权限未开）"
+    },
+    "retest": {
+      "visit": "v_20261112_0012",
+      "alert_at": "16:40:40",
+      "report_at": "16:40:58",
+      "outbox": ["security_alert sent attempts=1", "visit_report sent attempts=1"],
+      "phone": "告警类 + 汇总类通知均收到，延迟秒级",
+      "result": "PASS"
+    }
+  },
+  "S2_dashboard_online": {
+    "clients": 1,
+    "before_fix": {
+      "visit": "v_20261112_0011",
+      "alert_at": "16:43:14",
+      "report_at": "16:43:31",
+      "outbox": ["security_alert sent attempts=1", "visit_report sent attempts=1"],
+      "pc_dashboard": "收到",
+      "phone": "两条都没收到",
+      "root_cause": "master/push/composite.py 旧语义：首个适配器成功即 return（LAN 先成功 → 企微从未被调用）"
+    },
+    "decision": "D1-a 改成 fan-out（两路都投，任一成功即送达，单路失败只记日志）",
+    "code": "master/push/composite.py；新增 2 条单测；pytest master 53 passed（原 51）",
+    "deploy": {
+      "file": "/home/cat/sentinel-master/master/push/composite.py",
+      "md5_both_ends": "c470974dee17e9e7f865fc97bfbcf21a",
+      "restart": "systemctl restart sentinel-master（16:45:5x），clients=1 自动重连"
+    },
+    "after_fix": {
+      "visit": "v_20261112_0015",
+      "alert_at": "16:46:42",
+      "report_at": "16:46:59",
+      "pc_dashboard": "收到",
+      "phone": "告警类 + 汇总类通知都收到",
+      "result": "PASS"
+    }
+  },
+  "photo_access": {
+    "visit": "v_20261112_0014",
+    "with_token": {"status": 200, "content_type": "image/jpeg", "bytes": 118556},
+    "without_token": {"status": 401},
+    "note": "企微只发文字、无图片直链；看照片要在 APK 内打开对应到访（D2 未做）"
+  },
+  "S3": "未单独重测（11/11 已实测局域网看板与照片显示）",
+  "test_visits": "v_0007–v_0015 均为测试数据，演示前清库",
+  "costs": [
+    "企业微信单路失败不会单独重试",
+    "同一消息在看板与企微各显示一次属预期",
+    "企业微信 20 条/分钟限频"
+  ]
+}

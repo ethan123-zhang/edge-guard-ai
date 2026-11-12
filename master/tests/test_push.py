@@ -133,6 +133,29 @@ class CompositeTest(unittest.TestCase):
         self.assertIsNone(error)
         self.assertEqual(relay.calls, 1)
 
+    def test_both_channels_are_always_tried(self):
+        """2026-11-12 起是 fan-out：LAN 成功也要继续投企业微信。
+
+        现场演示是「PC 投屏看板在线 + 手机锁屏收企微」同时进行；旧语义首个成功就返回，
+        实测锁屏手机一条都收不到（S2）。这条单测钉死"两路都调"。
+        """
+        lan = FakeAdapter("lan", True)
+        relay = FakeAdapter("relay", True)
+        ok, error = CompositeAdapter([lan, relay]).send("report:v1", REPORT)
+        self.assertTrue(ok)
+        self.assertIsNone(error)
+        self.assertEqual(lan.calls, 1, "局域网通道要投")
+        self.assertEqual(relay.calls, 1, "企业微信通道也必须投，不能因为 LAN 成功就跳过")
+
+    def test_partial_failure_logs_but_still_delivered(self):
+        logged = []
+        lan = FakeAdapter("lan", True)
+        relay = FakeAdapter("relay", False)
+        ok, error = CompositeAdapter([lan, relay], log=logged.append).send("k", REPORT)
+        self.assertTrue(ok, "一路成功就算送达")
+        self.assertIsNone(error)
+        self.assertTrue(any("relay" in line for line in logged), logged)
+
     def test_both_fail_reports_both(self):
         ok, error = CompositeAdapter([FakeAdapter("lan", False),
                                       FakeAdapter("relay", False)]).send("k", REPORT)
