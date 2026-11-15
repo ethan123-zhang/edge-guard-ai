@@ -89,6 +89,74 @@ DEFAULTS: Dict[str, Any] = {
         # 默认 false 保留局域网探活；true 时看板照常工作（页面请求本来就带 token）。
         "health_requires_token": False,
     },
+    # 语音线（2026-11-15 定：云优先 + 自动回退离线；播报只播预置话术）
+    "voice": {
+        "enabled": False,
+        "capture": {
+            "device": "plughw:2,0",     # 板端 USB 麦（arecord -l 里的 card 号）
+            "rate": 16000,
+            "channels": 1,
+            "chunk_ms": 40,
+            # AGC 开着时房间底噪会被自己抬起来、尖峰削顶（2026-11-15 现场直说实录），
+            # 演示板默认关掉，用固定增益
+            "agc_off": False,
+        },
+        "vad": {
+            "speech_db": 8.0,           # 高于底噪多少 dB 算说话
+            "hangover_ms": 700,         # 静音多久算一句说完（600→700：防句中换气被切两段）
+            "min_speech_ms": 250,       # 200→250：太短的多半是噪声/误触
+            "max_utterance_ms": 8000,
+            "pre_roll_ms": 300,         # 句首回捞，防吃字头
+        },
+        "asr": {
+            "mode": "cloud_first",      # cloud_first | cloud | offline
+            # 削顶段（敲麦/插拔噪声）直接丢：满幅样本占比超过这个值就不送识别
+            "max_clip_ratio": 0.01,
+            # 识别文本不超过这个字数、又不在词表里时，按噪声丢弃（「啊」「嗯」这类）
+            "noise_text_chars": 3,
+            "cloud": {
+                "provider": "baidu",
+                # key 不写这里：环境变量 SENTINEL_BAIDU_API_KEY / SENTINEL_BAIDU_SECRET_KEY
+                "api_key": "",
+                "secret_key": "",
+                "timeout_s": 3.0,
+                "cuid": "sentinel-lubancat",
+            },
+            "offline": {
+                "model_dir": "",
+                # Vosk 语法按"词序列"写，中文模型按字切词，短语里必须有空格
+                "grammar": [
+                    "我 来 送 点 菜", "我 来 送 菜", "我 来 送 快 递",
+                    "把 门 打 开", "开 门", "我 是 他 表 哥", "我 是 他 表 弟",
+                    "我 姓 李", "放 门 口 就 行", "你 好", "我 找 老 王", "家 里 没 人 吗",
+                ],
+            },
+        },
+        "playback": {
+            "enabled": False,
+            "device": "plughw:0,0",     # 板载 ES8323；喇叭没接时置 false
+            "dir": "",                  # 固定话术 wav 目录（相对仓库根）
+            "post_delay_ms": 300,       # 播完等多久再开麦
+            "not_heard": "",            # 「没听清」的 wav 文件名
+            "map": {},                  # 回复原文 → wav 文件名（cue 不命中时兜底）
+            # 话术 cue → wav：动态内容（姓名/第几次）只上看板，音频播固定话术
+            "cues": {
+                "greeting_known": "greeting_known.wav",
+                "greeting_unknown": "greeting_unknown.wav",
+                "default_question": "greeting_unknown.wav",
+                "purpose_ack": "purpose_ack.wav",
+                "ask_caller": "ask_caller.wav",
+                "farewell": "farewell.wav",
+                "handoff": "handoff.wav",
+                "refusal:open_door": "refusal_open_door.wav",
+                "refusal:info_probe": "refusal_info_probe.wav",
+                "refusal:impersonation": "refusal_impersonation.wav",
+                "refusal:manipulation": "refusal_manipulation.wav",
+                "refusal:system_probe": "refusal_system_probe.wav",
+                "refusal:promise": "refusal_promise.wav",
+            },
+        },
+    },
 }
 
 
@@ -192,6 +260,34 @@ def validate(cfg: Dict[str, Any]) -> None:
     relay = push.get("relay") or {}
     _need(str(relay.get("provider") or "wecom") in ("wecom", "generic"),
           "push.relay.provider 只支持 wecom / generic")
+
+    voice = cfg.get("voice") or {}
+    if voice.get("enabled"):
+        capture = voice.get("capture") or {}
+        _need(bool(str(capture.get("device") or "").strip()),
+              "voice.capture.device 不能为空（arecord -l 里的设备名）")
+        _need(8000 <= int(capture.get("rate", 0)) <= 48000,
+              "voice.capture.rate 必须在 8000..48000")
+        _need(1 <= int(capture.get("channels", 0)) <= 2,
+              "voice.capture.channels 必须在 1..2")
+        _need(10 <= int(capture.get("chunk_ms", 0)) <= 200,
+              "voice.capture.chunk_ms 必须在 10..200")
+        asr = voice.get("asr") or {}
+        _need(str(asr.get("mode") or "") in ("cloud_first", "cloud", "offline"),
+              "voice.asr.mode 只支持 cloud_first / cloud / offline")
+        offline = asr.get("offline") or {}
+        if str(asr.get("mode")) in ("cloud_first", "offline"):
+            _need(bool(str(offline.get("model_dir") or "").strip()),
+                  "voice.asr.offline.model_dir 不能为空（离线识别路径）")
+        cloud = asr.get("cloud") or {}
+        _need(float(cloud.get("timeout_s", 0)) > 0,
+              "voice.asr.cloud.timeout_s 必须为正数")
+        playback = voice.get("playback") or {}
+        _need(int(playback.get("post_delay_ms", 0)) >= 0,
+              "voice.playback.post_delay_ms 不能为负")
+        if playback.get("enabled"):
+            _need(bool(str(playback.get("device") or "").strip()),
+                  "voice.playback.device 不能为空（aplay -l 里的设备名）")
 
 
 def resolve_project(rel_path: Any) -> Path:

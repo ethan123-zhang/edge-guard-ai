@@ -36,3 +36,18 @@ push:
     provider: wecom
     # webhook 地址不进仓库：写进 config/master.local.yaml 的 push.relay.url
     url: ""
+
+voice:
+  # 云优先 + 自动回退离线（2026-11-15 定）；板端在 master.local.yaml 里置 true
+  enabled: false
+  capture:
+    device: plughw:2,0        # USB 麦（arecord -l 里的 card 2）
+    agc_off: true             # AGC 会把底噪抬起来并削顶，演示板固定增益
+  asr:
+    mode: cloud_first
+    offline:
+      model_dir: /home/cat/voice-models/vosk-model-small-cn
+  playback:
+    enabled: false            # 喇叭接上之前保持 false（只走看板字幕）
+    device: plughw:0,0        # 板载 ES8323
+    dir: voice/phrases

@@ -50,6 +50,8 @@ class App(object):
                                           log=self._log, notify=self._notify)
         self.router = api.Router(self)
         self.last_vision_ts = int(time.time() * 1000)
+        self.voice = None
+        self._voice_thread = None
         self._state_seq = 0
         self._stop = threading.Event()
 
@@ -107,6 +109,49 @@ class App(object):
                 "visit_count": int(person["visit_count"]) if person is not None else 0,
                 "purpose": row["purpose"]}
 
+    # ---------------------------------------------------------------- 语音线
+
+    def voice_current_visit(self) -> Optional[str]:
+        """语音只能挂到"当前还在接待的到访"上；没有就返回 None（识别结果丢弃）。
+
+        库里可能有上次调试遗留的未收口到访（演示前会清库），所以再加一道时间闸：
+        到访时间超过 `reception.session_timeout_ms` 就不再当成语音的挂载目标。
+        """
+        with self.lock:
+            current = self.reception_current_visit()
+            if not current:
+                return None
+            timeout_ms = int((self.cfg.get("reception") or {}).get("session_timeout_ms", 300000))
+            age_ms = int(time.time() * 1000) - int(current.get("arrived_at") or 0)
+            if age_ms > timeout_ms:
+                return None
+            return str(current["visit_id"])
+
+    def start_voice(self):
+        """按配置起语音线程；失败只记日志，服务照常跑。"""
+        from master.voice import create_engine
+
+        if not (self.cfg.get("voice") or {}).get("enabled"):
+            return None
+        try:
+            engine = create_engine(self, log=self._log)
+        except Exception as exc:
+            self._log("[voice] 装配失败：%s" % exc)
+            return None
+        if engine is None:
+            return None
+        self.voice = engine
+        self._voice_thread = threading.Thread(target=engine.run, args=(self._stop,),
+                                              name="master-voice", daemon=True)
+        self._voice_thread.start()
+        return self._voice_thread
+
+    def voice_status(self) -> Dict[str, Any]:
+        if self.voice is not None:
+            return self.voice.status()
+        return {"enabled": bool((self.cfg.get("voice") or {}).get("enabled")),
+                "running": False}
+
     # ---------------------------------------------------------------- 视觉事件
 
     def on_vision_message(self, text: str) -> None:
@@ -135,6 +180,14 @@ class App(object):
                   % (result.get("face_id"), result.get("visit_id"),
                      result.get("created")))
         self.broadcast_state()
+        greeting = result.get("greeting")
+        greeting_cue = result.get("greeting_cue")
+        if self.voice is not None and (greeting_cue or greeting):
+            # 播报要出声，但别把视觉入站线程堵住：丢给短线程播
+            target = self.voice.speak_cue if greeting_cue else self.voice.speak_text
+            arg = greeting_cue or greeting
+            threading.Thread(target=target, args=(arg,),
+                             name="voice-greeting", daemon=True).start()
 
     # ---------------------------------------------------------------- 后台线程
 
@@ -439,6 +492,7 @@ def run(cfg: Dict[str, Any]) -> int:
     owner_thread.start()
     vision.start()
     worker = app.start_worker()
+    app.start_voice()
     print("[master] 主人端已启动：HTTP/WS %s:%d，视觉入站 %d，库 %s"
           % (host, owner.server_address[1], vision.port, master_config.db_path(cfg)),
           flush=True)

@@ -156,6 +156,7 @@ class Router(object):
             "clients": app.hub.count(),
             "vision_online": bool(last_vision and now - last_vision < 15000),
             "last_vision_ts": last_vision or None,
+            "voice": app.voice_status() if hasattr(app, "voice_status") else None,
         })
 
     def _current(self) -> Response:

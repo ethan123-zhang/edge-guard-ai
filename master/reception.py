@@ -126,6 +126,7 @@ class ReceptionService(object):
 
         session = self.sessions.get(decision.visit_id)
         greeted = False
+        greeting = None
         if session is None:
             session = {"started_at": frame_ts, "last_activity": frame_ts,
                        "greeted": False, "closed": False, "reasons": []}
@@ -147,6 +148,9 @@ class ReceptionService(object):
         session["last_activity"] = max(int(session["last_activity"]), int(frame_ts))
         return {"visit_id": decision.visit_id, "created": decision.created,
                 "replayed": False, "reason": decision.reason, "greeted": greeted,
+                "greeting": greeting if greeted else None,
+                "greeting_cue": (("greeting_known" if name else "greeting_unknown")
+                                 if greeted else None),
                 "face_id": face_id, "frame_ts": frame_ts,
                 "count": decision.person_visit_count}
 
@@ -197,10 +201,10 @@ class ReceptionService(object):
             store.set_visit_slots(self.conn, visit_id, caller_name=intent["caller_name"])
 
         farewell = is_farewell(text, self.cfg)
-        reply = self._reply_for(intent, farewell)
+        reply, cue = self._reply_for(intent, farewell)
         store.add_turn(self.conn, visit_id, "assistant", reply, ts=self._now())
 
-        result = {"visit_id": visit_id, "reply": reply, "alert": False,
+        result = {"visit_id": visit_id, "reply": reply, "cue": cue, "alert": False,
                   "purpose": purpose, "caller_name": intent["caller_name"],
                   "farewell": farewell, "replayed": False, "source": source}
         if farewell:
@@ -313,6 +317,7 @@ class ReceptionService(object):
         except Exception as exc:  # 投递失败不能把请求打挂，队列里有记录
             self._log("[reception] 告警即时投递失败：%s" % exc)
         return {"visit_id": visit_id, "reply": reply, "alert": True,
+                "cue": "refusal:%s" % (detection.category or "open_door"),
                 "alert_key": key, "alert_enqueued": enqueued,
                 "categories": list(detection.categories),
                 "phrases": list(detection.matched),
@@ -334,19 +339,23 @@ class ReceptionService(object):
         return {"visit_id": visit_id, "reply": reply, "alert": False,
                 "replayed": True, "closed": False}
 
-    def _reply_for(self, intent: Dict[str, Any], farewell: bool) -> str:
-        """确定性回复（不接 LLM；第 4 阶段语音由天问51 播固定话术）。"""
+    def _reply_for(self, intent: Dict[str, Any], farewell: bool) -> Tuple[str, str]:
+        """确定性回复（不接 LLM）。
+
+        返回 `(文本, 话术 cue)`：文本进数据库/看板，cue 给播报层挑固定 wav
+        ——动态内容（姓名/第几次）只上看板，音频放不带变量的固定话术。
+        """
         purpose = intent.get("purpose")
         caller = intent.get("caller_name")
         if farewell and purpose:
-            return phrases.handoff(caller)
+            return phrases.handoff(caller), "handoff"
         if farewell:
-            return "好的，我先记下您来过，再见。"
+            return "好的，我先记下您来过，再见。", "farewell"
         if purpose:
-            return "好的，已经帮您记下了，我会转告家里人的。"
+            return "好的，已经帮您记下了，我会转告家里人的。", "purpose_ack"
         if caller:
-            return "好的，%s，请问您来是有什么事？" % caller
-        return "您好，家里现在没人，请问您找哪位？"
+            return "好的，%s，请问您来是有什么事？" % caller, "ask_caller"
+        return "您好，家里现在没人，请问您找哪位？", "default_question"
 
     def _user_turn_count(self, visit_id: str) -> int:
         row = self.conn.execute(
