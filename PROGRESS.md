@@ -9,7 +9,9 @@
 > ② 13 条话术 wav 在 `voice/phrases` 但没传到板上（`*.wav` 被 .gitignore 排除）、
 > ③ 板端 `master.local.yaml` 只有 `playback.enabled: false`，缺 `device`/`dir`、
 > ④ 混音器 `spk/hp/Headphone` 三开关全 off 且 `asound.state` 是 11-12 快照（重启会按旧状态覆盖）。
-> 下一步：同步 4 文件 + 传 wav + 开 playback + 固化 mixer → 再走三幕与冻结彩排。
+> 下一步：**7 个代码/配置文件 + 13 个 wav 已于 15:2x 同步上板（md5 全一致，服务未重启，
+> 原件备份在板端 `.deploy-bak-20261115/`）；喇叭确认走 `spk` 口**。晚上再做：开 `playback`
+> + `spk switch on / hp off / alsactl store` 固化 → 三幕端到端 → 冻结彩排。
 > 入口：[handoffs/2026-11-15-语音播报接线现状](docs/handoffs/2026-11-15-语音播报接线现状.md)、
 > [语音线-云优先与离线回退](docs/语音线-云优先与离线回退-2026-11-15.md)。
 
